@@ -217,50 +217,52 @@ export default function ProfilePage() {
       {/* Modal de Ubicación y Moneda */}
       {showLocationModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl animate-scale-in max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl animate-scale-in max-h-[85vh] flex flex-col">
             {/* Icono */}
-            <div className="w-16 h-16 rounded-full bg-blue-100 mx-auto mb-4 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-blue-100 mx-auto mb-4 flex items-center justify-center flex-shrink-0">
               <Globe size={32} className="text-blue-600" />
             </div>
 
             {/* Título */}
-            <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
+            <h3 className="text-2xl font-bold text-gray-900 text-center mb-2 flex-shrink-0">
               Ubicación y Moneda
             </h3>
 
             {/* Mensaje */}
-            <p className="text-gray-600 text-center mb-6">
+            <p className="text-gray-600 text-center mb-4 flex-shrink-0">
               Selecciona tu país para configurar la moneda
             </p>
 
-            {/* Grid de países */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              {COUNTRIES.map((country) => (
-                <button
-                  key={country.code}
-                  type="button"
-                  onClick={() => setSelectedCountry(country.code)}
-                  className={`
-                    flex flex-col items-center justify-center p-4 rounded-2xl transition-all
-                    ${selectedCountry === country.code
-                      ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-xl scale-105 ring-4 ring-blue-200'
-                      : 'bg-white text-gray-900 hover:bg-gray-50 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md'
-                    }
-                  `}
-                >
-                  <span className="text-4xl mb-2">{country.flag}</span>
-                  <p className={`text-sm font-bold text-center ${selectedCountry === country.code ? 'text-white' : 'text-gray-900'}`}>
-                    {country.name}
-                  </p>
-                  <p className={`text-xs text-center ${selectedCountry === country.code ? 'text-blue-100' : 'text-gray-500'}`}>
-                    {country.symbol}
-                  </p>
-                </button>
-              ))}
+            {/* Grid de países - scrolleable */}
+            <div className="flex-1 overflow-y-auto mb-4 scrollbar-hide">
+              <div className="grid grid-cols-2 gap-3">
+                {COUNTRIES.map((country) => (
+                  <button
+                    key={country.code}
+                    type="button"
+                    onClick={() => setSelectedCountry(country.code)}
+                    className={`
+                      flex flex-col items-center justify-center p-4 rounded-2xl transition-all
+                      ${selectedCountry === country.code
+                        ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-xl scale-105 ring-4 ring-blue-200'
+                        : 'bg-white text-gray-900 hover:bg-gray-50 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md'
+                      }
+                    `}
+                  >
+                    <span className="text-4xl mb-2">{country.flag}</span>
+                    <p className={`text-sm font-bold text-center ${selectedCountry === country.code ? 'text-white' : 'text-gray-900'}`}>
+                      {country.name}
+                    </p>
+                    <p className={`text-xs text-center ${selectedCountry === country.code ? 'text-blue-100' : 'text-gray-500'}`}>
+                      {country.symbol}
+                    </p>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Botones */}
-            <div className="flex gap-3">
+            {/* Botones - fijos al fondo */}
+            <div className="flex gap-3 flex-shrink-0 pt-2 border-t border-gray-100">
               <button
                 onClick={() => setShowLocationModal(false)}
                 className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
