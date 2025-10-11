@@ -16,15 +16,15 @@ const COUNTRIES = [
   { code: 'CO', name: 'Colombia', currency: 'COP', symbol: '$', flag: '🇨🇴' },
 ];
 
-const currencyMap: Record<string, { code: string; symbol: string }> = {
-  'BOB': { code: 'BOB', symbol: 'Bs' },
-  'USD': { code: 'USD', symbol: '$' },
-  'EUR': { code: 'EUR', symbol: '€' },
-  'MXN': { code: 'MXN', symbol: '$' },
-  'ARS': { code: 'ARS', symbol: '$' },
-  'CLP': { code: 'CLP', symbol: '$' },
-  'PEN': { code: 'PEN', symbol: 'S/' },
-  'COP': { code: 'COP', symbol: '$' },
+const currencyMap: Record<string, { code: string; symbol: string; name: string; locale: string }> = {
+  'BO': { code: 'BOB', symbol: 'Bs', name: 'Boliviano', locale: 'es-BO' },
+  'US': { code: 'USD', symbol: '$', name: 'Dólar estadounidense', locale: 'en-US' },
+  'EU': { code: 'EUR', symbol: '€', name: 'Euro', locale: 'es-ES' },
+  'MX': { code: 'MXN', symbol: '$', name: 'Peso mexicano', locale: 'es-MX' },
+  'AR': { code: 'ARS', symbol: '$', name: 'Peso argentino', locale: 'es-AR' },
+  'CL': { code: 'CLP', symbol: '$', name: 'Peso chileno', locale: 'es-CL' },
+  'PE': { code: 'PEN', symbol: 'S/', name: 'Sol peruano', locale: 'es-PE' },
+  'CO': { code: 'COP', symbol: '$', name: 'Peso colombiano', locale: 'es-CO' },
 };
 
 export default function ProfilePage() {
@@ -35,6 +35,7 @@ export default function ProfilePage() {
   const [selectedCountry, setSelectedCountry] = useState('BO');
   const [dailyBudget, setDailyBudget] = useState('');
   const [isEditingBudget, setIsEditingBudget] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Cargar configuración guardada
   useEffect(() => {
@@ -60,13 +61,15 @@ export default function ProfilePage() {
   const handleSaveLocation = () => {
     const country = COUNTRIES.find(c => c.code === selectedCountry);
     if (country) {
+      const currencyConfig = currencyMap[country.code];
+      
       // Guardar en localStorage
       localStorage.setItem('userCountry', country.code);
-      localStorage.setItem('userCurrency', JSON.stringify(currencyMap[country.currency]));
+      localStorage.setItem('userCurrency', JSON.stringify(currencyConfig));
       
       // Actualizar el hook
       setCountry(country.code);
-      setCurrency(currencyMap[country.currency]);
+      setCurrency(currencyConfig);
       
       setIsEditingLocation(false);
       alert('✅ Ubicación y moneda actualizadas');
@@ -83,11 +86,9 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSignOut = async () => {
-    if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
-      // Redirigir al login (sin borrar datos)
-      window.location.href = '/sign-in';
-    }
+  const handleSignOut = () => {
+    // Redirigir al login (sin borrar datos)
+    window.location.href = '/sign-in';
   };
 
   const currentCountry = COUNTRIES.find(c => c.code === selectedCountry);
@@ -137,33 +138,20 @@ export default function ProfilePage() {
         {isEditingLocation ? (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Selecciona tu país
               </label>
-              <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto scrollbar-hide">
+              <select
+                value={selectedCountry}
+                onChange={(e) => setSelectedCountry(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-gray-900"
+              >
                 {COUNTRIES.map((country) => (
-                  <button
-                    key={country.code}
-                    type="button"
-                    onClick={() => setSelectedCountry(country.code)}
-                    className={`
-                      flex flex-col items-center justify-center p-4 rounded-2xl transition-all
-                      ${selectedCountry === country.code
-                        ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-xl scale-105 ring-4 ring-blue-200'
-                        : 'bg-white text-gray-900 hover:bg-gray-50 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md'
-                      }
-                    `}
-                  >
-                    <span className="text-4xl mb-2">{country.flag}</span>
-                    <p className={`text-sm font-bold text-center ${selectedCountry === country.code ? 'text-white' : 'text-gray-900'}`}>
-                      {country.name}
-                    </p>
-                    <p className={`text-xs text-center ${selectedCountry === country.code ? 'text-blue-100' : 'text-gray-500'}`}>
-                      {country.symbol}
-                    </p>
-                  </button>
+                  <option key={country.code} value={country.code}>
+                    {country.name} - {country.currency} ({country.symbol})
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
             <div className="flex gap-2">
               <button
@@ -184,7 +172,7 @@ export default function ProfilePage() {
           </div>
         ) : (
           <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-            <span className="text-4xl">{currentCountry?.flag}</span>
+            <DollarSign size={24} className="text-blue-600" />
             <div>
               <p className="font-semibold text-gray-900">{currentCountry?.name}</p>
               <p className="text-sm text-gray-600">
@@ -280,12 +268,50 @@ export default function ProfilePage() {
 
       {/* Cerrar Sesión */}
       <button
-        onClick={handleSignOut}
+        onClick={() => setShowLogoutModal(true)}
         className="w-full p-4 rounded-3xl bg-gradient-to-r from-red-500 to-red-600 text-white font-bold hover:opacity-90 transition-all flex items-center justify-center gap-3 shadow-lg"
       >
         <LogOut size={24} />
         Cerrar sesión
       </button>
+
+      {/* Modal de Confirmación de Cierre de Sesión */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-scale-in">
+            {/* Icono */}
+            <div className="w-16 h-16 rounded-full bg-red-100 mx-auto mb-4 flex items-center justify-center">
+              <LogOut size={32} className="text-red-600" />
+            </div>
+
+            {/* Título */}
+            <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
+              ¿Cerrar sesión?
+            </h3>
+
+            {/* Mensaje */}
+            <p className="text-gray-600 text-center mb-6">
+              Podrás volver a ingresar cuando quieras. Tus datos se mantendrán guardados.
+            </p>
+
+            {/* Botones */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
