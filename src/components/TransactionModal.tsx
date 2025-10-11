@@ -863,25 +863,36 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
             )}
           </div>
           
-          {/* Botón para confirmar y volver - SIEMPRE FIJO EN BOTTOM */}
+          {/* Botones de acción - SIEMPRE FIJO EN BOTTOM */}
           <div className="flex-shrink-0 p-4 pb-6 bg-white border-t border-gray-200 shadow-lg">
-            <button
-              onClick={() => {
-                setShowAllCategories(false);
-                setSearchTerm('');
-              }}
-              disabled={!category}
-              className={`
-                w-full py-3.5 px-4 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2
-                ${category
-                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }
-              `}
-            >
-              {category && <span className="text-xl">{selectedCategory?.emoji}</span>}
-              {category ? `Confirmar: ${selectedCategory?.label}` : 'Selecciona una categoría'}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowAllCategories(false);
+                  setSearchTerm('');
+                }}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  setShowAllCategories(false);
+                  setSearchTerm('');
+                }}
+                disabled={!category}
+                className={`
+                  flex-1 py-3.5 px-4 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2
+                  ${category
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }
+                `}
+              >
+                {category && <span className="text-xl">{selectedCategory?.emoji}</span>}
+                {category ? `Confirmar: ${selectedCategory?.label}` : 'Selecciona una categoría'}
+              </button>
+            </div>
           </div>
         </div>
       )}
