@@ -73,9 +73,7 @@ export default function ProfilePage() {
 
   const handleSignOut = async () => {
     if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
-      // Limpiar localStorage
-      localStorage.clear();
-      // Redirigir al login
+      // Redirigir al login (sin borrar datos)
       window.location.href = '/sign-in';
     }
   };
