@@ -21,7 +21,7 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-600 to-red-600 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-gradient-to-br from-purple-600 via-pink-600 to-red-600 flex items-center justify-center p-4 overflow-auto">
       <div className="w-full max-w-md">
         {/* Logo/Header */}
         <div className="text-center mb-8">
