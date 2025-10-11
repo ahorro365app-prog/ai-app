@@ -790,7 +790,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
           </div>
           
           {/* Lista de categorías - Con scroll y drag & drop */}
-          <div className="flex-1 overflow-y-auto p-4 pb-2">
+          <div className="flex-1 overflow-y-auto scrollbar-hide p-4 pb-2">
             {!searchTerm && (
               <div className="mb-3 px-1">
                 <p className="text-xs text-gray-500 flex items-center gap-1.5">
