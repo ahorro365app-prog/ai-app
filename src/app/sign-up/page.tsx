@@ -89,12 +89,21 @@ export default function SignUpPage() {
               </div>
             </div>
 
-            {/* Botón */}
+            {/* Botón Registro */}
             <button
               type="submit"
               className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-lg hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
             >
               Crear Cuenta
+            </button>
+
+            {/* Botón Demo */}
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+              className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-gray-700 to-gray-800 text-white font-bold text-lg hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+            >
+              🚀 Entrar en Modo Demo
             </button>
           </form>
 

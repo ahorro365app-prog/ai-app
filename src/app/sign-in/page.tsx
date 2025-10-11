@@ -72,12 +72,21 @@ export default function SignInPage() {
               </div>
             </div>
 
-            {/* Botón */}
+            {/* Botón Login */}
             <button
               type="submit"
               className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-lg hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
             >
               Ingresar
+            </button>
+
+            {/* Botón Demo */}
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+              className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-gray-700 to-gray-800 text-white font-bold text-lg hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+            >
+              🚀 Entrar en Modo Demo
             </button>
           </form>
 
