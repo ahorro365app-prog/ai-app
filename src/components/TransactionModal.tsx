@@ -864,7 +864,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
           </div>
           
           {/* Botón para confirmar y volver - SIEMPRE FIJO EN BOTTOM */}
-          <div className="flex-shrink-0 p-4 pb-28 bg-white border-t border-gray-200 shadow-lg">
+          <div className="flex-shrink-0 p-4 pb-36 bg-white border-t border-gray-200 shadow-lg">
             <button
               onClick={() => {
                 setShowAllCategories(false);
@@ -967,7 +967,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
           </div>
           
           {/* Footer con botones */}
-          <div className="flex-shrink-0 p-4 pb-28 bg-white border-t border-gray-200 shadow-lg">
+          <div className="flex-shrink-0 p-4 pb-36 bg-white border-t border-gray-200 shadow-lg">
             <div className="flex gap-3">
               <button
                 onClick={() => {
