@@ -140,17 +140,19 @@ export default function ProfilePage() {
               <label className="block text-sm font-semibold text-gray-700 mb-3">
                 Selecciona tu país
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto scrollbar-hide">
                 {COUNTRIES.map((country) => (
                   <button
                     key={country.code}
                     type="button"
                     onClick={() => setSelectedCountry(country.code)}
-                    className={`flex flex-col items-center justify-center p-4 rounded-2xl transition-all ${
-                      selectedCountry === country.code
+                    className={`
+                      flex flex-col items-center justify-center p-4 rounded-2xl transition-all
+                      ${selectedCountry === country.code
                         ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-xl scale-105 ring-4 ring-blue-200'
                         : 'bg-white text-gray-900 hover:bg-gray-50 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md'
-                    }`}
+                      }
+                    `}
                   >
                     <span className="text-4xl mb-2">{country.flag}</span>
                     <p className={`text-sm font-bold text-center ${selectedCountry === country.code ? 'text-white' : 'text-gray-900'}`}>
@@ -182,7 +184,7 @@ export default function ProfilePage() {
           </div>
         ) : (
           <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-            <div className="text-4xl">{currentCountry?.flag}</div>
+            <span className="text-4xl">{currentCountry?.flag}</span>
             <div>
               <p className="font-semibold text-gray-900">{currentCountry?.name}</p>
               <p className="text-sm text-gray-600">
