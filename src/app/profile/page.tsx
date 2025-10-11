@@ -140,17 +140,28 @@ export default function ProfilePage() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Selecciona tu país
               </label>
-              <select
-                value={selectedCountry}
-                onChange={(e) => setSelectedCountry(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-gray-900"
-              >
+              <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">
                 {COUNTRIES.map((country) => (
-                  <option key={country.code} value={country.code}>
-                    {country.flag} {country.name} - {country.currency} ({country.symbol})
-                  </option>
+                  <button
+                    key={country.code}
+                    type="button"
+                    onClick={() => setSelectedCountry(country.code)}
+                    className={`flex items-center gap-3 p-3 rounded-xl transition-all text-left ${
+                      selectedCountry === country.code
+                        ? 'bg-blue-500 text-white shadow-lg scale-105'
+                        : 'bg-gray-50 text-gray-900 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    <span className="text-2xl">{country.flag}</span>
+                    <div className="flex-1">
+                      <p className="font-semibold">{country.name}</p>
+                      <p className={`text-xs ${selectedCountry === country.code ? 'text-blue-100' : 'text-gray-500'}`}>
+                        {country.currency} ({country.symbol})
+                      </p>
+                    </div>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
             <div className="flex gap-2">
               <button
