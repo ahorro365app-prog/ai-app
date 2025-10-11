@@ -502,9 +502,9 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
       />
       
       {/* Modal */}
-      <div className="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[calc(100vh-100px)] overflow-y-auto animate-fade-in">
+      <div className="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col animate-fade-in">
         {/* Header con gradiente */}
-        <div className="sticky top-0 bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-5 flex items-center justify-between rounded-t-3xl z-10 shadow-md">
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-5 flex items-center justify-between rounded-t-3xl z-10 shadow-md flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
               {type === 'expense' ? (
@@ -526,7 +526,8 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
         </div>
 
         {/* Content */}
-        <div className="p-6 pb-28 space-y-6">
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-y-auto scrollbar-hide p-6 pb-6 space-y-6">
           {/* Tipo de transacción - Tabs estilo píldoras */}
           <div className="flex justify-center">
             <div className="inline-flex bg-gray-100 rounded-full p-1">
@@ -742,6 +743,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
               {type === 'expense' ? <TrendingDown size={18} /> : <TrendingUp size={18} />}
               Guardar
             </button>
+          </div>
           </div>
         </div>
       </div>
