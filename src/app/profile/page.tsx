@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth, useUser } from '@clerk/nextjs';
 import { User, Globe, DollarSign, Calendar, Target, LogOut, Edit2, Save, X } from 'lucide-react';
 import { useCurrency } from '@/hooks/useCurrency';
 
@@ -30,8 +29,6 @@ const currencyMap: Record<string, { code: string; symbol: string }> = {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { signOut } = useAuth();
-  const { user } = useUser();
   const { currency, setCountry, setCurrency } = useCurrency();
 
   const [isEditingLocation, setIsEditingLocation] = useState(false);
@@ -76,8 +73,10 @@ export default function ProfilePage() {
 
   const handleSignOut = async () => {
     if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
-      await signOut();
-      router.push('/sign-in');
+      // Limpiar localStorage
+      localStorage.clear();
+      // Recargar la página
+      window.location.href = '/dashboard';
     }
   };
 
@@ -98,11 +97,11 @@ export default function ProfilePage() {
             <User size={32} />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-bold">{user?.fullName || 'Usuario'}</h2>
-            <p className="text-blue-100 text-sm">{user?.primaryEmailAddress?.emailAddress}</p>
+            <h2 className="text-xl font-bold">Usuario Demo</h2>
+            <p className="text-blue-100 text-sm">demo@ahorro365.com</p>
             <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold">
               <Calendar size={12} />
-              <span>Miembro desde {new Date(user?.createdAt || Date.now()).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}</span>
+              <span>Miembro desde {new Date().toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}</span>
             </div>
           </div>
         </div>
