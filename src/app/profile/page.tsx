@@ -75,8 +75,8 @@ export default function ProfilePage() {
     if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
       // Limpiar localStorage
       localStorage.clear();
-      // Recargar la página
-      window.location.href = '/dashboard';
+      // Redirigir al login
+      window.location.href = '/sign-in';
     }
   };
 
