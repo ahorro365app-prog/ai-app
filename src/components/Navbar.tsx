@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Home, History, Mic, FolderOpen, Settings } from "lucide-react";
+import { useEffect } from "react";
 
 interface NavbarProps {
   onOpenTransaction: () => void;
@@ -18,6 +19,16 @@ const navItems = [
 
 export default function Navbar({ onOpenTransaction }: NavbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  // Prefetch de todas las páginas al montar el componente
+  useEffect(() => {
+    navItems.forEach((item) => {
+      if (item.href !== "#") {
+        router.prefetch(item.href);
+      }
+    });
+  }, [router]);
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-bottom shadow-lg">
@@ -32,7 +43,7 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
               <li key={item.label} className="relative mr-6 ml-6">
                 <button
                   onClick={onOpenTransaction}
-                  className="absolute -top-6 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all"
+                  className="absolute -top-12 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all"
                   aria-label="Registrar con voz"
                 >
                   <Mic size={28} className="text-white" />

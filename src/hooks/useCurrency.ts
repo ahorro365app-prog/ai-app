@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 
 interface CurrencyConfig {
   code: string;
@@ -110,7 +110,8 @@ export function useCurrency() {
     }
   };
 
-  const formatAmount = (amount: number, options?: Intl.NumberFormatOptions) => {
+  // Memoizar formatAmount para evitar recrearlo en cada render
+  const formatAmount = useCallback((amount: number, options?: Intl.NumberFormatOptions) => {
     return new Intl.NumberFormat(currency.locale, {
       style: 'currency',
       currency: currency.code,
@@ -118,16 +119,22 @@ export function useCurrency() {
       maximumFractionDigits: 2,
       ...options,
     }).format(amount);
-  };
+  }, [currency.locale, currency.code]);
 
-  const changeCurrency = (countryCode: string) => {
+  const changeCurrency = useCallback((countryCode: string) => {
     const currencyConfig = currencyMap[countryCode] || currencyMap.DEFAULT;
     setCurrency(currencyConfig);
     setCountry(countryCode);
     
     localStorage.setItem('userCurrency', JSON.stringify(currencyConfig));
     localStorage.setItem('userCountry', countryCode);
-  };
+  }, []);
+
+  // Memoizar la lista de países disponibles
+  const availableCountries = useMemo(() => 
+    Object.keys(currencyMap).filter(k => k !== 'DEFAULT'),
+    []
+  );
 
   return {
     currency,
@@ -135,7 +142,9 @@ export function useCurrency() {
     isLoading,
     formatAmount,
     changeCurrency,
-    availableCountries: Object.keys(currencyMap).filter(k => k !== 'DEFAULT'),
+    availableCountries,
+    setCountry,
+    setCurrency,
   };
 }
 
