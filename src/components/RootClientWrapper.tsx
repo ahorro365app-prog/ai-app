@@ -21,7 +21,7 @@ export default function RootClientWrapper({ children }: { children: React.ReactN
 
   return (
     <>
-      <main className="pb-20">
+      <main className="pb-0">
         {children}
       </main>
       {!hideNavigation && (
