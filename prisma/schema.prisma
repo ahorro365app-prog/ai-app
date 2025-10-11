@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String        @id @default(cuid())
+  clerkId         String        @unique // ID de Clerk
+  email           String        @unique
+  phoneNumber     String?       @unique // Número de WhatsApp
+  name            String?
+  role            UserRole      @default(FREE)
+  currency        String        @default("USD") // Moneda del usuario
+  country         String?       // País detectado
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relaciones
+  expenses        Expense[]
+  budgets         Budget[]
+  categories      Category[]
+  savingGoals     SavingGoal[]
+  whatsappMessages WhatsappMessage[]
+  usages          Usage[]
+}
+
+// Modelo de Gastos
+model Expense {
+  id              String        @id @default(cuid())
+  userId          String
+  amount          Float
+  description     String
+  categoryId      String?
+  date            DateTime      @default(now())
+  source          ExpenseSource @default(MANUAL) // MANUAL, WHATSAPP, VOICE, OCR
+  currency        String        @default("USD")
+  metadata        Json?         // Info adicional (ubicación, recibo, etc.)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category        Category?     @relation(fields: [categoryId], references: [id])
+
+  @@index([userId, date])
+}
+
+// Categorías de Gastos
+model Category {
+  id              String    @id @default(cuid())
+  userId          String?   // null = categoría global, no-null = personalizada
+  name            String
+  icon            String?
+  color           String?
+  budget          Float?    // Presupuesto mensual para esta categoría
+  createdAt       DateTime  @default(now())
+
+  user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses        Expense[]
+
+  @@unique([userId, name])
+}
+
+// Presupuestos Mensuales
+model Budget {
+  id              String    @id @default(cuid())
+  userId          String
+  month           Int       // 1-12
+  year            Int
+  totalBudget     Float
+  spent           Float     @default(0)
+  currency        String    @default("USD")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month, year])
+}
+
+// Metas de Ahorro
+model SavingGoal {
+  id              String    @id @default(cuid())
+  userId          String
+  name            String
+  targetAmount    Float
+  currentAmount   Float     @default(0)
+  deadline        DateTime?
+  currency        String    @default("USD")
+  icon            String?
+  color           String?
+  completed       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Mensajes de WhatsApp
+model WhatsappMessage {
+  id              String          @id @default(cuid())
+  userId          String
+  phoneNumber     String          // Número que envió el mensaje
+  messageId       String          @unique // ID del mensaje de WhatsApp
+  messageType     MessageType     // TEXT, AUDIO, IMAGE
+  content         String?         // Texto o transcripción
+  audioUrl        String?         // URL del audio si es mensaje de voz
+  imageUrl        String?         // URL de imagen si es recibo
+  direction       MessageDirection // INBOUND, OUTBOUND
+  processed       Boolean         @default(false)
+  expenseCreated  Boolean         @default(false)
+  aiResponse      String?         // Respuesta generada por IA
+  metadata        Json?
+  createdAt       DateTime        @default(now())
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([phoneNumber])
+}
+
+model Usage {
+  id          String    @id @default(cuid())
+  userId      String
+  type        UsageType
+  tokens      Int       @default(0)
+  success     Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum UserRole {
+  FREE
+  PREMIUM
+  ADMIN
+}
+
+enum UsageType {
+  CHAT
+  WHATSAPP
+  VOICE_TRANSCRIPTION
+  OCR
+  AI_ANALYSIS
+}
+
+enum ExpenseSource {
+  MANUAL
+  WHATSAPP
+  VOICE
+  OCR
+  BANK_SYNC
+}
+
+enum MessageType {
+  TEXT
+  AUDIO
+  IMAGE
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}

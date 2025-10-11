@@ -1,0 +1,65 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Home, History, Mic, FolderOpen, Settings } from "lucide-react";
+
+interface NavbarProps {
+  onOpenTransaction: () => void;
+}
+
+const navItems = [
+  { href: "/dashboard", label: "Panel", Icon: Home },
+  { href: "/history", label: "Historial", Icon: History },
+  { href: "#", label: "Voz", Icon: Mic, isVoice: true },
+  { href: "/projects", label: "Proyectos", Icon: FolderOpen },
+  { href: "/profile", label: "Ajustes", Icon: Settings },
+];
+
+export default function Navbar({ onOpenTransaction }: NavbarProps) {
+  const pathname = usePathname();
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-bottom shadow-lg">
+      <ul className="flex items-center justify-around px-6 py-2 relative">
+        {navItems.map((item, index) => {
+          const active = pathname === item.href;
+          const Icon = item.Icon;
+          
+          // Botón de voz central (más grande y destacado)
+          if (item.isVoice) {
+            return (
+              <li key={item.label} className="relative mr-6 ml-6">
+                <button
+                  onClick={onOpenTransaction}
+                  className="absolute -top-6 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all"
+                  aria-label="Registrar con voz"
+                >
+                  <Mic size={28} className="text-white" />
+                </button>
+              </li>
+            );
+          }
+
+          return (
+            <li key={item.href} className="flex-1">
+              <Link
+                href={item.href}
+                className={`
+                  flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all
+                  ${active 
+                    ? "text-blue-600" 
+                    : "text-gray-500 hover:text-gray-700"
+                  }
+                `}
+              >
+                <Icon size={24} />
+                <span className="text-xs font-medium">{item.label}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
