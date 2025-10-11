@@ -6,14 +6,14 @@ import { User, Globe, DollarSign, Calendar, Target, LogOut, Edit2, Save, X } fro
 import { useCurrency } from '@/hooks/useCurrency';
 
 const COUNTRIES = [
-  { code: 'BO', name: 'Bolivia', currency: 'BOB', symbol: 'Bs' },
-  { code: 'US', name: 'Estados Unidos', currency: 'USD', symbol: '$' },
-  { code: 'EU', name: 'Eurozona', currency: 'EUR', symbol: '€' },
-  { code: 'MX', name: 'México', currency: 'MXN', symbol: '$' },
-  { code: 'AR', name: 'Argentina', currency: 'ARS', symbol: '$' },
-  { code: 'CL', name: 'Chile', currency: 'CLP', symbol: '$' },
-  { code: 'PE', name: 'Perú', currency: 'PEN', symbol: 'S/' },
-  { code: 'CO', name: 'Colombia', currency: 'COP', symbol: '$' },
+  { code: 'BO', name: 'Bolivia', currency: 'BOB', symbol: 'Bs', flag: '🇧🇴' },
+  { code: 'US', name: 'Estados Unidos', currency: 'USD', symbol: '$', flag: '🇺🇸' },
+  { code: 'EU', name: 'Eurozona', currency: 'EUR', symbol: '€', flag: '🇪🇺' },
+  { code: 'MX', name: 'México', currency: 'MXN', symbol: '$', flag: '🇲🇽' },
+  { code: 'AR', name: 'Argentina', currency: 'ARS', symbol: '$', flag: '🇦🇷' },
+  { code: 'CL', name: 'Chile', currency: 'CLP', symbol: '$', flag: '🇨🇱' },
+  { code: 'PE', name: 'Perú', currency: 'PEN', symbol: 'S/', flag: '🇵🇪' },
+  { code: 'CO', name: 'Colombia', currency: 'COP', symbol: '$', flag: '🇨🇴' },
 ];
 
 const currencyMap: Record<string, { code: string; symbol: string }> = {
@@ -147,7 +147,7 @@ export default function ProfilePage() {
               >
                 {COUNTRIES.map((country) => (
                   <option key={country.code} value={country.code}>
-                    {country.name} - {country.currency} ({country.symbol})
+                    {country.flag} {country.name} - {country.currency} ({country.symbol})
                   </option>
                 ))}
               </select>
@@ -171,7 +171,7 @@ export default function ProfilePage() {
           </div>
         ) : (
           <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-            <DollarSign size={24} className="text-blue-600" />
+            <div className="text-4xl">{currentCountry?.flag}</div>
             <div>
               <p className="font-semibold text-gray-900">{currentCountry?.name}</p>
               <p className="text-sm text-gray-600">
