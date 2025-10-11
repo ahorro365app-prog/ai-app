@@ -31,7 +31,7 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
   }, [router]);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-bottom shadow-lg">
+    <div className="fixed bottom-0 left-0 right-0 bg-white z-50 safe-bottom shadow-lg">
       <ul className="flex items-center justify-around px-6 py-2 relative">
         {navItems.map((item, index) => {
           const active = pathname === item.href;
