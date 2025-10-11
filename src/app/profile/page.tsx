@@ -45,6 +45,18 @@ export default function ProfilePage() {
     setDailyBudget(savedBudget);
   }, []);
 
+  // Calcular días restantes del mes desde que se guardó el presupuesto
+  const calculateMonthlyBudget = () => {
+    if (!dailyBudget || parseFloat(dailyBudget) === 0) return 0;
+    
+    const today = new Date();
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const currentDay = today.getDate();
+    const daysRemaining = lastDayOfMonth - currentDay + 1; // +1 para incluir el día actual
+    
+    return parseFloat(dailyBudget) * daysRemaining;
+  };
+
   const handleSaveLocation = () => {
     const country = COUNTRIES.find(c => c.code === selectedCountry);
     if (country) {
@@ -225,14 +237,30 @@ export default function ProfilePage() {
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-3 p-4 bg-purple-50 rounded-xl border border-purple-200">
-            <Target size={24} className="text-purple-600" />
-            <div>
-              <p className="font-semibold text-gray-900">
-                {dailyBudget ? `${currency.symbol} ${parseFloat(dailyBudget).toFixed(2)}` : 'No configurado'}
-              </p>
-              <p className="text-sm text-gray-600">Límite diario de gastos</p>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-4 bg-purple-50 rounded-xl border border-purple-200">
+              <Target size={24} className="text-purple-600" />
+              <div className="flex-1">
+                <p className="font-semibold text-gray-900">
+                  {dailyBudget ? `${currency.symbol} ${parseFloat(dailyBudget).toFixed(2)}` : 'No configurado'}
+                </p>
+                <p className="text-sm text-gray-600">Límite diario de gastos</p>
+              </div>
             </div>
+            
+            {dailyBudget && parseFloat(dailyBudget) > 0 && (
+              <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                <Calendar size={24} className="text-blue-600" />
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-900">
+                    {currency.symbol} {calculateMonthlyBudget().toFixed(2)}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Presupuesto hasta fin de mes ({new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate() + 1} días)
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
