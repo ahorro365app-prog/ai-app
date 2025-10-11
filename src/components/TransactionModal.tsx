@@ -790,7 +790,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
           </div>
           
           {/* Lista de categorías - Con scroll y drag & drop */}
-          <div className="flex-1 overflow-y-auto p-4 pb-4">
+          <div className="flex-1 overflow-y-auto p-4 pb-2">
             {!searchTerm && (
               <div className="mb-3 px-1">
                 <p className="text-xs text-gray-500 flex items-center gap-1.5">
@@ -864,7 +864,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
           </div>
           
           {/* Botón para confirmar y volver - SIEMPRE FIJO EN BOTTOM */}
-          <div className="flex-shrink-0 p-4 pb-36 bg-white border-t border-gray-200 shadow-lg">
+          <div className="flex-shrink-0 p-4 pb-24 bg-white border-t border-gray-200 shadow-lg">
             <button
               onClick={() => {
                 setShowAllCategories(false);
@@ -967,7 +967,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
           </div>
           
           {/* Footer con botones */}
-          <div className="flex-shrink-0 p-4 pb-36 bg-white border-t border-gray-200 shadow-lg">
+          <div className="flex-shrink-0 p-4 pb-24 bg-white border-t border-gray-200 shadow-lg">
             <div className="flex gap-3">
               <button
                 onClick={() => {
