@@ -39,6 +39,13 @@ export default function ProfilePage() {
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  
+  // Estados para información personal
+  const [userName, setUserName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [tempUserName, setTempUserName] = useState('');
+  const [tempUserEmail, setTempUserEmail] = useState('');
+  const [showPersonalInfoModal, setShowPersonalInfoModal] = useState(false);
 
   // Cargar configuración guardada
   useEffect(() => {
@@ -47,6 +54,12 @@ export default function ProfilePage() {
 
     const savedBudget = localStorage.getItem('dailyBudget') || '';
     setDailyBudget(savedBudget);
+
+    const savedUserName = localStorage.getItem('userName') || '';
+    setUserName(savedUserName);
+
+    const savedUserEmail = localStorage.getItem('userEmail') || '';
+    setUserEmail(savedUserEmail);
   }, []);
 
   // Auto-ocultar toast después de 3 segundos
@@ -111,6 +124,27 @@ export default function ProfilePage() {
     }
   };
 
+  const handleOpenPersonalInfoModal = () => {
+    setTempUserName(userName);
+    setTempUserEmail(userEmail);
+    setShowPersonalInfoModal(true);
+  };
+
+  const handleSavePersonalInfo = () => {
+    if (tempUserName.trim()) {
+      localStorage.setItem('userName', tempUserName);
+      setUserName(tempUserName);
+      
+      localStorage.setItem('userEmail', tempUserEmail);
+      setUserEmail(tempUserEmail);
+      
+      setShowPersonalInfoModal(false);
+      showToastMessage('✅ Información personal actualizada');
+    } else {
+      showToastMessage('⚠️ El nombre es obligatorio');
+    }
+  };
+
   const handleSignOut = () => {
     // Redirigir al login (sin borrar datos)
     window.location.href = '/sign-in';
@@ -133,8 +167,8 @@ export default function ProfilePage() {
             <User size={32} />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-bold">Usuario Demo</h2>
-            <p className="text-blue-100 text-sm">demo@ahorro365.com</p>
+            <h2 className="text-xl font-bold">{userName || 'Usuario Demo'}</h2>
+            <p className="text-blue-100 text-sm">{userEmail || 'demo@ahorro365.com'}</p>
             <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold">
               <Calendar size={12} />
               <span>Miembro desde {new Date().toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}</span>
@@ -142,6 +176,38 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Información Personal */}
+      <button
+        onClick={handleOpenPersonalInfoModal}
+        className="w-full bg-white rounded-3xl p-6 mb-4 shadow-sm border border-gray-100 hover:shadow-md transition-all text-left"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <User size={20} className="text-green-600" />
+            <h3 className="text-lg font-bold text-gray-900">Información Personal</h3>
+          </div>
+          <Edit2 size={18} className="text-gray-400" />
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-200">
+            <div className="flex-1">
+              <p className="text-xs text-gray-600">Nombre</p>
+              <p className="font-semibold text-gray-900">
+                {userName || 'No configurado'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl border border-blue-200">
+            <div className="flex-1">
+              <p className="text-xs text-gray-600">Email</p>
+              <p className="font-semibold text-gray-900">
+                {userEmail || 'No configurado'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </button>
 
       {/* Ubicación y Moneda */}
       <button
@@ -327,6 +393,76 @@ export default function ProfilePage() {
               <button
                 onClick={handleSaveBudget}
                 className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Información Personal */}
+      {showPersonalInfoModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-scale-in">
+            {/* Icono */}
+            <div className="w-16 h-16 rounded-full bg-green-100 mx-auto mb-4 flex items-center justify-center">
+              <User size={32} className="text-green-600" />
+            </div>
+
+            {/* Título */}
+            <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
+              Información Personal
+            </h3>
+
+            {/* Mensaje */}
+            <p className="text-gray-600 text-center mb-6">
+              Personaliza tu perfil
+            </p>
+
+            {/* Inputs */}
+            <div className="space-y-4 mb-6">
+              {/* Nombre */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Nombre <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={tempUserName}
+                  onChange={(e) => setTempUserName(e.target.value)}
+                  placeholder="Tu nombre"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-green-500 focus:outline-none text-gray-900"
+                  autoFocus
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={tempUserEmail}
+                  onChange={(e) => setTempUserEmail(e.target.value)}
+                  placeholder="tu@email.com"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-green-500 focus:outline-none text-gray-900"
+                />
+              </div>
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowPersonalInfoModal(false)}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSavePersonalInfo}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
               >
                 Guardar
               </button>
