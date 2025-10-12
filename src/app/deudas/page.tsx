@@ -96,35 +96,48 @@ export default function DeudasPage() {
   const remainingDebt = totalDebt - totalPaid;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 p-4 pb-24">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 pb-24">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-1">Mis Deudas</h1>
         <p className="text-gray-600">Gestiona tus préstamos y pagos pendientes</p>
       </div>
 
-      {/* Resumen de deudas */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-2 mb-2">
-            <DollarSign size={20} className="text-red-600" />
-            <span className="text-sm font-medium text-gray-600">Total Deuda</span>
+      {/* Resumen principal */}
+      <div className="bg-gradient-to-r from-red-600 to-orange-600 rounded-3xl p-6 mb-6 text-white shadow-xl">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-red-100 text-sm mb-1">Total de deudas</p>
+            <p className="text-4xl font-bold">${totalDebt.toFixed(2)}</p>
           </div>
-          <p className="text-2xl font-bold text-red-600">${totalDebt.toFixed(2)}</p>
+          <div className="text-right">
+            <p className="text-red-100 text-sm mb-1">Restante</p>
+            <p className="text-2xl font-bold">${remainingDebt.toFixed(2)}</p>
+          </div>
         </div>
         
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle size={20} className="text-green-600" />
-            <span className="text-sm font-medium text-gray-600">Pagado</span>
+        {/* Barra de progreso general */}
+        <div className="mb-2">
+          <div className="flex justify-between text-sm mb-1">
+            <span className="text-red-100">Progreso general</span>
+            <span className="font-medium">{totalDebt > 0 ? ((totalPaid / totalDebt) * 100).toFixed(1) : 0}%</span>
           </div>
-          <p className="text-2xl font-bold text-green-600">${totalPaid.toFixed(2)}</p>
+          <div className="w-full bg-red-300/30 rounded-full h-2">
+            <div 
+              className="bg-white h-2 rounded-full transition-all"
+              style={{ width: `${Math.min((totalPaid / totalDebt) * 100, 100)}%` }}
+            />
+          </div>
         </div>
+        
+        <p className="text-red-100 text-sm">
+          {debts.length} {debts.length === 1 ? 'deuda' : 'deudas'} registrada{debts.length === 1 ? '' : 's'}
+        </p>
       </div>
 
       {/* Lista de deudas */}
       {debts.length === 0 ? (
-        <div className="text-center py-12">
+        <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 text-center">
           <CreditCard size={64} className="text-gray-300 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No tienes deudas registradas</h3>
           <p className="text-gray-600 mb-6">Agrega tus préstamos para llevar un control detallado</p>
@@ -143,20 +156,23 @@ export default function DeudasPage() {
             const progress = (debt.paidAmount / debt.totalAmount) * 100;
 
             return (
-              <div key={debt.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                <div className="flex items-start justify-between mb-3">
+              <div key={debt.id} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+                <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 mb-1">{debt.name}</h3>
-                    <p className="text-sm text-gray-600">Acreedor: {debt.creditor}</p>
+                    <h3 className="font-bold text-gray-900 mb-2 text-lg">{debt.name}</h3>
+                    <div className="flex items-center gap-2 mb-2">
+                      <CreditCard size={16} className="text-gray-400" />
+                      <span className="text-sm text-gray-600">Acreedor: {debt.creditor}</span>
+                    </div>
                     {debt.description && (
-                      <p className="text-sm text-gray-500 mt-1">{debt.description}</p>
+                      <p className="text-sm text-gray-500">{debt.description}</p>
                     )}
                   </div>
                   <button
                     onClick={() => handleDeleteDebt(debt.id)}
-                    className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                    className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-xl hover:bg-red-50"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={18} />
                   </button>
                 </div>
 
@@ -175,24 +191,30 @@ export default function DeudasPage() {
                 </div>
 
                 {/* Información financiera */}
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div>
-                    <p className="text-xs text-gray-500">Total</p>
-                    <p className="font-bold text-red-600">${debt.totalAmount.toFixed(2)}</p>
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500 mb-1">Total</p>
+                    <p className="font-bold text-red-600 text-lg">${debt.totalAmount.toFixed(2)}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Restante</p>
-                    <p className="font-bold text-orange-600">${remaining.toFixed(2)}</p>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500 mb-1">Pagado</p>
+                    <p className="font-bold text-green-600 text-lg">${debt.paidAmount.toFixed(2)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500 mb-1">Restante</p>
+                    <p className="font-bold text-orange-600 text-lg">${remaining.toFixed(2)}</p>
                   </div>
                 </div>
 
                 {/* Fecha de vencimiento */}
-                <div className="flex items-center gap-2">
-                  <Calendar size={14} className="text-gray-400" />
-                  <span className="text-sm text-gray-600">
-                    Vence: {new Date(debt.dueDate).toLocaleDateString('es-ES')}
-                  </span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Calendar size={16} className="text-gray-400" />
+                    <span className="text-sm text-gray-600">
+                      Vence: {new Date(debt.dueDate).toLocaleDateString('es-ES')}
+                    </span>
+                  </div>
+                  <span className={`text-xs px-3 py-1 rounded-full font-medium ${
                     daysRemaining < 0 
                       ? 'bg-red-100 text-red-600' 
                       : daysRemaining < 7 

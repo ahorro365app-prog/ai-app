@@ -104,49 +104,48 @@ export default function MetasPage() {
   const totalProgress = totalTarget > 0 ? (totalCurrent / totalTarget) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 p-4 pb-24">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 pb-24">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-1">Mis Metas</h1>
         <p className="text-gray-600">Ahorra para tus sueños y recompensas</p>
       </div>
 
-      {/* Resumen de metas */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-2 mb-2">
-            <Target size={20} className="text-purple-600" />
-            <span className="text-sm font-medium text-gray-600">Meta Total</span>
+      {/* Resumen principal */}
+      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl p-6 mb-6 text-white shadow-xl">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-purple-100 text-sm mb-1">Total de metas</p>
+            <p className="text-4xl font-bold">${totalTarget.toFixed(2)}</p>
           </div>
-          <p className="text-2xl font-bold text-purple-600">${totalTarget.toFixed(2)}</p>
+          <div className="text-right">
+            <p className="text-purple-100 text-sm mb-1">Ahorrado</p>
+            <p className="text-2xl font-bold">${totalCurrent.toFixed(2)}</p>
+          </div>
         </div>
         
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-2 mb-2">
-            <DollarSign size={20} className="text-green-600" />
-            <span className="text-sm font-medium text-gray-600">Ahorrado</span>
+        {/* Barra de progreso general */}
+        <div className="mb-2">
+          <div className="flex justify-between text-sm mb-1">
+            <span className="text-purple-100">Progreso general</span>
+            <span className="font-medium">{totalProgress.toFixed(1)}%</span>
           </div>
-          <p className="text-2xl font-bold text-green-600">${totalCurrent.toFixed(2)}</p>
+          <div className="w-full bg-purple-300/30 rounded-full h-2">
+            <div 
+              className="bg-white h-2 rounded-full transition-all"
+              style={{ width: `${Math.min(totalProgress, 100)}%` }}
+            />
+          </div>
         </div>
-      </div>
-
-      {/* Progreso general */}
-      <div className="bg-white rounded-2xl p-4 mb-6 shadow-sm border border-gray-100">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium text-gray-600">Progreso General</span>
-          <span className="text-lg font-bold text-purple-600">{totalProgress.toFixed(1)}%</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-3">
-          <div 
-            className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all"
-            style={{ width: `${Math.min(totalProgress, 100)}%` }}
-          />
-        </div>
+        
+        <p className="text-purple-100 text-sm">
+          {goals.length} {goals.length === 1 ? 'meta' : 'metas'} activa{goals.length === 1 ? '' : 's'}
+        </p>
       </div>
 
       {/* Lista de metas */}
       {goals.length === 0 ? (
-        <div className="text-center py-12">
+        <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 text-center">
           <Gift size={64} className="text-gray-300 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No tienes metas establecidas</h3>
           <p className="text-gray-600 mb-6">Crea tu primera meta de ahorro para alcanzar tus sueños</p>
@@ -166,20 +165,23 @@ export default function MetasPage() {
             const categoryInfo = GOAL_CATEGORIES[goal.category];
 
             return (
-              <div key={goal.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                <div className="flex items-start justify-between mb-3">
+              <div key={goal.id} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+                <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3 flex-1">
-                    <span className="text-3xl">{categoryInfo.emoji}</span>
+                    <span className="text-4xl">{categoryInfo.emoji}</span>
                     <div className="flex-1">
-                      <h3 className="font-bold text-gray-900 mb-1">{goal.name}</h3>
-                      <p className="text-sm text-gray-600">{categoryInfo.label}</p>
+                      <h3 className="font-bold text-gray-900 mb-2 text-lg">{goal.name}</h3>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Target size={16} className="text-gray-400" />
+                        <span className="text-sm text-gray-600">{categoryInfo.label}</span>
+                      </div>
                       {goal.description && (
-                        <p className="text-sm text-gray-500 mt-1">{goal.description}</p>
+                        <p className="text-sm text-gray-500">{goal.description}</p>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                       goal.priority === 'alta' 
                         ? 'bg-red-100 text-red-600' 
                         : goal.priority === 'media'
@@ -190,9 +192,9 @@ export default function MetasPage() {
                     </span>
                     <button
                       onClick={() => handleDeleteGoal(goal.id)}
-                      className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                      className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-xl hover:bg-red-50"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 </div>
@@ -212,24 +214,30 @@ export default function MetasPage() {
                 </div>
 
                 {/* Información financiera */}
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div>
-                    <p className="text-xs text-gray-500">Meta</p>
-                    <p className="font-bold text-purple-600">${goal.targetAmount.toFixed(2)}</p>
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500 mb-1">Meta</p>
+                    <p className="font-bold text-purple-600 text-lg">${goal.targetAmount.toFixed(2)}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Falta</p>
-                    <p className="font-bold text-orange-600">${remaining.toFixed(2)}</p>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500 mb-1">Ahorrado</p>
+                    <p className="font-bold text-green-600 text-lg">${goal.currentAmount.toFixed(2)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500 mb-1">Falta</p>
+                    <p className="font-bold text-orange-600 text-lg">${remaining.toFixed(2)}</p>
                   </div>
                 </div>
 
                 {/* Fecha objetivo */}
-                <div className="flex items-center gap-2">
-                  <Calendar size={14} className="text-gray-400" />
-                  <span className="text-sm text-gray-600">
-                    Objetivo: {new Date(goal.targetDate).toLocaleDateString('es-ES')}
-                  </span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Calendar size={16} className="text-gray-400" />
+                    <span className="text-sm text-gray-600">
+                      Objetivo: {new Date(goal.targetDate).toLocaleDateString('es-ES')}
+                    </span>
+                  </div>
+                  <span className={`text-xs px-3 py-1 rounded-full font-medium ${
                     daysRemaining < 0 
                       ? 'bg-red-100 text-red-600' 
                       : daysRemaining < 30 
