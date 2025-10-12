@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Globe, DollarSign, Calendar, Target, LogOut, Edit2, Save, X, Phone } from 'lucide-react';
+import { User, Globe, DollarSign, Calendar, Target, LogOut, Edit2, Save, X, Phone, CreditCard, LayoutGrid } from 'lucide-react';
 import { useCurrency } from '@/hooks/useCurrency';
 
 const COUNTRIES = [
@@ -51,6 +51,10 @@ export default function ProfilePage() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showPhoneModal, setShowPhoneModal] = useState(false);
 
+  // Estados para habilitación de menús
+  const [isDebtsEnabled, setIsDebtsEnabled] = useState(true);
+  const [isGoalsEnabled, setIsGoalsEnabled] = useState(true);
+
   // Cargar configuración guardada
   useEffect(() => {
     const savedCountry = localStorage.getItem('userCountry') || 'BO';
@@ -67,6 +71,12 @@ export default function ProfilePage() {
 
     const savedUserPhone = localStorage.getItem('userPhone') || '';
     setUserPhone(savedUserPhone);
+
+    const savedDebtsEnabled = localStorage.getItem('isDebtsEnabled');
+    setIsDebtsEnabled(savedDebtsEnabled === null ? true : savedDebtsEnabled === 'true');
+
+    const savedGoalsEnabled = localStorage.getItem('isGoalsEnabled');
+    setIsGoalsEnabled(savedGoalsEnabled === null ? true : savedGoalsEnabled === 'true');
   }, []);
 
   // Auto-ocultar toast después de 3 segundos
@@ -174,6 +184,24 @@ export default function ProfilePage() {
   const handleSignOut = () => {
     // Redirigir al login (sin borrar datos)
     window.location.href = '/sign-in';
+  };
+
+  const handleToggleDebts = () => {
+    const newValue = !isDebtsEnabled;
+    setIsDebtsEnabled(newValue);
+    localStorage.setItem('isDebtsEnabled', String(newValue));
+    showToastMessage(newValue ? '✅ Menú Deudas habilitado' : '⚠️ Menú Deudas deshabilitado');
+    // Recargar después de un momento para actualizar el navbar
+    setTimeout(() => window.location.reload(), 500);
+  };
+
+  const handleToggleGoals = () => {
+    const newValue = !isGoalsEnabled;
+    setIsGoalsEnabled(newValue);
+    localStorage.setItem('isGoalsEnabled', String(newValue));
+    showToastMessage(newValue ? '✅ Menú Metas habilitado' : '⚠️ Menú Metas deshabilitado');
+    // Recargar después de un momento para actualizar el navbar
+    setTimeout(() => window.location.reload(), 500);
   };
 
   const currentCountry = COUNTRIES.find(c => c.code === selectedCountry);
@@ -315,6 +343,67 @@ export default function ProfilePage() {
           )}
         </div>
       </button>
+
+      {/* Habilitación de Menús */}
+      <div className="bg-white rounded-3xl p-6 mb-4 shadow-sm border border-gray-100">
+        <div className="flex items-center gap-2 mb-4">
+          <LayoutGrid size={20} className="text-indigo-600" />
+          <h3 className="text-lg font-bold text-gray-900">Menús Disponibles</h3>
+        </div>
+        <p className="text-sm text-gray-600 mb-4">Activa o desactiva los menús que deseas ver</p>
+        
+        <div className="space-y-3">
+          {/* Toggle Deudas */}
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                isDebtsEnabled ? 'bg-red-100' : 'bg-gray-200'
+              }`}>
+                <CreditCard size={24} className={isDebtsEnabled ? 'text-red-600' : 'text-gray-400'} />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">Deudas</p>
+                <p className="text-xs text-gray-500">Gestiona tus préstamos</p>
+              </div>
+            </div>
+            <button
+              onClick={handleToggleDebts}
+              className={`relative w-14 h-7 rounded-full transition-all ${
+                isDebtsEnabled ? 'bg-red-500' : 'bg-gray-300'
+              }`}
+            >
+              <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
+                isDebtsEnabled ? 'right-1' : 'left-1'
+              }`} />
+            </button>
+          </div>
+
+          {/* Toggle Metas */}
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                isGoalsEnabled ? 'bg-purple-100' : 'bg-gray-200'
+              }`}>
+                <Target size={24} className={isGoalsEnabled ? 'text-purple-600' : 'text-gray-400'} />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">Metas</p>
+                <p className="text-xs text-gray-500">Ahorra para tus objetivos</p>
+              </div>
+            </div>
+            <button
+              onClick={handleToggleGoals}
+              className={`relative w-14 h-7 rounded-full transition-all ${
+                isGoalsEnabled ? 'bg-purple-500' : 'bg-gray-300'
+              }`}
+            >
+              <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
+                isGoalsEnabled ? 'right-1' : 'left-1'
+              }`} />
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Cerrar Sesión */}
       <button
