@@ -23,11 +23,9 @@ export default function DeudasPage() {
   // Estados para el formulario
   const [debtName, setDebtName] = useState('');
   const [totalAmount, setTotalAmount] = useState('');
-  const [paidAmount, setPaidAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [interestRate, setInterestRate] = useState('');
   const [description, setDescription] = useState('');
-  const [creditor, setCreditor] = useState('');
 
   // Cargar deudas guardadas
   useEffect(() => {
@@ -54,16 +52,16 @@ export default function DeudasPage() {
 
   // Agregar nueva deuda
   const handleAddDebt = () => {
-    if (debtName && totalAmount && dueDate && creditor) {
+    if (debtName && totalAmount && dueDate) {
       const newDebt: Debt = {
         id: Date.now().toString(),
         name: debtName,
         totalAmount: parseFloat(totalAmount),
-        paidAmount: parseFloat(paidAmount) || 0,
+        paidAmount: 0, // Siempre empezar en 0
         dueDate,
         interestRate: interestRate ? parseFloat(interestRate) : undefined,
         description,
-        creditor,
+        creditor: 'No especificado', // Valor por defecto
         createdAt: new Date().toISOString(),
       };
 
@@ -73,11 +71,9 @@ export default function DeudasPage() {
       // Limpiar formulario
       setDebtName('');
       setTotalAmount('');
-      setPaidAmount('');
       setDueDate('');
       setInterestRate('');
       setDescription('');
-      setCreditor('');
       setShowAddDebtModal(false);
     }
   };
@@ -272,46 +268,17 @@ export default function DeudasPage() {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Acreedor *
+                  Monto total *
                 </label>
                 <input
-                  type="text"
-                  value={creditor}
-                  onChange={(e) => setCreditor(e.target.value)}
-                  placeholder="Banco, persona, institución..."
+                  type="number"
+                  value={totalAmount}
+                  onChange={(e) => setTotalAmount(e.target.value)}
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
                   className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none modal-input"
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Monto total *
-                  </label>
-                  <input
-                    type="number"
-                    value={totalAmount}
-                    onChange={(e) => setTotalAmount(e.target.value)}
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none modal-input"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Ya pagado
-                  </label>
-                  <input
-                    type="number"
-                    value={paidAmount}
-                    onChange={(e) => setPaidAmount(e.target.value)}
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none modal-input"
-                  />
-                </div>
               </div>
 
               <div>
