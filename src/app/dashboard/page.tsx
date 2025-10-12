@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { TrendingDown, TrendingUp, Calendar, Plus } from 'lucide-react';
 import { useTransactions } from '@/contexts/TransactionsContext';
 import { useCurrency } from '@/hooks/useCurrency';
+import { getCategoryLabel } from '@/components/TransactionModal';
 
 export default function DashboardPage() {
   const { transactions, getTodayTransactions, getStats } = useTransactions();
@@ -127,7 +128,7 @@ export default function DashboardPage() {
                         <TrendingUp size={16} className="text-green-500" />
                       )}
                       <p className="font-semibold text-gray-900 capitalize text-sm">
-                        {tx.category}
+                        {getCategoryLabel(tx.category)}
                       </p>
                     </div>
                     {tx.description && (

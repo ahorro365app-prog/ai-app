@@ -5,6 +5,7 @@ import { ArrowLeft, Calendar, TrendingDown, TrendingUp, Trash2, Search } from 'l
 import { useRouter } from 'next/navigation';
 import { useTransactions } from '@/contexts/TransactionsContext';
 import { useCurrency } from '@/hooks/useCurrency';
+import { getCategoryLabel } from '@/components/TransactionModal';
 
 export default function HistoryPage() {
   const router = useRouter();
@@ -17,8 +18,9 @@ export default function HistoryPage() {
 
   // Filtrar transacciones
   const filteredTransactions = transactions.filter(tx => {
+    const categoryLabel = getCategoryLabel(tx.category);
     const matchesSearch = tx.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         tx.category.toLowerCase().includes(searchTerm.toLowerCase());
+                         categoryLabel.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || tx.type === filterType;
     return matchesSearch && matchesType;
   });
@@ -178,7 +180,7 @@ export default function HistoryPage() {
                             <TrendingUp size={16} className="text-green-500" />
                           )}
                           <p className="font-semibold text-gray-900 text-sm capitalize">
-                            {tx.category}
+                            {getCategoryLabel(tx.category)}
                           </p>
                         </div>
                         {tx.description && (

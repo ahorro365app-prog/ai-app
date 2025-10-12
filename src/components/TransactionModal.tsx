@@ -86,6 +86,13 @@ const ALL_EXPENSE_CATEGORIES = [
   { id: 'subscriptions', label: 'Suscripciones', emoji: '📺' },
 ];
 
+// Función para obtener el label de una categoría por su ID
+export const getCategoryLabel = (categoryId: string): string => {
+  const allCategories = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES, ...ALL_EXPENSE_CATEGORIES];
+  const category = allCategories.find(cat => cat.id === categoryId);
+  return category ? category.label : categoryId;
+};
+
 // Mapeo de palabras clave a emojis sugeridos
 const EMOJI_SUGGESTIONS: Record<string, string[]> = {
   // Comida
