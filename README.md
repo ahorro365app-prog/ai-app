@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ahorro365 - Aplicación de Gestión Financiera
 
-## Getting Started
+Una aplicación móvil para gestionar gastos, ingresos y metas de ahorro con inteligencia artificial.
 
-First, run the development server:
+## 🚀 Características
+
+- ✅ Dashboard de gastos e ingresos
+- ✅ Registro de transacciones con voz
+- ✅ Historial de transacciones
+- ✅ Gestión de deudas
+- ✅ Metas de ahorro
+- ✅ Configuraciones personalizables
+- ✅ Soporte para múltiples monedas
+
+## 📱 Compilación de APK
+
+Esta aplicación se compila automáticamente usando GitHub Actions. Cada vez que hagas push al repositorio, se generará una nueva APK.
+
+### Descargar APK
+
+1. Ve a la pestaña **"Actions"** en GitHub
+2. Selecciona el último workflow ejecutado
+3. Descarga el archivo **"app-debug-apk"** desde los artifacts
+
+## 🛠️ Desarrollo Local
 
 ```bash
+# Instalar dependencias
+npm install
+
+# Ejecutar en desarrollo
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Construir para producción
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 📋 Requisitos
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Node.js 18+
+- Java 21 (para compilación Android)
+- Android Studio (opcional)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🤝 Contribuir
 
-## Learn More
+1. Fork el proyecto
+2. Crea una rama para tu feature
+3. Commit tus cambios
+4. Push a la rama
+5. Abre un Pull Request
 
-To learn more about Next.js, take a look at the following resources:
+## 📄 Licencia
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Este proyecto está bajo la Licencia MIT.
