@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ArrowLeft, Calendar, TrendingDown, TrendingUp, Trash2, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useTransactions } from '@/hooks/useTransactions';
+import { useTransactions } from '@/contexts/TransactionsContext';
 import { useCurrency } from '@/hooks/useCurrency';
 
 export default function HistoryPage() {

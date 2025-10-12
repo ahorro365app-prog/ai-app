@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import Navbar from './Navbar';
 import TransactionModal from './TransactionModal';
-import { useTransactions } from '@/hooks/useTransactions';
+import { useTransactions } from '@/contexts/TransactionsContext';
 
 export default function RootClientWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

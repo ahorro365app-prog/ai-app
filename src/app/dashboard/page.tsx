@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { TrendingDown, TrendingUp, Calendar, Plus } from 'lucide-react';
-import { useTransactions } from '@/hooks/useTransactions';
+import { useTransactions } from '@/contexts/TransactionsContext';
 import { useCurrency } from '@/hooks/useCurrency';
 
 export default function DashboardPage() {
