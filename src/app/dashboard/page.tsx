@@ -6,7 +6,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { useCurrency } from '@/hooks/useCurrency';
 
 export default function DashboardPage() {
-  const { getTodayTransactions, getStats } = useTransactions();
+  const { transactions, getTodayTransactions, getStats } = useTransactions();
   const { formatAmount, currency } = useCurrency();
   const [dailyBudget, setDailyBudget] = useState(0);
 
@@ -18,6 +18,7 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // Recalcular cuando las transacciones cambien
   const todayTransactions = getTodayTransactions();
   const stats = getStats(todayTransactions);
 

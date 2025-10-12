@@ -464,8 +464,6 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
   };
 
   const handleSave = () => {
-    console.log('handleSave called with:', { amount, category, type, paymentMethod, description, selectedDate });
-    
     if (!amount || !category) {
       alert('Por favor completa todos los campos obligatorios');
       return;
@@ -484,7 +482,6 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
       date: transactionDate.toISOString(),
     };
 
-    console.log('Calling onSave with transaction:', transaction);
     onSave(transaction);
     
     // Resetear formulario

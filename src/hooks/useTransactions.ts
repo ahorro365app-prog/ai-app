@@ -42,17 +42,11 @@ export function useTransactions() {
   }, [transactions, isLoading]);
 
   const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
-    console.log('Adding transaction to hook:', transaction);
     const newTransaction: Transaction = {
       ...transaction,
       id: Date.now().toString(),
     };
-    console.log('New transaction with ID:', newTransaction);
-    setTransactions(prev => {
-      const updated = [newTransaction, ...prev];
-      console.log('Updated transactions array:', updated);
-      return updated;
-    });
+    setTransactions(prev => [newTransaction, ...prev]);
   };
 
   const deleteTransaction = (id: string) => {

@@ -15,10 +15,8 @@ export default function RootClientWrapper({ children }: { children: React.ReactN
   const hideNavigation = pathname === '/sign-in' || pathname === '/sign-up';
 
   const handleSaveTransaction = (transaction: any) => {
-    console.log('Saving transaction:', transaction);
     addTransaction(transaction);
     setShowTransactionModal(false);
-    console.log('Transaction saved successfully');
   };
 
   return (
