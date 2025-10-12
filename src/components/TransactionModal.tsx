@@ -223,6 +223,10 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // Formato YYYY-MM-DD
+  const [selectedTime, setSelectedTime] = useState(() => {
+    const now = new Date();
+    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  }); // Formato HH:MM
   
   // Estados para drag & drop
   const [orderedCategories, setOrderedCategories] = useState<typeof ALL_EXPENSE_CATEGORIES>([]);
@@ -476,9 +480,10 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
       return;
     }
 
-    // Usar la fecha seleccionada con la hora actual
+    // Usar la fecha y hora seleccionadas
+    const [hours, minutes] = selectedTime.split(':').map(Number);
     const transactionDate = new Date(selectedDate);
-    transactionDate.setHours(new Date().getHours(), new Date().getMinutes(), new Date().getSeconds());
+    transactionDate.setHours(hours, minutes, 0);
 
     const transaction: Transaction = {
       type,
@@ -497,6 +502,10 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
     setPaymentMethod('cash');
     setDescription('');
     setSelectedDate(new Date().toISOString().split('T')[0]);
+    setSelectedTime(() => {
+      const now = new Date();
+      return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    });
     onClose();
   };
 
@@ -645,6 +654,28 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
             <p className="text-xs text-gray-500 mt-3 pl-1 flex items-center gap-1.5">
               <Calendar size={12} className="text-gray-400" />
               <span>Desliza para ver más días · Hasta 7 días atrás</span>
+            </p>
+          </div>
+
+          {/* Hora - Input de tiempo */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              ¿A qué hora?
+            </label>
+            <div className="relative">
+              <input
+                type="time"
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+                className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 bg-white text-lg font-semibold text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                style={{ fontFamily: 'Space Mono, monospace' }}
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                <span className="text-gray-400 text-sm">🕐</span>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2 pl-1">
+              Hora exacta del gasto o ingreso
             </p>
           </div>
 
