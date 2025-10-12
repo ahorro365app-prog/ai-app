@@ -288,7 +288,7 @@ export default function MetasPage() {
                   value={goalName}
                   onChange={(e) => setGoalName(e.target.value)}
                   placeholder="iPhone 15, viaje a Europa..."
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-purple-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-purple-500 focus:outline-none modal-input"
                   autoFocus
                 />
               </div>
@@ -328,7 +328,7 @@ export default function MetasPage() {
                     placeholder="0.00"
                     min="0"
                     step="0.01"
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-purple-500 focus:outline-none"
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-purple-500 focus:outline-none modal-input"
                   />
                 </div>
                 <div>
@@ -342,7 +342,7 @@ export default function MetasPage() {
                     placeholder="0.00"
                     min="0"
                     step="0.01"
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-purple-500 focus:outline-none"
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-purple-500 focus:outline-none modal-input"
                   />
                 </div>
               </div>
@@ -355,7 +355,7 @@ export default function MetasPage() {
                   type="date"
                   value={targetDate}
                   onChange={(e) => setTargetDate(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-purple-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-purple-500 focus:outline-none modal-input"
                 />
               </div>
 
@@ -409,7 +409,7 @@ export default function MetasPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="¿Por qué es importante esta meta?"
                   rows={3}
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-purple-500 focus:outline-none resize-none"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-purple-500 focus:outline-none resize-none modal-input"
                 />
               </div>
             </div>

@@ -153,3 +153,17 @@ body::after {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
 }
+
+/* Placeholders más oscuros y visibles */
+input::placeholder,
+textarea::placeholder {
+  color: #6B7280 !important; /* text-gray-500 */
+  opacity: 1 !important;
+}
+
+/* Placeholders específicos para modales */
+.modal-input::placeholder {
+  color: #4B5563 !important; /* text-gray-600 */
+  opacity: 1 !important;
+  font-weight: 500;
+}

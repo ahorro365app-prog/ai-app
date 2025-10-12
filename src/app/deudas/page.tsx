@@ -265,7 +265,7 @@ export default function DeudasPage() {
                   value={debtName}
                   onChange={(e) => setDebtName(e.target.value)}
                   placeholder="Préstamo personal, tarjeta de crédito..."
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none modal-input"
                   autoFocus
                 />
               </div>
@@ -279,7 +279,7 @@ export default function DeudasPage() {
                   value={creditor}
                   onChange={(e) => setCreditor(e.target.value)}
                   placeholder="Banco, persona, institución..."
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none modal-input"
                 />
               </div>
 
@@ -295,7 +295,7 @@ export default function DeudasPage() {
                     placeholder="0.00"
                     min="0"
                     step="0.01"
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none"
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none modal-input"
                   />
                 </div>
                 <div>
@@ -309,7 +309,7 @@ export default function DeudasPage() {
                     placeholder="0.00"
                     min="0"
                     step="0.01"
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none"
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none modal-input"
                   />
                 </div>
               </div>
@@ -322,7 +322,7 @@ export default function DeudasPage() {
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none modal-input"
                 />
               </div>
 
@@ -337,7 +337,7 @@ export default function DeudasPage() {
                   placeholder="0.00"
                   min="0"
                   step="0.01"
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none modal-input"
                 />
               </div>
 
@@ -350,7 +350,7 @@ export default function DeudasPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Detalles adicionales..."
                   rows={3}
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none resize-none"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none resize-none modal-input"
                 />
               </div>
             </div>
