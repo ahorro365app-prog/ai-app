@@ -264,16 +264,21 @@ export default function MetasPage() {
       {/* Modal para agregar meta */}
       {showAddGoalModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl animate-scale-in max-h-[90vh] overflow-y-auto">
-            <div className="w-16 h-16 rounded-full bg-purple-100 mx-auto mb-4 flex items-center justify-center">
-              <Target size={32} className="text-purple-600" />
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl animate-scale-in max-h-[90vh] flex flex-col">
+            {/* Header fijo */}
+            <div className="flex-shrink-0">
+              <div className="w-16 h-16 rounded-full bg-purple-100 mx-auto mb-4 flex items-center justify-center">
+                <Target size={32} className="text-purple-600" />
+              </div>
+
+              <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
+                Nueva Meta
+              </h3>
             </div>
 
-            <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
-              Nueva Meta
-            </h3>
-
-            <div className="space-y-4 mb-6">
+            {/* Contenido scrolleable */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide">
+              <div className="space-y-4 mb-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Nombre de la meta *
@@ -408,20 +413,24 @@ export default function MetasPage() {
                 />
               </div>
             </div>
+            </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowAddGoalModal(false)}
-                className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-all"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleAddGoal}
-                className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:opacity-90 transition-all shadow-lg"
-              >
-                Crear Meta
-              </button>
+            {/* Footer fijo */}
+            <div className="flex-shrink-0 pt-4 border-t border-gray-100">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowAddGoalModal(false)}
+                  className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleAddGoal}
+                  className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:opacity-90 transition-all shadow-lg"
+                >
+                  Crear Meta
+                </button>
+              </div>
             </div>
           </div>
         </div>
