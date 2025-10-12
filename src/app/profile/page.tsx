@@ -235,25 +235,25 @@ export default function ProfilePage() {
 
             {/* Grid de países - scrolleable */}
             <div className="flex-1 overflow-y-auto mb-4 scrollbar-hide">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 {COUNTRIES.map((country) => (
                   <button
                     key={country.code}
                     type="button"
                     onClick={() => setSelectedCountry(country.code)}
                     className={`
-                      flex flex-col items-center justify-center p-4 rounded-2xl transition-all
+                      flex flex-col items-center justify-center p-3 rounded-2xl transition-all
                       ${selectedCountry === country.code
                         ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-xl scale-105 ring-4 ring-blue-200'
                         : 'bg-white text-gray-900 hover:bg-gray-50 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md'
                       }
                     `}
                   >
-                    <span className="text-4xl mb-2">{country.flag}</span>
-                    <p className={`text-sm font-bold text-center ${selectedCountry === country.code ? 'text-white' : 'text-gray-900'}`}>
+                    <span className="text-3xl mb-1">{country.flag}</span>
+                    <p className={`text-xs font-bold text-center ${selectedCountry === country.code ? 'text-white' : 'text-gray-900'}`}>
                       {country.name}
                     </p>
-                    <p className={`text-xs text-center ${selectedCountry === country.code ? 'text-blue-100' : 'text-gray-500'}`}>
+                    <p className={`text-[10px] text-center ${selectedCountry === country.code ? 'text-blue-100' : 'text-gray-500'}`}>
                       {country.symbol}
                     </p>
                   </button>
