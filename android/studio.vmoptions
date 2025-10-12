@@ -1,0 +1,12 @@
+# Android Studio VM Options
+-Xms256m
+-Xmx2048m
+-XX:ReservedCodeCacheSize=512m
+-XX:+UseConcMarkSweepGC
+-XX:SoftRefLRUPolicyMSPerMB=50
+-ea
+-Dsun.io.useCanonCaches=false
+-Djava.net.preferIPv4Stack=true
+-Djdk.http.auth.tunneling.disabledSchemes=""
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:-OmitStackTraceInFastThrow

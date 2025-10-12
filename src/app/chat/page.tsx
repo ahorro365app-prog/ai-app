@@ -22,7 +22,7 @@ export default function ChatPage() {
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim()) return;
-    const nextMessages = [...messages, { role: "user", content: input }];
+    const nextMessages = [...messages, { role: "user" as const, content: input }];
     setMessages(nextMessages);
     setInput("");
     setLoading(true);
