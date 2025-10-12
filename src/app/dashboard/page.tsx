@@ -127,9 +127,18 @@ export default function DashboardPage() {
                       ) : (
                         <TrendingUp size={16} className="text-green-500" />
                       )}
-                      <p className="font-semibold text-gray-900 capitalize text-sm">
-                        {getCategoryLabel(tx.category)}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-gray-900 capitalize text-sm">
+                          {getCategoryLabel(tx.category)}
+                        </p>
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                          {new Date(tx.date).toLocaleTimeString('es-ES', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: false 
+                          })}
+                        </span>
+                      </div>
                     </div>
                     {tx.description && (
                       <p className="text-xs text-gray-600 mb-2">{tx.description}</p>
