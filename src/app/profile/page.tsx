@@ -2,18 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Globe, DollarSign, Calendar, Target, LogOut, Edit2, Save, X } from 'lucide-react';
+import { User, Globe, DollarSign, Calendar, Target, LogOut, Edit2, Save, X, Phone } from 'lucide-react';
 import { useCurrency } from '@/hooks/useCurrency';
 
 const COUNTRIES = [
-  { code: 'BO', name: 'Bolivia', currency: 'BOB', symbol: 'Bs', flag: '🇧🇴' },
-  { code: 'US', name: 'Estados Unidos', currency: 'USD', symbol: '$', flag: '🇺🇸' },
-  { code: 'EU', name: 'Eurozona', currency: 'EUR', symbol: '€', flag: '🇪🇺' },
-  { code: 'MX', name: 'México', currency: 'MXN', symbol: '$', flag: '🇲🇽' },
-  { code: 'AR', name: 'Argentina', currency: 'ARS', symbol: '$', flag: '🇦🇷' },
-  { code: 'CL', name: 'Chile', currency: 'CLP', symbol: '$', flag: '🇨🇱' },
-  { code: 'PE', name: 'Perú', currency: 'PEN', symbol: 'S/', flag: '🇵🇪' },
-  { code: 'CO', name: 'Colombia', currency: 'COP', symbol: '$', flag: '🇨🇴' },
+  { code: 'BO', name: 'Bolivia', currency: 'BOB', symbol: 'Bs', flag: '🇧🇴', phoneCode: '+591' },
+  { code: 'US', name: 'Estados Unidos', currency: 'USD', symbol: '$', flag: '🇺🇸', phoneCode: '+1' },
+  { code: 'EU', name: 'Eurozona', currency: 'EUR', symbol: '€', flag: '🇪🇺', phoneCode: '+49' },
+  { code: 'MX', name: 'México', currency: 'MXN', symbol: '$', flag: '🇲🇽', phoneCode: '+52' },
+  { code: 'AR', name: 'Argentina', currency: 'ARS', symbol: '$', flag: '🇦🇷', phoneCode: '+54' },
+  { code: 'CL', name: 'Chile', currency: 'CLP', symbol: '$', flag: '🇨🇱', phoneCode: '+56' },
+  { code: 'PE', name: 'Perú', currency: 'PEN', symbol: 'S/', flag: '🇵🇪', phoneCode: '+51' },
+  { code: 'CO', name: 'Colombia', currency: 'COP', symbol: '$', flag: '🇨🇴', phoneCode: '+57' },
 ];
 
 const currencyMap: Record<string, { code: string; symbol: string; name: string; locale: string }> = {
@@ -43,10 +43,13 @@ export default function ProfilePage() {
   // Estados para información personal
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
+  const [userPhone, setUserPhone] = useState('');
   const [tempUserName, setTempUserName] = useState('');
   const [tempUserEmail, setTempUserEmail] = useState('');
+  const [tempUserPhone, setTempUserPhone] = useState('');
   const [showNameModal, setShowNameModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
 
   // Cargar configuración guardada
   useEffect(() => {
@@ -61,6 +64,9 @@ export default function ProfilePage() {
 
     const savedUserEmail = localStorage.getItem('userEmail') || '';
     setUserEmail(savedUserEmail);
+
+    const savedUserPhone = localStorage.getItem('userPhone') || '';
+    setUserPhone(savedUserPhone);
   }, []);
 
   // Auto-ocultar toast después de 3 segundos
@@ -135,6 +141,11 @@ export default function ProfilePage() {
     setShowEmailModal(true);
   };
 
+  const handleOpenPhoneModal = () => {
+    setTempUserPhone(userPhone);
+    setShowPhoneModal(true);
+  };
+
   const handleSaveName = () => {
     if (tempUserName.trim()) {
       localStorage.setItem('userName', tempUserName);
@@ -151,6 +162,13 @@ export default function ProfilePage() {
     setUserEmail(tempUserEmail);
     setShowEmailModal(false);
     showToastMessage('✅ Email actualizado');
+  };
+
+  const handleSavePhone = () => {
+    localStorage.setItem('userPhone', tempUserPhone);
+    setUserPhone(tempUserPhone);
+    setShowPhoneModal(false);
+    showToastMessage('✅ Teléfono actualizado');
   };
 
   const handleSignOut = () => {
@@ -218,6 +236,20 @@ export default function ProfilePage() {
               </p>
             </div>
             <Edit2 size={16} className="text-blue-500" />
+          </button>
+          
+          {/* Campo Teléfono - clickeable */}
+          <button
+            onClick={handleOpenPhoneModal}
+            className="w-full flex items-center gap-3 p-3 bg-purple-50 rounded-xl border border-purple-200 hover:bg-purple-100 hover:shadow-sm transition-all text-left"
+          >
+            <div className="flex-1">
+              <p className="text-xs text-gray-600">Teléfono</p>
+              <p className="font-semibold text-gray-900">
+                {userPhone ? `${currentCountry?.phoneCode} ${userPhone}` : 'No configurado'}
+              </p>
+            </div>
+            <Edit2 size={16} className="text-purple-500" />
           </button>
         </div>
       </div>
@@ -512,6 +544,65 @@ export default function ProfilePage() {
               <button
                 onClick={handleSaveEmail}
                 className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Edición de Teléfono */}
+      {showPhoneModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-scale-in">
+            {/* Icono */}
+            <div className="w-16 h-16 rounded-full bg-purple-100 mx-auto mb-4 flex items-center justify-center">
+              <Phone size={32} className="text-purple-600" />
+            </div>
+
+            {/* Título */}
+            <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
+              Editar Teléfono
+            </h3>
+
+            {/* Mensaje */}
+            <p className="text-gray-600 text-center mb-6">
+              Ingresa tu número de celular
+            </p>
+
+            {/* Input */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Número de teléfono
+              </label>
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus-within:border-purple-500 transition-colors">
+                <span className="text-lg font-bold text-purple-600">{currentCountry?.phoneCode}</span>
+                <input
+                  type="tel"
+                  value={tempUserPhone}
+                  onChange={(e) => setTempUserPhone(e.target.value)}
+                  placeholder="12345678"
+                  className="flex-1 bg-transparent text-gray-900 focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Prefijo: {currentCountry?.phoneCode} ({currentCountry?.name})
+              </p>
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowPhoneModal(false)}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSavePhone}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
               >
                 Guardar
               </button>
