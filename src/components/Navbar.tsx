@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, History, Mic, FolderOpen, Settings } from "lucide-react";
+import { Home, History, Mic, CreditCard, Target, Settings } from "lucide-react";
 import { useEffect } from "react";
 
 interface NavbarProps {
@@ -13,7 +13,8 @@ const navItems = [
   { href: "/dashboard", label: "Panel", Icon: Home },
   { href: "/history", label: "Historial", Icon: History },
   { href: "#", label: "Voz", Icon: Mic, isVoice: true },
-  { href: "/projects", label: "Proyectos", Icon: FolderOpen },
+  { href: "/deudas", label: "Deudas", Icon: CreditCard },
+  { href: "/metas", label: "Metas", Icon: Target },
   { href: "/profile", label: "Ajustes", Icon: Settings },
 ];
 
@@ -40,7 +41,7 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
           // Botón de voz central (más grande y destacado)
           if (item.isVoice) {
             return (
-              <li key={item.label} className="relative mr-6 ml-6">
+              <li key={item.label} className="relative mr-3 ml-3">
                 <button
                   onClick={onOpenTransaction}
                   className="absolute -top-12 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all"
@@ -64,8 +65,8 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
                   }
                 `}
               >
-                <Icon size={24} />
-                <span className="text-xs font-medium">{item.label}</span>
+                <Icon size={20} />
+                <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
             </li>
           );
