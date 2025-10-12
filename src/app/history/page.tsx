@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { ArrowLeft, Calendar, TrendingDown, TrendingUp, Trash2, Search } from 'lucide-react';
+import { Calendar, TrendingDown, TrendingUp, Trash2, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTransactions } from '@/contexts/TransactionsContext';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -65,13 +65,7 @@ export default function HistoryPage() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 pb-24">
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-6 pb-8 rounded-b-3xl shadow-lg">
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={() => router.back()}
-            className="p-2 rounded-full hover:bg-white/20 transition-colors"
-          >
-            <ArrowLeft size={24} className="text-white" />
-          </button>
+        <div className="mb-6">
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             📜 Historial
           </h1>
