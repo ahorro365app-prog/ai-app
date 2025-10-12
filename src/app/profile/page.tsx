@@ -45,7 +45,8 @@ export default function ProfilePage() {
   const [userEmail, setUserEmail] = useState('');
   const [tempUserName, setTempUserName] = useState('');
   const [tempUserEmail, setTempUserEmail] = useState('');
-  const [showPersonalInfoModal, setShowPersonalInfoModal] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   // Cargar configuración guardada
   useEffect(() => {
@@ -124,25 +125,32 @@ export default function ProfilePage() {
     }
   };
 
-  const handleOpenPersonalInfoModal = () => {
+  const handleOpenNameModal = () => {
     setTempUserName(userName);
-    setTempUserEmail(userEmail);
-    setShowPersonalInfoModal(true);
+    setShowNameModal(true);
   };
 
-  const handleSavePersonalInfo = () => {
+  const handleOpenEmailModal = () => {
+    setTempUserEmail(userEmail);
+    setShowEmailModal(true);
+  };
+
+  const handleSaveName = () => {
     if (tempUserName.trim()) {
       localStorage.setItem('userName', tempUserName);
       setUserName(tempUserName);
-      
-      localStorage.setItem('userEmail', tempUserEmail);
-      setUserEmail(tempUserEmail);
-      
-      setShowPersonalInfoModal(false);
-      showToastMessage('✅ Información personal actualizada');
+      setShowNameModal(false);
+      showToastMessage('✅ Nombre actualizado');
     } else {
       showToastMessage('⚠️ El nombre es obligatorio');
     }
+  };
+
+  const handleSaveEmail = () => {
+    localStorage.setItem('userEmail', tempUserEmail);
+    setUserEmail(tempUserEmail);
+    setShowEmailModal(false);
+    showToastMessage('✅ Email actualizado');
   };
 
   const handleSignOut = () => {
@@ -178,36 +186,41 @@ export default function ProfilePage() {
       </div>
 
       {/* Información Personal */}
-      <button
-        onClick={handleOpenPersonalInfoModal}
-        className="w-full bg-white rounded-3xl p-6 mb-4 shadow-sm border border-gray-100 hover:shadow-md transition-all text-left"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <User size={20} className="text-green-600" />
-            <h3 className="text-lg font-bold text-gray-900">Información Personal</h3>
-          </div>
-          <Edit2 size={18} className="text-gray-400" />
+      <div className="bg-white rounded-3xl p-6 mb-4 shadow-sm border border-gray-100">
+        <div className="flex items-center gap-2 mb-4">
+          <User size={20} className="text-green-600" />
+          <h3 className="text-lg font-bold text-gray-900">Información Personal</h3>
         </div>
-        <div className="space-y-2">
-          <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-200">
+        <div className="space-y-3">
+          {/* Campo Nombre - clickeable */}
+          <button
+            onClick={handleOpenNameModal}
+            className="w-full flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-200 hover:bg-green-100 hover:shadow-sm transition-all text-left"
+          >
             <div className="flex-1">
               <p className="text-xs text-gray-600">Nombre</p>
               <p className="font-semibold text-gray-900">
                 {userName || 'No configurado'}
               </p>
             </div>
-          </div>
-          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl border border-blue-200">
+            <Edit2 size={16} className="text-green-500" />
+          </button>
+          
+          {/* Campo Email - clickeable */}
+          <button
+            onClick={handleOpenEmailModal}
+            className="w-full flex items-center gap-3 p-3 bg-blue-50 rounded-xl border border-blue-200 hover:bg-blue-100 hover:shadow-sm transition-all text-left"
+          >
             <div className="flex-1">
               <p className="text-xs text-gray-600">Email</p>
               <p className="font-semibold text-gray-900">
                 {userEmail || 'No configurado'}
               </p>
             </div>
-          </div>
+            <Edit2 size={16} className="text-blue-500" />
+          </button>
         </div>
-      </button>
+      </div>
 
       {/* Ubicación y Moneda */}
       <button
@@ -401,8 +414,8 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Modal de Información Personal */}
-      {showPersonalInfoModal && (
+      {/* Modal de Edición de Nombre */}
+      {showNameModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-scale-in">
             {/* Icono */}
@@ -412,57 +425,93 @@ export default function ProfilePage() {
 
             {/* Título */}
             <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
-              Información Personal
+              Editar Nombre
             </h3>
 
             {/* Mensaje */}
             <p className="text-gray-600 text-center mb-6">
-              Personaliza tu perfil
+              Personaliza tu nombre de usuario
             </p>
 
-            {/* Inputs */}
-            <div className="space-y-4 mb-6">
-              {/* Nombre */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Nombre <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={tempUserName}
-                  onChange={(e) => setTempUserName(e.target.value)}
-                  placeholder="Tu nombre"
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-green-500 focus:outline-none text-gray-900"
-                  autoFocus
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={tempUserEmail}
-                  onChange={(e) => setTempUserEmail(e.target.value)}
-                  placeholder="tu@email.com"
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-green-500 focus:outline-none text-gray-900"
-                />
-              </div>
+            {/* Input */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Nombre <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={tempUserName}
+                onChange={(e) => setTempUserName(e.target.value)}
+                placeholder="Tu nombre"
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-green-500 focus:outline-none text-gray-900"
+                autoFocus
+              />
             </div>
 
             {/* Botones */}
             <div className="flex gap-3">
               <button
-                onClick={() => setShowPersonalInfoModal(false)}
+                onClick={() => setShowNameModal(false)}
                 className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 Cancelar
               </button>
               <button
-                onClick={handleSavePersonalInfo}
+                onClick={handleSaveName}
                 className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Edición de Email */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-scale-in">
+            {/* Icono */}
+            <div className="w-16 h-16 rounded-full bg-blue-100 mx-auto mb-4 flex items-center justify-center">
+              <User size={32} className="text-blue-600" />
+            </div>
+
+            {/* Título */}
+            <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
+              Editar Email
+            </h3>
+
+            {/* Mensaje */}
+            <p className="text-gray-600 text-center mb-6">
+              Actualiza tu dirección de email
+            </p>
+
+            {/* Input */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                value={tempUserEmail}
+                onChange={(e) => setTempUserEmail(e.target.value)}
+                placeholder="tu@email.com"
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-gray-900"
+                autoFocus
+              />
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowEmailModal(false)}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveEmail}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
               >
                 Guardar
               </button>
