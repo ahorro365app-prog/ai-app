@@ -157,13 +157,67 @@ body::after {
 /* Placeholders más oscuros y visibles */
 input::placeholder,
 textarea::placeholder {
-  color: #6B7280 !important; /* text-gray-500 */
+  color: #374151 !important; /* text-gray-700 - más oscuro */
   opacity: 1 !important;
+  font-weight: 500;
 }
 
 /* Placeholders específicos para modales */
 .modal-input::placeholder {
-  color: #4B5563 !important; /* text-gray-600 */
+  color: #1F2937 !important; /* text-gray-800 - muy oscuro */
+  opacity: 1 !important;
+  font-weight: 600;
+}
+
+/* Placeholders para inputs de deudas y metas */
+input.modal-input,
+textarea.modal-input {
+  color: #111827 !important; /* text-gray-900 - casi negro */
+  font-weight: 500;
+}
+
+input.modal-input::placeholder,
+textarea.modal-input::placeholder {
+  color: #718096 !important; /* text-gray-500 - plomo claro */
   opacity: 1 !important;
   font-weight: 500;
+}
+
+/* Cuando el input tiene focus, el placeholder desaparece pero el texto se mantiene oscuro */
+input.modal-input:focus,
+textarea.modal-input:focus {
+  color: #111827 !important; /* text-gray-900 - mantiene el texto oscuro al escribir */
+}
+
+/* Estilos específicos para inputs de fecha */
+input.modal-input[type="date"] {
+  color: #111827 !important; /* text-gray-900 - texto oscuro para fechas */
+  font-weight: 500;
+}
+
+input.modal-input[type="date"]::-webkit-datetime-edit-text,
+input.modal-input[type="date"]::-webkit-datetime-edit-month-field,
+input.modal-input[type="date"]::-webkit-datetime-edit-day-field,
+input.modal-input[type="date"]::-webkit-datetime-edit-year-field {
+  color: #111827 !important; /* text-gray-900 - partes de la fecha oscuras */
+}
+
+input.modal-input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: brightness(0.4); /* Hacer el icono del calendario más oscuro */
+}
+
+/* Placeholder específico para inputs de fecha */
+input.modal-input[type="date"]::-webkit-datetime-edit-text:not(:focus),
+input.modal-input[type="date"]::-webkit-datetime-edit-month-field:not(:focus),
+input.modal-input[type="date"]::-webkit-datetime-edit-day-field:not(:focus),
+input.modal-input[type="date"]::-webkit-datetime-edit-year-field:not(:focus) {
+  color: #718096 !important; /* text-gray-500 - plomo claro para placeholder */
+}
+
+/* Placeholder cuando está vacío */
+input.modal-input[type="date"]:invalid::-webkit-datetime-edit-text,
+input.modal-input[type="date"]:invalid::-webkit-datetime-edit-month-field,
+input.modal-input[type="date"]:invalid::-webkit-datetime-edit-day-field,
+input.modal-input[type="date"]:invalid::-webkit-datetime-edit-year-field {
+  color: #718096 !important; /* text-gray-500 - plomo claro */
 }

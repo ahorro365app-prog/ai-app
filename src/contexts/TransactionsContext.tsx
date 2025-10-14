@@ -76,12 +76,21 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  // Obtener transacciones filtradas por fecha
+  // Obtener transacciones filtradas por fecha (usando hora local, no UTC)
   const getTransactionsByDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    // Obtener fecha en formato local YYYY-MM-DD
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
     return transactions.filter(t => {
-      const txDate = new Date(t.date).toISOString().split('T')[0];
-      return txDate === dateStr;
+      const txDate = new Date(t.date);
+      const txYear = txDate.getFullYear();
+      const txMonth = String(txDate.getMonth() + 1).padStart(2, '0');
+      const txDay = String(txDate.getDate()).padStart(2, '0');
+      const txDateStr = `${txYear}-${txMonth}-${txDay}`;
+      return txDateStr === dateStr;
     });
   };
 

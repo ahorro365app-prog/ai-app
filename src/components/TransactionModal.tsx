@@ -476,10 +476,10 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
       return;
     }
 
-    // Usar la fecha seleccionada con la hora actual
+    // Usar la fecha seleccionada con la hora actual (en hora local, no UTC)
     const now = new Date();
-    const transactionDate = new Date(selectedDate);
-    transactionDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    const transactionDate = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
 
     const transaction: Transaction = {
       type,
@@ -521,7 +521,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
                 <TrendingUp size={20} className="text-white" />
               )}
             </div>
-            <h2 className="text-xl font-bold text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
+            <h2 className="text-xs font-bold text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
               {type === 'expense' ? 'Registrar Gasto' : 'Registrar Ingreso'}
             </h2>
           </div>
@@ -542,7 +542,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
               <button
                 onClick={() => setType('expense')}
                 className={`
-                  px-6 py-2.5 rounded-full font-semibold text-sm transition-all flex items-center gap-2
+                  px-6 py-2.5 rounded-full font-semibold text-xs transition-all flex items-center gap-2
                   ${type === 'expense' 
                     ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md' 
                     : 'text-gray-600 hover:text-gray-900'
@@ -555,7 +555,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
               <button
                 onClick={() => setType('income')}
                 className={`
-                  px-6 py-2.5 rounded-full font-semibold text-sm transition-all flex items-center gap-2
+                  px-6 py-2.5 rounded-full font-semibold text-xs transition-all flex items-center gap-2
                   ${type === 'income' 
                     ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md' 
                     : 'text-gray-600 hover:text-gray-900'
@@ -570,16 +570,16 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
 
           {/* Monto - Destacado y centrado */}
           <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
-            <label className="block text-sm font-semibold text-gray-600 mb-3 text-center">
+            <label className="block text-xs font-semibold text-gray-600 mb-3 text-center">
               ¿Cuánto?
             </label>
             <div className="flex items-center justify-center gap-2">
-              <span className="text-3xl font-bold text-gray-400">{currency.symbol}</span>
+              <span className="text-xs font-bold text-gray-400">{currency.symbol}</span>
               <input
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-32 bg-transparent text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 focus:outline-none text-center"
+                className="w-32 bg-transparent text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 focus:outline-none text-center modal-input"
                 style={{ fontFamily: 'Space Mono, monospace' }}
                 placeholder="0"
                 min="0"
@@ -591,7 +591,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
 
           {/* Fecha - Carrusel horizontal */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
+            <label className="block text-xs font-semibold text-gray-700 mb-3">
               ¿Cuándo fue el gasto?
             </label>
             <div className="overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -632,7 +632,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
                       <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-gray-500'}`}>
                         {label}
                       </span>
-                      <span className={`text-3xl font-extrabold ${isSelected ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'Space Mono, monospace' }}>
+                      <span className={`text-xs font-extrabold ${isSelected ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'Space Mono, monospace' }}>
                         {dayNumber}
                       </span>
                       <span className={`text-[10px] font-medium ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>
@@ -651,7 +651,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
 
           {/* Categoría - Carrusel horizontal */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
+            <label className="block text-xs font-semibold text-gray-700 mb-3">
               Categoría *
             </label>
             <div className="overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
@@ -668,7 +668,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
                       }
                     `}
                   >
-                    <span className="text-3xl">{cat.emoji}</span>
+                    <span className="text-xs">{cat.emoji}</span>
                     <span className={`text-[10px] font-bold text-center ${category === cat.id ? 'text-white' : 'text-gray-700'}`}>
                       {cat.label}
                     </span>
@@ -681,7 +681,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
           {/* Método de pago (solo para gastos) - Carrusel horizontal */}
           {type === 'expense' && (
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
+              <label className="block text-xs font-semibold text-gray-700 mb-3">
                 Método de pago
               </label>
               <div className="overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
@@ -717,14 +717,14 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
 
           {/* Descripción */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+            <label className="block text-xs font-semibold text-gray-700 mb-2 flex items-center gap-2">
               <span>💬</span>
               Descripción (opcional)
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-blue-500 focus:bg-white focus:outline-none resize-none text-sm text-gray-900 transition-all"
+              className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-blue-500 focus:bg-white focus:outline-none resize-none text-xs text-gray-900 transition-all modal-input"
               placeholder="Ej: Almuerzo en restaurante italiano..."
               rows={3}
             />
@@ -762,7 +762,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
           {/* Header */}
           <div className="flex-shrink-0 bg-white border-b border-gray-200 p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900">Seleccionar categoría</h3>
+              <h3 className="text-xs font-bold text-gray-900">Seleccionar categoría</h3>
               <button
                 onClick={() => {
                   setShowAllCategories(false);
@@ -782,7 +782,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar categoría..."
-                className="flex-1 bg-transparent text-sm text-gray-900 focus:outline-none placeholder-gray-400"
+                className="flex-1 bg-transparent text-xs text-gray-900 focus:outline-none placeholder-gray-400"
                 autoFocus
               />
             </div>
@@ -790,8 +790,8 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
             {/* Categoría seleccionada */}
             {category && selectedCategory && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200">
-                <span className="text-xl">{selectedCategory.emoji}</span>
-                <span className="text-sm font-semibold text-blue-900">{selectedCategory.label}</span>
+                <span className="text-xs">{selectedCategory.emoji}</span>
+                <span className="text-xs font-semibold text-blue-900">{selectedCategory.label}</span>
                 <span className="text-xs text-blue-600 ml-auto">Seleccionada ✓</span>
               </div>
             )}
@@ -802,7 +802,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
             {!searchTerm && (
               <div className="mb-3 px-1">
                 <p className="text-xs text-gray-500 flex items-center gap-1.5">
-                  <span className="text-base">✋</span>
+                  <span className="text-xs">✋</span>
                   <span>Mantén presionado para reordenar</span>
                 </p>
               </div>
@@ -865,7 +865,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
             
             {filteredCategories.length === 0 && (
               <div className="text-center py-12">
-                <p className="text-gray-500 text-sm">No se encontraron categorías</p>
+                <p className="text-gray-500 text-xs">No se encontraron categorías</p>
                 <p className="text-gray-400 text-xs mt-1">Intenta con otro término de búsqueda</p>
               </div>
             )}
@@ -897,7 +897,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
                   }
                 `}
               >
-                {category && <span className="text-xl">{selectedCategory?.emoji}</span>}
+                {category && <span className="text-xs">{selectedCategory?.emoji}</span>}
                 {category ? `Confirmar: ${selectedCategory?.label}` : 'Selecciona una categoría'}
               </button>
             </div>
@@ -911,7 +911,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
           {/* Header */}
           <div className="flex-shrink-0 bg-gradient-to-r from-blue-500 to-purple-600 p-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white">Crear Categoría</h3>
+              <h3 className="text-xs font-bold text-white">Crear Categoría</h3>
               <button
                 onClick={() => {
                   setShowAddCategory(false);
@@ -929,7 +929,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
             {/* Nombre de la categoría */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">
                 Nombre de la categoría *
               </label>
               <input
@@ -948,7 +948,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
             
             {/* Selector de emoji - Sugerencias automáticas */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">
                 Emoji sugerido
               </label>
               <p className="text-xs text-gray-500 mb-3">
@@ -978,7 +978,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
               <p className="text-xs font-semibold text-gray-600 mb-3 text-center">Vista previa</p>
               <div className="flex items-center justify-center gap-3">
                 <span className="text-4xl">{selectedEmoji}</span>
-                <span className="text-xl font-bold text-gray-900">
+                <span className="text-xs font-bold text-gray-900">
                   {newCategoryName || 'Nombre de categoría'}
                 </span>
               </div>

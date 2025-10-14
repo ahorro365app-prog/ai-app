@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import RootClientWrapper from "@/components/RootClientWrapper";
 import { TransactionsProvider } from "@/contexts/TransactionsContext";
+import { SupabaseProvider } from "@/contexts/SupabaseContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,11 +30,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
       >
-        <TransactionsProvider>
-          <RootClientWrapper>
-            {children}
-          </RootClientWrapper>
-        </TransactionsProvider>
+        <SupabaseProvider>
+          <TransactionsProvider>
+            <RootClientWrapper>
+              {children}
+            </RootClientWrapper>
+          </TransactionsProvider>
+        </SupabaseProvider>
       </body>
     </html>
   );

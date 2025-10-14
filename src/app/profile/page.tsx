@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, Globe, DollarSign, Calendar, Target, LogOut, Edit2, Save, X, Phone, CreditCard, LayoutGrid } from 'lucide-react';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useSupabase } from '@/contexts/SupabaseContext';
 
 const COUNTRIES = [
   { code: 'BO', name: 'Bolivia', currency: 'BOB', symbol: 'Bs', flag: '🇧🇴', phoneCode: '+591' },
@@ -30,6 +31,7 @@ const currencyMap: Record<string, { code: string; symbol: string; name: string; 
 export default function ProfilePage() {
   const router = useRouter();
   const { currency, setCountry, setCurrency } = useCurrency();
+  const { user, updateUser } = useSupabase();
 
   const [selectedCountry, setSelectedCountry] = useState('BO');
   const [dailyBudget, setDailyBudget] = useState('');
@@ -54,30 +56,36 @@ export default function ProfilePage() {
   // Estados para habilitación de menús
   const [isDebtsEnabled, setIsDebtsEnabled] = useState(true);
   const [isGoalsEnabled, setIsGoalsEnabled] = useState(true);
+  
+  // Estados para modal de confirmación
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'debts' | 'goals' | null>(null);
+  const [confirmData, setConfirmData] = useState<{name: string, count: number}>({name: '', count: 0});
+  
+  // Estados para gestión de suscripción
+  const [userSubscription, setUserSubscription] = useState<'free' | 'premium'>('free');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [activationCode, setActivationCode] = useState('');
 
   // Cargar configuración guardada
   useEffect(() => {
-    const savedCountry = localStorage.getItem('userCountry') || 'BO';
-    setSelectedCountry(savedCountry);
-
-    const savedBudget = localStorage.getItem('dailyBudget') || '';
-    setDailyBudget(savedBudget);
-
-    const savedUserName = localStorage.getItem('userName') || '';
-    setUserName(savedUserName);
-
-    const savedUserEmail = localStorage.getItem('userEmail') || '';
-    setUserEmail(savedUserEmail);
-
-    const savedUserPhone = localStorage.getItem('userPhone') || '';
-    setUserPhone(savedUserPhone);
-
-    const savedDebtsEnabled = localStorage.getItem('isDebtsEnabled');
-    setIsDebtsEnabled(savedDebtsEnabled === null ? true : savedDebtsEnabled === 'true');
-
-    const savedGoalsEnabled = localStorage.getItem('isGoalsEnabled');
-    setIsGoalsEnabled(savedGoalsEnabled === null ? true : savedGoalsEnabled === 'true');
-  }, []);
+    if (user) {
+      // Usar datos de Supabase si están disponibles
+      const countryCode = Object.keys(currencyMap).find(key => 
+        currencyMap[key].code === user.moneda
+      ) || 'BO';
+      setSelectedCountry(countryCode);
+      setDailyBudget(user.presupuesto_diario?.toString() || '');
+      setUserName(user.nombre);
+      setUserEmail(user.correo);
+      setUserPhone(user.telefono || '');
+      
+      // Usar configuración de menús desde la base de datos
+      setIsDebtsEnabled(user.deudas_habilitado);
+      setIsGoalsEnabled(user.metas_habilitado);
+      setUserSubscription(user.suscripcion);
+    }
+  }, [user]);
 
   // Auto-ocultar toast después de 3 segundos
   useEffect(() => {
@@ -107,14 +115,18 @@ export default function ProfilePage() {
     return parseFloat(dailyBudget) * daysRemaining;
   };
 
-  const handleSaveLocation = () => {
+  const handleSaveLocation = async () => {
     const country = COUNTRIES.find(c => c.code === selectedCountry);
     if (country) {
       const currencyConfig = currencyMap[country.code];
       
-      // Guardar en localStorage
-      localStorage.setItem('userCountry', country.code);
-      localStorage.setItem('userCurrency', JSON.stringify(currencyConfig));
+      if (user) {
+        // Usar Supabase si hay usuario
+        await updateUser({
+          pais: country.name,
+          moneda: currencyConfig.code
+        });
+      }
       
       // Actualizar el hook
       setCountry(country.code);
@@ -130,9 +142,14 @@ export default function ProfilePage() {
     setShowBudgetModal(true);
   };
 
-  const handleSaveBudget = () => {
+  const handleSaveBudget = async () => {
     if (tempDailyBudget && parseFloat(tempDailyBudget) > 0) {
-      localStorage.setItem('dailyBudget', tempDailyBudget);
+      if (user) {
+        // Usar Supabase si hay usuario
+        await updateUser({
+          presupuesto_diario: parseFloat(tempDailyBudget)
+        });
+      }
       setDailyBudget(tempDailyBudget);
       setShowBudgetModal(false);
       showToastMessage('✅ Presupuesto diario guardado');
@@ -156,9 +173,14 @@ export default function ProfilePage() {
     setShowPhoneModal(true);
   };
 
-  const handleSaveName = () => {
+  const handleSaveName = async () => {
     if (tempUserName.trim()) {
-      localStorage.setItem('userName', tempUserName);
+      if (user) {
+        // Usar Supabase si hay usuario
+        await updateUser({
+          nombre: tempUserName
+        });
+      }
       setUserName(tempUserName);
       setShowNameModal(false);
       showToastMessage('✅ Nombre actualizado');
@@ -167,15 +189,25 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSaveEmail = () => {
-    localStorage.setItem('userEmail', tempUserEmail);
+  const handleSaveEmail = async () => {
+    if (user) {
+      // Usar Supabase si hay usuario
+      await updateUser({
+        correo: tempUserEmail
+      });
+    }
     setUserEmail(tempUserEmail);
     setShowEmailModal(false);
     showToastMessage('✅ Email actualizado');
   };
 
-  const handleSavePhone = () => {
-    localStorage.setItem('userPhone', tempUserPhone);
+  const handleSavePhone = async () => {
+    if (user) {
+      // Usar Supabase si hay usuario
+      await updateUser({
+        telefono: tempUserPhone
+      });
+    }
     setUserPhone(tempUserPhone);
     setShowPhoneModal(false);
     showToastMessage('✅ Teléfono actualizado');
@@ -186,22 +218,100 @@ export default function ProfilePage() {
     window.location.href = '/sign-in';
   };
 
-  const handleToggleDebts = () => {
+  const handleToggleDebts = async () => {
     const newValue = !isDebtsEnabled;
-    setIsDebtsEnabled(newValue);
-    localStorage.setItem('isDebtsEnabled', String(newValue));
-    showToastMessage(newValue ? '✅ Menú Deudas habilitado' : '⚠️ Menú Deudas deshabilitado');
-    // Recargar después de un momento para actualizar el navbar
+    
+    // Actualizar en la base de datos
+    try {
+      await updateUser({ deudas_habilitado: newValue });
+      setIsDebtsEnabled(newValue);
+      
+      if (!newValue) {
+        showToastMessage('⚠️ Menú Deudas deshabilitado');
+      } else {
+        showToastMessage('✅ Menú Deudas habilitado');
+      }
+    } catch (error) {
+      console.error('Error al actualizar configuración de deudas:', error);
+      showToastMessage('❌ Error al actualizar configuración');
+    }
+  };
+
+  const handleToggleGoals = async () => {
+    const newValue = !isGoalsEnabled;
+    
+    // Actualizar en la base de datos
+    try {
+      await updateUser({ metas_habilitado: newValue });
+      setIsGoalsEnabled(newValue);
+      
+      if (!newValue) {
+        showToastMessage('⚠️ Menú Metas deshabilitado');
+      } else {
+        showToastMessage('✅ Menú Metas habilitado');
+      }
+    } catch (error) {
+      console.error('Error al actualizar configuración de metas:', error);
+      showToastMessage('❌ Error al actualizar configuración');
+    }
+  };
+
+  // Funciones para manejar la confirmación
+  const handleConfirmDisable = () => {
+    setShowConfirmModal(false);
+    
+    if (confirmAction === 'debts') {
+      setIsDebtsEnabled(false);
+      localStorage.setItem('isDebtsEnabled', 'false');
+      localStorage.removeItem('userDebts');
+      showToastMessage('⚠️ Menú Deudas deshabilitado - Todas las deudas han sido eliminadas');
+    } else if (confirmAction === 'goals') {
+      setIsGoalsEnabled(false);
+      localStorage.setItem('isGoalsEnabled', 'false');
+      localStorage.removeItem('userGoals');
+      showToastMessage('⚠️ Menú Metas deshabilitado - Todas las metas han sido eliminadas');
+    }
+    
     setTimeout(() => window.location.reload(), 500);
   };
 
-  const handleToggleGoals = () => {
-    const newValue = !isGoalsEnabled;
-    setIsGoalsEnabled(newValue);
-    localStorage.setItem('isGoalsEnabled', String(newValue));
-    showToastMessage(newValue ? '✅ Menú Metas habilitado' : '⚠️ Menú Metas deshabilitado');
-    // Recargar después de un momento para actualizar el navbar
-    setTimeout(() => window.location.reload(), 500);
+  const handleCancelDisable = () => {
+    setShowConfirmModal(false);
+    setConfirmAction(null);
+    setConfirmData({name: '', count: 0});
+  };
+
+  // Funciones para gestión de suscripción
+  const handleActivatePremium = () => {
+    // Códigos válidos para activación
+    const validCodes = ['PREMIUM2024', 'PROMO50', 'VIP100', 'ADMIN123'];
+    
+    if (validCodes.includes(activationCode.toUpperCase())) {
+      const subscription = {
+        type: 'premium',
+        activationCode: activationCode.toUpperCase(),
+        startDate: new Date().toISOString(),
+        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        features: ['basic', 'advanced', 'export', 'sync', 'analytics']
+      };
+      
+      setUserSubscription('premium');
+      setShowUpgradeModal(false);
+      setActivationCode('');
+      showToastMessage('🎉 ¡Felicidades! Has activado la versión Premium');
+    } else {
+      showToastMessage('❌ Código de activación inválido');
+    }
+  };
+
+  const handleDowngradeToFree = () => {
+    const subscription = {
+      type: 'free',
+      features: ['basic']
+    };
+    
+    setUserSubscription('free');
+    showToastMessage('⚠️ Has cambiado a la versión gratuita');
   };
 
   const currentCountry = COUNTRIES.find(c => c.code === selectedCountry);
@@ -210,8 +320,8 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 pb-24">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-1">Mi Perfil</h1>
-        <p className="text-gray-600">Gestiona tu cuenta y preferencias</p>
+        <h1 className="text-xl font-bold text-gray-900 mb-1">Mi Perfil</h1>
+        <p className="text-xs text-gray-600">Gestiona tu cuenta y preferencias</p>
       </div>
 
       {/* User Card */}
@@ -221,8 +331,8 @@ export default function ProfilePage() {
             <User size={32} />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-bold">{userName || 'Usuario Demo'}</h2>
-            <p className="text-blue-100 text-sm">{userEmail || 'demo@ahorro365.com'}</p>
+            <h2 className="text-lg font-bold">{userName || 'Usuario Demo'}</h2>
+            <p className="text-blue-100 text-xs">{userEmail || 'demo@ahorro365.com'}</p>
             <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold">
               <Calendar size={12} />
               <span>Miembro desde {new Date().toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}</span>
@@ -235,7 +345,7 @@ export default function ProfilePage() {
       <div className="bg-white rounded-3xl p-6 mb-4 shadow-sm border border-gray-100">
         <div className="flex items-center gap-2 mb-4">
           <User size={20} className="text-green-600" />
-          <h3 className="text-lg font-bold text-gray-900">Información Personal</h3>
+          <h3 className="text-sm font-bold text-gray-900">Información Personal</h3>
         </div>
         <div className="space-y-3">
           {/* Campo Nombre - clickeable */}
@@ -290,7 +400,7 @@ export default function ProfilePage() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Globe size={20} className="text-blue-600" />
-            <h3 className="text-lg font-bold text-gray-900">Ubicación y Moneda</h3>
+            <h3 className="text-sm font-bold text-gray-900">Ubicación y Moneda</h3>
           </div>
           <Edit2 size={18} className="text-gray-400" />
         </div>
@@ -298,7 +408,7 @@ export default function ProfilePage() {
           <span className="text-4xl">{currentCountry?.flag}</span>
           <div>
             <p className="font-semibold text-gray-900">{currentCountry?.name}</p>
-            <p className="text-sm text-gray-600">
+            <p className="text-xs text-gray-600">
               {currentCountry?.currency} ({currentCountry?.symbol})
             </p>
           </div>
@@ -313,7 +423,7 @@ export default function ProfilePage() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Target size={20} className="text-purple-600" />
-            <h3 className="text-lg font-bold text-gray-900">Presupuesto Diario</h3>
+            <h3 className="text-sm font-bold text-gray-900">Presupuesto Diario</h3>
           </div>
           <Edit2 size={18} className="text-gray-400" />
         </div>
@@ -324,7 +434,7 @@ export default function ProfilePage() {
               <p className="font-semibold text-gray-900">
                 {dailyBudget ? `${currency.symbol} ${parseFloat(dailyBudget).toFixed(2)}` : 'No configurado'}
               </p>
-              <p className="text-sm text-gray-600">Límite diario de gastos</p>
+              <p className="text-xs text-gray-600">Límite diario de gastos</p>
             </div>
           </div>
           
@@ -335,7 +445,7 @@ export default function ProfilePage() {
                 <p className="font-semibold text-gray-900">
                   {currency.symbol} {calculateMonthlyBudget().toFixed(2)}
                 </p>
-                <p className="text-sm text-gray-600">
+                <p className="text-xs text-gray-600">
                   Presupuesto hasta fin de mes ({new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate() + 1} días)
                 </p>
               </div>
@@ -344,13 +454,73 @@ export default function ProfilePage() {
         </div>
       </button>
 
+      {/* Información de Suscripción */}
+      <div className="bg-white rounded-3xl p-6 mb-4 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+              userSubscription === 'premium' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' : 'bg-gray-200'
+            }`}>
+              <span className="text-white text-xs font-bold">
+                {userSubscription === 'premium' ? '👑' : '🔒'}
+              </span>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">
+                {userSubscription === 'premium' ? 'Versión Premium' : 'Versión Gratuita'}
+              </h3>
+              <p className="text-xs text-gray-600">
+                {userSubscription === 'premium' ? 'Tienes acceso a todas las funciones' : 'Funciones básicas disponibles'}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {userSubscription === 'free' ? (
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-all"
+              >
+                Actualizar
+              </button>
+            ) : (
+              <button
+                onClick={handleDowngradeToFree}
+                className="px-4 py-2 bg-gray-500 text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-all"
+              >
+                Degradar
+              </button>
+            )}
+          </div>
+        </div>
+        
+        {/* Características */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className={`flex items-center gap-2 ${userSubscription === 'premium' ? 'text-green-600' : 'text-gray-500'}`}>
+            <span>{userSubscription === 'premium' ? '✅' : '❌'}</span>
+            <span>Deudas y Metas</span>
+          </div>
+          <div className={`flex items-center gap-2 ${userSubscription === 'premium' ? 'text-green-600' : 'text-gray-500'}`}>
+            <span>{userSubscription === 'premium' ? '✅' : '❌'}</span>
+            <span>Historial Completo</span>
+          </div>
+          <div className={`flex items-center gap-2 ${userSubscription === 'premium' ? 'text-green-600' : 'text-gray-500'}`}>
+            <span>{userSubscription === 'premium' ? '✅' : '❌'}</span>
+            <span>Exportar Datos</span>
+          </div>
+          <div className={`flex items-center gap-2 ${userSubscription === 'premium' ? 'text-green-600' : 'text-gray-500'}`}>
+            <span>{userSubscription === 'premium' ? '✅' : '❌'}</span>
+            <span>Sincronización</span>
+          </div>
+        </div>
+      </div>
+
       {/* Habilitación de Menús */}
       <div className="bg-white rounded-3xl p-6 mb-4 shadow-sm border border-gray-100">
         <div className="flex items-center gap-2 mb-4">
           <LayoutGrid size={20} className="text-indigo-600" />
-          <h3 className="text-lg font-bold text-gray-900">Menús Disponibles</h3>
+          <h3 className="text-sm font-bold text-gray-900">Menús Disponibles</h3>
         </div>
-        <p className="text-sm text-gray-600 mb-4">Activa o desactiva los menús que deseas ver</p>
+        <p className="text-xs text-gray-600 mb-4">Activa o desactiva los menús que deseas ver</p>
         
         <div className="space-y-3">
           {/* Toggle Deudas */}
@@ -502,7 +672,7 @@ export default function ProfilePage() {
             {/* Input de presupuesto */}
             <div className="mb-6">
               <div className="flex items-center gap-2 px-6 py-4 rounded-2xl bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-200 focus-within:border-purple-500 transition-colors">
-                <span className="text-3xl font-bold text-purple-600">{currency.symbol}</span>
+                <span className="text-xl font-bold text-purple-600">{currency.symbol}</span>
                 <input
                   type="number"
                   value={tempDailyBudget}
@@ -510,7 +680,7 @@ export default function ProfilePage() {
                   placeholder="0.00"
                   min="0"
                   step="0.01"
-                  className="flex-1 bg-transparent text-3xl font-bold text-gray-900 focus:outline-none"
+                  className="flex-1 bg-transparent text-xl font-bold text-gray-900 focus:outline-none modal-input"
                   autoFocus
                 />
               </div>
@@ -556,17 +726,17 @@ export default function ProfilePage() {
 
             {/* Input */}
             <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">
                 Nombre <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                value={tempUserName}
-                onChange={(e) => setTempUserName(e.target.value)}
-                placeholder="Tu nombre"
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-green-500 focus:outline-none text-gray-900"
-                autoFocus
-              />
+                <input
+                  type="text"
+                  value={tempUserName}
+                  onChange={(e) => setTempUserName(e.target.value)}
+                  placeholder="Tu nombre"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-green-500 focus:outline-none text-gray-900 modal-input"
+                  autoFocus
+                />
             </div>
 
             {/* Botones */}
@@ -609,17 +779,17 @@ export default function ProfilePage() {
 
             {/* Input */}
             <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">
                 Email
               </label>
-              <input
-                type="email"
-                value={tempUserEmail}
-                onChange={(e) => setTempUserEmail(e.target.value)}
-                placeholder="tu@email.com"
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-gray-900"
-                autoFocus
-              />
+                <input
+                  type="email"
+                  value={tempUserEmail}
+                  onChange={(e) => setTempUserEmail(e.target.value)}
+                  placeholder="tu@email.com"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-gray-900 modal-input"
+                  autoFocus
+                />
             </div>
 
             {/* Botones */}
@@ -662,19 +832,19 @@ export default function ProfilePage() {
 
             {/* Input */}
             <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">
                 Número de teléfono
               </label>
               <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus-within:border-purple-500 transition-colors">
-                <span className="text-lg font-bold text-purple-600">{currentCountry?.phoneCode}</span>
-                <input
-                  type="tel"
-                  value={tempUserPhone}
-                  onChange={(e) => setTempUserPhone(e.target.value)}
-                  placeholder="12345678"
-                  className="flex-1 bg-transparent text-gray-900 focus:outline-none"
-                  autoFocus
-                />
+                <span className="text-sm font-bold text-purple-600">{currentCountry?.phoneCode}</span>
+                  <input
+                    type="tel"
+                    value={tempUserPhone}
+                    onChange={(e) => setTempUserPhone(e.target.value)}
+                    placeholder="12345678"
+                    className="flex-1 bg-transparent text-gray-900 focus:outline-none modal-input"
+                    autoFocus
+                  />
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 Prefijo: {currentCountry?.phoneCode} ({currentCountry?.name})
@@ -732,6 +902,138 @@ export default function ProfilePage() {
                 className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
               >
                 Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmación para Deshabilitar Menú */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-scale-in">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-red-100 mx-auto mb-4 flex items-center justify-center">
+                <X size={32} className="text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">
+                ¿Deshabilitar {confirmData.name}?
+              </h3>
+              <p className="text-gray-600 text-xs">
+                Esta acción eliminará permanentemente todas tus {confirmData.name.toLowerCase()} guardadas.
+              </p>
+            </div>
+
+            {/* Información de Advertencia */}
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <X size={16} className="text-red-600" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-red-800 mb-1">Advertencia</h4>
+                  <p className="text-xs text-red-700">
+                    Se eliminarán <strong>{confirmData.count}</strong> {confirmData.name.toLowerCase()} y toda su información asociada (historial de pagos, comprobantes, etc.). Esta acción no se puede deshacer.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelDisable}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmDisable}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+              >
+                Eliminar y Deshabilitar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Activación Premium */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-scale-in">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 mx-auto mb-4 flex items-center justify-center">
+                <span className="text-white text-2xl">👑</span>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">
+                Activar Premium
+              </h3>
+              <p className="text-gray-600 text-xs">
+                Ingresa tu código de activación para desbloquear todas las funciones premium.
+              </p>
+            </div>
+
+            {/* Código de activación */}
+            <div className="mb-6">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">
+                Código de Activación
+              </label>
+              <input
+                type="text"
+                value={activationCode}
+                onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
+                placeholder="PREMIUM2024"
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-yellow-500 focus:outline-none modal-input text-center font-mono text-sm"
+                autoFocus
+              />
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                Códigos válidos: PREMIUM2024, PROMO50, VIP100, ADMIN123
+              </p>
+            </div>
+
+            {/* Características Premium */}
+            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-4 mb-6 border border-yellow-200">
+              <h4 className="font-semibold text-gray-900 mb-3 text-center">✨ Funciones Premium</h4>
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center gap-2 text-green-700">
+                  <span>✅</span>
+                  <span>Deudas y Metas ilimitadas</span>
+                </div>
+                <div className="flex items-center gap-2 text-green-700">
+                  <span>✅</span>
+                  <span>Historial completo con comprobantes</span>
+                </div>
+                <div className="flex items-center gap-2 text-green-700">
+                  <span>✅</span>
+                  <span>Exportar datos a Excel/PDF</span>
+                </div>
+                <div className="flex items-center gap-2 text-green-700">
+                  <span>✅</span>
+                  <span>Sincronización en la nube</span>
+                </div>
+                <div className="flex items-center gap-2 text-green-700">
+                  <span>✅</span>
+                  <span>Análisis y reportes avanzados</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleActivatePremium}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+              >
+                Activar Premium
               </button>
             </div>
           </div>

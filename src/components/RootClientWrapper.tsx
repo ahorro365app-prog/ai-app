@@ -12,7 +12,7 @@ export default function RootClientWrapper({ children }: { children: React.ReactN
   const { addTransaction } = useTransactions();
 
   // Ocultar Navbar en páginas de autenticación
-  const hideNavigation = pathname === '/sign-in' || pathname === '/sign-up';
+  const hideNavigation = pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up');
 
   const handleSaveTransaction = (transaction: any) => {
     addTransaction(transaction);
