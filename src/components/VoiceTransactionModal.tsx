@@ -243,12 +243,22 @@ export default function VoiceTransactionModal({
     searchDebts();
   }, [editingData, currentTransactionIndex, debts]);
 
-  if (!isOpen) return null;
+  console.log('🎭 VoiceTransactionModal - isOpen:', isOpen, 'groqData:', groqData);
+
+  if (!isOpen) {
+    console.log('🚫 VoiceTransactionModal - No está abierto');
+    return null;
+  }
 
   const currentTransaction = editingData[currentTransactionIndex];
 
   // No mostrar el modal si no hay datos
   if (!groqData || !groqData.transacciones.length || !currentTransaction) {
+    console.log('🚫 VoiceTransactionModal - No hay datos:', { 
+      hasGroqData: !!groqData, 
+      hasTransactions: groqData?.transacciones?.length,
+      currentTransaction: !!currentTransaction 
+    });
     return null;
   }
 

@@ -243,6 +243,7 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
       )}
       
       {/* Modal de transacción de voz */}
+      {console.log('🎭 Navbar - showModal:', showModal, 'modalGroqData:', modalGroqData)}
       <VoiceTransactionModal
         isOpen={showModal}
         onClose={handleModalClose}
