@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { groqService } from '@/services/groqService';
+import { groqWhisperService } from '@/services/groqWhisperService';
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const WHISPER_ENDPOINT = process.env.WHISPER_ENDPOINT || 'https://flectionless-initially-petra.ngrok-free.dev/transcribe';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -15,27 +15,14 @@ export async function POST(request: NextRequest) {
     const userId = formData.get('user_id') as string;
     const transcription = formData.get('transcription') as string;
 
-    // 1. Si no hay transcripción, obtenerla de Whisper
+    // 1. Si no hay transcripción, obtenerla de Groq Whisper
     let finalTranscription = transcription;
     
     if (!finalTranscription && audioFile) {
-      console.log('🎵 Sending audio to Whisper...');
+      console.log('🎤 Transcribiendo audio con Groq Whisper...');
       
-      const whisperFormData = new FormData();
-      whisperFormData.append('audio', audioFile);
-      
-      const whisperResponse = await fetch(`${WHISPER_ENDPOINT}/transcribe`, {
-        method: 'POST',
-        body: whisperFormData
-      });
-
-      if (!whisperResponse.ok) {
-        throw new Error('Whisper transcription failed');
-      }
-
-      const whisperData = await whisperResponse.json();
-      finalTranscription = whisperData.transcription;
-      console.log('✅ Transcription:', finalTranscription);
+      finalTranscription = await groqWhisperService.transcribe(audioFile, 'es');
+      console.log('✅ Transcripción:', finalTranscription);
     }
 
     // 2. Obtener country_code del usuario
