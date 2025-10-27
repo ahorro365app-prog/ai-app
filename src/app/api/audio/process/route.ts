@@ -61,10 +61,10 @@ export async function POST(request: NextRequest) {
     };
     const userCountryCode = countryCodeMap[countryCode2] || 'BO';
 
-    // 3. Procesar con Groq usando servicio existente
-    const resultado = await groqService.processTranscription(
+    // 3. Procesar con Groq usando contexto por país
+    const resultado = await groqService.extractExpenseWithCountryContext(
       finalTranscription,
-      userCountryCode
+      countryCode2
     );
 
     // 4. Guardar predicción en predicciones_groq

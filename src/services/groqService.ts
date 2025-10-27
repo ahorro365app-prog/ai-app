@@ -756,9 +756,64 @@ Devuelve solo JSON válido:`;
   }
 }
 
+// Extensión: Procesar con contexto por país desde Supabase
+export async function extractExpenseWithCountryContext(
+  transcripcion: string,
+  countryCode: string
+): Promise<GroqExtraction | null> {
+  try {
+    // Importar Supabase dinámicamente (solo en servidor)
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // 1. Buscar reglas del país en Supabase
+    const { data: reglas, error } = await supabase
+      .from('reglas_pais')
+      .select('*')
+      .eq('country_code', countryCode);
+
+    if (error) {
+      console.error('Error fetching reglas:', error);
+    }
+
+    // 2. Construir contexto local con slang y palabras clave
+    let contextoLocal = '';
+    if (reglas && reglas.length > 0) {
+      contextoLocal = reglas
+        .map(regla => {
+          const slangKeys = Object.keys(regla.slang || {});
+          const palabrasKeys = Object.keys(regla.palabras_clave || {});
+          
+          if (slangKeys.length > 0 || palabrasKeys.length > 0) {
+            return `En ${regla.country_code}, categoría ${regla.categoria}: ${palabrasKeys.join(', ')}. ${slangKeys.map(k => `${k} = ${regla.slang[k]}`).join('; ')}`;
+          }
+          return '';
+        })
+        .filter(Boolean)
+        .join('\n');
+    }
+
+    // 3. Usar el servicio Groq existente con el contexto adicional
+    // La función processTextWithGroq ya tiene toda la lógica, solo la llamamos
+    const resultado = await processTextWithGroq(transcripcion, countryCode);
+
+    // 4. Devolver resultado (el formato ya es el mismo que usa la app)
+    return resultado;
+
+  } catch (error: any) {
+    console.error('Error in extractExpenseWithCountryContext:', error);
+    
+    // Fallback: usar función base sin contexto
+    return processTextWithGroq(transcripcion, countryCode);
+  }
+}
+
 export const groqService = {
   processTranscription: processTextWithGroq,
-  processTranscriptionMultiple: processTranscriptionMultiple
+  processTranscriptionMultiple: processTranscriptionMultiple,
+  extractExpenseWithCountryContext: extractExpenseWithCountryContext
 };
 
 
