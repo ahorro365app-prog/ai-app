@@ -1,0 +1,5 @@
+# Agregar estas variables de entorno en Vercel
+
+WEBHOOK_VERIFY_TOKEN=ahorro365_webhook_secret_2024
+META_WHATSAPP_TOKEN=(tu-token-de-meta-aqui)
+
