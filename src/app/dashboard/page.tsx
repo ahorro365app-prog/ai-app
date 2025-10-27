@@ -269,6 +269,7 @@ export default function DashboardPage() {
         onCancel={() => setVoiceData(null)}
         transcriptionText={voiceData?.transcriptionText || ''}
         groqData={voiceData?.groqData || null}
+        source={voiceData?.source || 'audio'}
       />
       
       {/* Modal de error de fecha */}

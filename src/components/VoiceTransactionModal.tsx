@@ -115,6 +115,7 @@ interface VoiceTransactionModalProps {
   groqData: GroqMultipleData | null;
   onSave: (data: GroqMultipleData) => void;
   onCancel: () => void;
+  source?: 'audio' | 'text'; // Para diferenciar entre voz y texto
 }
 
 const CATEGORIAS_DISPONIBLES = [
@@ -145,7 +146,8 @@ export default function VoiceTransactionModal({
   transcriptionText,
   groqData,
   onSave,
-  onCancel
+  onCancel,
+  source = 'audio' // Por defecto es audio para no romper nada
 }: VoiceTransactionModalProps) {
   const { debts, addTransaction, user } = useSupabase();
   const { setModalOpen } = useModal();
@@ -619,7 +621,7 @@ export default function VoiceTransactionModal({
           </div>
 
           <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
-            Transacción de Voz
+            {source === 'text' ? 'Transacción por Texto' : 'Transacción de Voz'}
           </h3>
           
           {groqData && groqData.esMultiple && (
