@@ -45,14 +45,7 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
     transcriptionText,
     transcriptionError,
     transcriptionComplete,
-    clearTranscription,
-    // Estados del modal
-    showModal,
-    modalTranscriptionText,
-    modalGroqData,
-    handleModalClose,
-    handleModalSave,
-    handleModalCancel
+    clearTranscription
   } = useVoiceRecording();
 
   // Cargar configuración de menús habilitados
@@ -242,16 +235,7 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
         </div>
       )}
       
-      {/* Modal de transacción de voz */}
-      {console.log('🎭 Navbar - showModal:', showModal, 'modalGroqData:', modalGroqData)}
-      <VoiceTransactionModal
-        isOpen={showModal}
-        onClose={handleModalClose}
-        transcriptionText={modalTranscriptionText}
-        groqData={modalGroqData}
-        onSave={handleModalSave}
-        onCancel={handleModalCancel}
-      />
+      {/* Modal de transacción de voz eliminado - El dashboard lo maneja */}
     </div>
   );
 }
