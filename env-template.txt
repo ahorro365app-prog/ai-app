@@ -1,0 +1,45 @@
+# Variables de entorno para la aplicación Ahorro365
+
+# ===========================================
+# SUPABASE CONFIGURACIÓN (REQUERIDO)
+# ===========================================
+# Obtén estos valores en: https://supabase.com/dashboard/project/[tu-proyecto]/settings/api
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+
+# ===========================================
+# OPENAI CONFIGURACIÓN (PARA WHISPER)
+# ===========================================
+# Obtén tu API key en: https://platform.openai.com/api-keys
+NEXT_PUBLIC_OPENAI_API_KEY=your_openai_api_key_here
+
+# Configuración de Whisper
+NEXT_PUBLIC_WHISPER_MODEL=whisper-1
+NEXT_PUBLIC_WHISPER_LANGUAGE=es
+NEXT_PUBLIC_WHISPER_TEMPERATURE=0.0
+
+# ===========================================
+# N8N CONFIGURACIÓN (PARA FUTURAS FASES)
+# ===========================================
+# URL del webhook de N8N para procesamiento de IA
+NEXT_PUBLIC_N8N_WEBHOOK_URL=https://your-n8n-instance.com/webhook/voz-gasto
+
+# ===========================================
+# CONFIGURACIÓN DE LA APLICACIÓN
+# ===========================================
+NEXT_PUBLIC_APP_NAME=Ahorro365
+NEXT_PUBLIC_APP_VERSION=0.0.1
+
+# ===========================================
+# OTRAS CONFIGURACIONES
+# ===========================================
+# Base de datos (si usas Prisma)
+DATABASE_URL=postgresql://username:password@localhost:5432/ahorro365
+
+# Clerk (si usas autenticación con Clerk)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key_here
+CLERK_SECRET_KEY=your_clerk_secret_key_here
+
+# Stripe (si usas pagos)
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key_here
+STRIPE_SECRET_KEY=your_stripe_secret_key_here

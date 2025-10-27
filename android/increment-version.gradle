@@ -1,0 +1,46 @@
+// Script simplificado para incrementar automáticamente la versión
+def incrementVersion() {
+    def versionFile = file('version.properties')
+    def props = new Properties()
+    
+    // Valores por defecto
+    def versionCode = 1
+    def versionName = "0.0.1"
+    
+    // Intentar cargar valores existentes
+    if (versionFile.exists()) {
+        try {
+            props.load(new FileInputStream(versionFile))
+            def existingCode = props.getProperty('versionCode')
+            def existingName = props.getProperty('versionName')
+            
+            if (existingCode != null && !existingCode.isEmpty()) {
+                versionCode = Integer.parseInt(existingCode) + 1
+            }
+            
+            if (existingName != null && !existingName.isEmpty()) {
+                def parts = existingName.split('\\.')
+                if (parts.length >= 3) {
+                    def major = Integer.parseInt(parts[0])
+                    def minor = Integer.parseInt(parts[1])
+                    def patch = Integer.parseInt(parts[2]) + 1
+                    versionName = major + "." + minor + "." + patch
+                }
+            }
+        } catch (Exception e) {
+            println "⚠️ Error cargando version.properties, usando valores por defecto: " + e.message
+        }
+    }
+    
+    // Guardar nueva versión
+    props.setProperty('versionCode', versionCode.toString())
+    props.setProperty('versionName', versionName)
+    props.store(versionFile.newWriter(), null)
+    
+    println "✅ Versión incrementada: " + versionName + " (" + versionCode + ")"
+    return [versionCode, versionName]
+}
+
+ext {
+    incrementVersion = this.&incrementVersion
+}

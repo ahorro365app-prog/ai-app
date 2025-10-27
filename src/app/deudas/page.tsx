@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Plus, CreditCard, Calendar, DollarSign, Trash2, Edit2, CheckCircle, History, Camera, Image, X, Pencil, AlertTriangle } from 'lucide-react';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useSupabase } from '@/contexts/SupabaseContext';
+import { useModal } from '@/contexts/ModalContext';
 
 interface PaymentRecord {
   id: string;
@@ -27,7 +28,8 @@ interface Debt {
 
 export default function DeudasPage() {
   const { formatAmount, currency } = useCurrency();
-  const { user, debts: supabaseDebts, addDebt: addSupabaseDebt, updateDebt: updateSupabaseDebt, deleteDebt: deleteSupabaseDebt } = useSupabase();
+  const { user, debts: supabaseDebts, addDebt: addSupabaseDebt, updateDebt: updateSupabaseDebt, deleteDebt: deleteSupabaseDebt, uploadReceipt, deleteReceipt, extractReceiptFileName } = useSupabase();
+  const { setModalOpen } = useModal();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [showAddDebtModal, setShowAddDebtModal] = useState(false);
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
@@ -52,6 +54,8 @@ export default function DeudasPage() {
   const [paymentToEdit, setPaymentToEdit] = useState<PaymentRecord | null>(null);
   const [paymentToDelete, setPaymentToDelete] = useState<PaymentRecord | null>(null);
   const [editPaymentAmount, setEditPaymentAmount] = useState('');
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
   
   // Estados para el formulario
   const [debtName, setDebtName] = useState('');
@@ -200,6 +204,7 @@ export default function DeudasPage() {
         setIsMonthlyPayment(false);
         setMonthlyPaymentDay(1);
         setShowAddDebtModal(false);
+        setModalOpen(false);
       } catch (error) {
         console.error('Error saving debt:', error);
         // Fallback a localStorage si hay error
@@ -212,6 +217,7 @@ export default function DeudasPage() {
         setIsMonthlyPayment(false);
         setMonthlyPaymentDay(1);
         setShowAddDebtModal(false);
+        setModalOpen(false);
       }
     }
   };
@@ -220,15 +226,33 @@ export default function DeudasPage() {
   const handleDeleteClick = (debt: Debt) => {
     setDebtToDelete(debt);
     setShowDeleteConfirmModal(true);
+    setModalOpen(true);
   };
 
   // Eliminar deuda confirmada
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (debtToDelete) {
-      const newDebts = debts.filter(debt => debt.id !== debtToDelete.id);
-      saveDebts(newDebts);
-      setShowDeleteConfirmModal(false);
-      setDebtToDelete(null);
+      try {
+        // Eliminar de Supabase
+        await deleteSupabaseDebt(debtToDelete.id);
+        
+        // Actualizar estado local
+        const newDebts = debts.filter(debt => debt.id !== debtToDelete.id);
+        setDebts(newDebts);
+        
+        // Cerrar modal
+        setShowDeleteConfirmModal(false);
+        setDebtToDelete(null);
+        setModalOpen(false);
+        
+        // Mostrar mensaje de éxito
+        showCelebrationToast('Deuda eliminada exitosamente');
+      } catch (error) {
+        console.error('Error al eliminar deuda:', error);
+        // Mostrar mensaje de error más específico
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        alert(`Error al eliminar la deuda: ${errorMessage}`);
+      }
     }
   };
 
@@ -236,6 +260,7 @@ export default function DeudasPage() {
   const handleCancelDelete = () => {
     setShowDeleteConfirmModal(false);
     setDebtToDelete(null);
+    setModalOpen(false);
   };
 
   // Mostrar celebración
@@ -324,34 +349,40 @@ export default function DeudasPage() {
   const handlePaymentClick = (debt: Debt) => {
     setDebtToPay(debt);
     setPaymentAmount('');
-    setShowPaymentModal(true);
+  setShowPaymentModal(true);
+  setModalOpen(true);
   };
 
   // Abrir modal de historial
   const handleShowHistory = (debt: Debt) => {
     setDebtHistory(debt);
     setShowHistoryModal(true);
+    setModalOpen(true);
   };
 
   // Cerrar modal de historial
   const handleCloseHistory = () => {
     setShowHistoryModal(false);
+    setModalOpen(false);
     setDebtHistory(null);
   };
 
   // Abrir opciones de comprobante
   const handleReceiptClick = () => {
     setShowReceiptOptions(true);
+    setModalOpen(true);
   };
 
   // Cerrar opciones de comprobante
   const handleCloseReceiptOptions = () => {
     setShowReceiptOptions(false);
+    setModalOpen(false);
   };
 
   // Manejar selección de imagen desde galería
   const handleSelectFromGallery = () => {
     setShowReceiptOptions(false);
+    setModalOpen(false);
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -371,6 +402,7 @@ export default function DeudasPage() {
   // Manejar captura de foto
   const handleTakePhoto = () => {
     setShowReceiptOptions(false);
+    setModalOpen(false);
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -397,11 +429,13 @@ export default function DeudasPage() {
   const handleShowReceipt = (image: string) => {
     setReceiptImage(image);
     setShowReceiptModal(true);
+    setModalOpen(true);
   };
 
   // Cerrar modal de comprobante
   const handleCloseReceipt = () => {
     setShowReceiptModal(false);
+    setModalOpen(false);
     setReceiptImage(null);
   };
 
@@ -410,17 +444,19 @@ export default function DeudasPage() {
     setPaymentToEdit(payment);
     setEditPaymentAmount(payment.amount.toString());
     setShowEditPaymentModal(true);
+    setModalOpen(true);
   };
 
   // Cerrar modal de edición
   const handleCloseEditPayment = () => {
     setShowEditPaymentModal(false);
+    setModalOpen(false);
     setPaymentToEdit(null);
     setEditPaymentAmount('');
   };
 
   // Guardar edición de pago
-  const handleSaveEditPayment = () => {
+  const handleSaveEditPayment = async () => {
     if (paymentToEdit && editPaymentAmount && debtHistory) {
       const newAmount = parseFloat(editPaymentAmount);
       const oldAmount = paymentToEdit.amount;
@@ -449,6 +485,19 @@ export default function DeudasPage() {
 
       saveDebts(updatedDebts);
       
+      // Actualizar en Supabase si está disponible
+      if (user) {
+        try {
+          await updateSupabaseDebt(debtHistory.id, {
+            monto_pagado: newTotalPaid,
+            historial_pagos: updatedPaymentHistory
+          });
+          console.log('✅ Pago editado en Supabase');
+        } catch (error) {
+          console.error('❌ Error al editar pago en Supabase:', error);
+        }
+      }
+      
       // Actualizar el estado local del historial
       setDebtHistory({
         ...debtHistory,
@@ -470,28 +519,47 @@ export default function DeudasPage() {
   const handleDeletePayment = (payment: PaymentRecord) => {
     setPaymentToDelete(payment);
     setShowDeletePaymentModal(true);
+    setModalOpen(true);
   };
 
   // Cerrar modal de eliminación
   const handleCloseDeletePayment = () => {
     setShowDeletePaymentModal(false);
+    setModalOpen(false);
     setPaymentToDelete(null);
   };
 
   // Confirmar eliminación de pago
-  const handleConfirmDeletePayment = () => {
+  const handleConfirmDeletePayment = async () => {
     if (paymentToDelete && debtHistory) {
       const amountToSubtract = paymentToDelete.amount;
 
-      // Eliminar el pago del historial
+      console.log('🗑️ Eliminando pago individual y su comprobante...');
+
+      // 1. Eliminar comprobante del Storage si existe
+      if (paymentToDelete.receipt && user) {
+        try {
+          const fileName = extractReceiptFileName(paymentToDelete.receipt);
+          if (fileName) {
+            console.log('📷 Eliminando comprobante:', fileName);
+            await deleteReceipt(fileName);
+            console.log('✅ Comprobante eliminado del storage');
+          }
+        } catch (receiptError) {
+          console.warn('⚠️ Error al eliminar comprobante del storage:', receiptError);
+          // Continuar con la eliminación del pago aunque falle la eliminación del comprobante
+        }
+      }
+
+      // 2. Eliminar el pago del historial
       const updatedPaymentHistory = debtHistory.paymentHistory.filter(
         payment => payment.id !== paymentToDelete.id
       );
 
-      // Actualizar el monto total pagado
+      // 3. Actualizar el monto total pagado
       const newTotalPaid = Math.max(0, debtHistory.paidAmount - amountToSubtract);
 
-      // Actualizar la deuda
+      // 4. Actualizar la deuda
       const updatedDebts = debts.map(debt =>
         debt.id === debtHistory.id
           ? {
@@ -503,6 +571,19 @@ export default function DeudasPage() {
       );
 
       saveDebts(updatedDebts);
+      
+      // 5. Actualizar en Supabase si está disponible
+      if (user) {
+        try {
+          await updateSupabaseDebt(debtHistory.id, {
+            monto_pagado: newTotalPaid,
+            historial_pagos: updatedPaymentHistory
+          });
+          console.log('✅ Pago eliminado en Supabase');
+        } catch (error) {
+          console.error('❌ Error al eliminar pago en Supabase:', error);
+        }
+      }
       
       // Actualizar el estado local del historial
       setDebtHistory({
@@ -522,49 +603,95 @@ export default function DeudasPage() {
   };
 
   // Registrar pago
-  const handleRegisterPayment = () => {
+  const handleRegisterPayment = async () => {
     if (debtToPay && paymentAmount) {
-      const paymentValue = parseFloat(paymentAmount);
-      const newPaidAmount = debtToPay.paidAmount + paymentValue;
-      
-      // Crear registro del pago
-      const paymentRecord: PaymentRecord = {
-        id: Date.now().toString(),
-        amount: paymentValue,
-        date: new Date().toISOString(),
-        description: `Pago registrado el ${new Date().toLocaleDateString('es-ES', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        })}, ${new Date().toLocaleTimeString('es-ES', {
-          hour: '2-digit',
-          minute: '2-digit'
-        })}`,
-        receipt: paymentReceipt || undefined
-      };
-      
-      // Actualizar la deuda con el nuevo pago en el historial
-      const updatedDebts = debts.map(debt => 
-        debt.id === debtToPay.id 
-          ? { 
-              ...debt, 
-              paidAmount: Math.min(newPaidAmount, debt.totalAmount),
-              paymentHistory: [...(debt.paymentHistory || []), paymentRecord]
-            }
-          : debt
-      );
-      
-      saveDebts(updatedDebts);
-      
-      // Verificar celebraciones
-      const updatedDebt = { ...debtToPay, paidAmount: Math.min(newPaidAmount, debtToPay.totalAmount) };
-      checkProgressCelebrations(updatedDebt);
-      
-      // Cerrar modal y limpiar estados
-      setShowPaymentModal(false);
-      setDebtToPay(null);
-      setPaymentAmount('');
-      setPaymentReceipt(null);
+      try {
+        const paymentValue = parseFloat(paymentAmount);
+        const newPaidAmount = debtToPay.paidAmount + paymentValue;
+        
+        // Subir comprobante si existe
+        let receiptUrl = null;
+        if (paymentReceipt && user) {
+          setIsUploadingReceipt(true);
+          setUploadProgress('Preparando imagen...');
+          
+          try {
+            // Convertir base64 a File
+            setUploadProgress('Convirtiendo imagen...');
+            const response = await fetch(paymentReceipt);
+            const blob = await response.blob();
+            const file = new File([blob], `receipt_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            
+            // Subir a Supabase Storage
+            setUploadProgress('Comprimiendo y subiendo imagen...');
+            receiptUrl = await uploadReceipt(file, user.id);
+            
+            setUploadProgress('Imagen subida exitosamente');
+            setTimeout(() => setIsUploadingReceipt(false), 1000);
+          } catch (uploadError) {
+            setIsUploadingReceipt(false);
+            setUploadProgress('');
+            console.error('Error al subir comprobante:', uploadError);
+            // Continuar sin comprobante
+          }
+        }
+        
+        // Crear registro del pago
+        const paymentRecord: PaymentRecord = {
+          id: Date.now().toString(),
+          amount: paymentValue,
+          date: new Date().toISOString(),
+          description: `Pago registrado el ${new Date().toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })}, ${new Date().toLocaleTimeString('es-ES', {
+            hour: '2-digit',
+            minute: '2-digit'
+          })}`,
+          receipt: receiptUrl || paymentReceipt || undefined
+        };
+        
+        // Actualizar la deuda con el nuevo pago en el historial
+        const updatedDebts = debts.map(debt => 
+          debt.id === debtToPay.id 
+            ? { 
+                ...debt, 
+                paidAmount: Math.min(newPaidAmount, debt.totalAmount),
+                paymentHistory: [...(debt.paymentHistory || []), paymentRecord]
+              }
+            : debt
+        );
+        
+        saveDebts(updatedDebts);
+        
+        // Actualizar en Supabase si está disponible
+        if (user) {
+          try {
+            await updateSupabaseDebt(debtToPay.id, {
+              monto_pagado: Math.min(newPaidAmount, debtToPay.totalAmount),
+              historial_pagos: [...(debtToPay.paymentHistory || []), paymentRecord]
+            });
+            console.log('✅ Pago guardado en Supabase');
+          } catch (error) {
+            console.error('❌ Error al guardar pago en Supabase:', error);
+          }
+        }
+        
+        // Verificar celebraciones
+        const updatedDebt = { ...debtToPay, paidAmount: Math.min(newPaidAmount, debtToPay.totalAmount) };
+        checkProgressCelebrations(updatedDebt);
+        
+        // Cerrar modal y limpiar estados
+        setShowPaymentModal(false);
+        setModalOpen(false);
+        setDebtToPay(null);
+        setPaymentAmount('');
+        setPaymentReceipt(null);
+      } catch (error) {
+        console.error('Error al registrar pago:', error);
+        // Aquí podrías mostrar un mensaje de error al usuario
+      }
     }
   };
 
@@ -574,10 +701,10 @@ export default function DeudasPage() {
   const remainingDebt = totalDebt - totalPaid;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 pb-24">
+    <div className="pt-[40px] px-4 pb-24">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-sm font-bold text-gray-900 mb-1">Mis Deudas</h1>
+      <div className="mb-3" style={{ marginTop: 0 }}>
+        <h1 className="text-xl font-bold text-gray-900 mb-1">Mis Deudas</h1>
         <p className="text-gray-600">Gestiona tus préstamos y pagos pendientes</p>
       </div>
 
@@ -596,11 +723,28 @@ export default function DeudasPage() {
         
         {/* Barra de progreso general */}
         <div className="mb-2">
-          <div className="flex justify-between text-xs mb-1">
+          <div className="flex justify-between text-xs mb-6">
             <span className="text-red-100">Progreso general</span>
-            <span className="font-medium">{totalDebt > 0 ? ((totalPaid / totalDebt) * 100).toFixed(1) : 0}%</span>
+            <span className="font-medium text-red-100">{totalDebt > 0 ? ((totalPaid / totalDebt) * 100).toFixed(1) : 0}%</span>
           </div>
-          <div className="w-full bg-red-300/30 rounded-full h-2">
+          <div className="relative w-full bg-red-300/30 rounded-full h-2">
+            {/* Marcadores de porcentajes */}
+            <div className="absolute inset-0 flex justify-between items-center">
+              <div className="w-px h-3 bg-red-200/50"></div>
+              <div className="w-px h-3 bg-red-200/50"></div>
+              <div className="w-px h-3 bg-red-200/50"></div>
+              <div className="w-px h-3 bg-red-200/50"></div>
+              <div className="w-px h-3 bg-red-200/50"></div>
+            </div>
+            {/* Etiquetas de porcentajes */}
+            <div className="absolute -top-5 w-full flex justify-between text-xs text-gray-400">
+              <span>0%</span>
+              <span>25%</span>
+              <span>50%</span>
+              <span>75%</span>
+              <span>100%</span>
+            </div>
+            {/* Barra de progreso */}
             <div 
               className="bg-white h-2 rounded-full transition-all"
               style={{ width: `${Math.min((totalPaid / totalDebt) * 100, 100)}%` }}
@@ -621,7 +765,10 @@ export default function DeudasPage() {
           <h3 className="text-sm font-semibold text-gray-900 mb-2">No tienes deudas registradas</h3>
           <p className="text-gray-600 mb-6">Agrega tus préstamos para llevar un control detallado</p>
           <button
-            onClick={() => setShowAddDebtModal(true)}
+            onClick={() => {
+              setShowAddDebtModal(true);
+              setModalOpen(true);
+            }}
             className="px-6 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold rounded-xl hover:opacity-90 transition-all"
           >
             Agregar Primera Deuda
@@ -829,7 +976,10 @@ export default function DeudasPage() {
 
           {/* Botón flotante para agregar */}
           <button
-            onClick={() => setShowAddDebtModal(true)}
+            onClick={() => {
+              setShowAddDebtModal(true);
+              setModalOpen(true);
+            }}
             className="fixed bottom-24 right-4 w-14 h-14 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center"
           >
             <Plus size={24} />
@@ -958,7 +1108,10 @@ export default function DeudasPage() {
             <div className="flex-shrink-0 pt-4 border-t border-gray-100">
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowAddDebtModal(false)}
+                  onClick={() => {
+                    setShowAddDebtModal(false);
+                    setModalOpen(false);
+                  }}
                   className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-all"
                 >
                   Cancelar
@@ -1146,29 +1299,50 @@ export default function DeudasPage() {
               </div>
             </div>
 
+            {/* Indicador de progreso de upload */}
+            {isUploadingReceipt && (
+              <div className="mb-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900">Subiendo comprobante...</p>
+                    <p className="text-xs text-blue-700">{uploadProgress}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Botones */}
             <div className="flex gap-3">
               <button
                 onClick={() => {
                   setShowPaymentModal(false);
+                  setModalOpen(false);
                   setDebtToPay(null);
                   setPaymentAmount('');
                   setPaymentReceipt(null);
+                  setIsUploadingReceipt(false);
+                  setUploadProgress('');
                 }}
-                className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-all"
+                disabled={isUploadingReceipt}
+                className={`flex-1 py-3.5 px-4 rounded-xl font-semibold transition-all ${
+                  isUploadingReceipt
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
                 Cancelar
               </button>
               <button
                 onClick={handleRegisterPayment}
-                disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}
+                disabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || isUploadingReceipt}
                 className={`flex-1 py-3.5 px-4 rounded-xl font-semibold transition-all ${
-                  paymentAmount && parseFloat(paymentAmount) > 0
+                  paymentAmount && parseFloat(paymentAmount) > 0 && !isUploadingReceipt
                     ? 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:opacity-90 shadow-lg'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 }`}
               >
-                Registrar Pago
+                {isUploadingReceipt ? 'Subiendo...' : 'Registrar Pago'}
               </button>
             </div>
           </div>

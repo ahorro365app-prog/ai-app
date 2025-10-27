@@ -86,7 +86,7 @@ export default function VoiceRecorder({ onTranscriptComplete, maxDuration = 5 }:
 
   if (!isSupported) {
     return (
-      <div className="fixed bottom-24 right-6 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
+      <div className="fixed bottom-24 right-6 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg text-xl">
         ⚠️ Reconocimiento de voz no disponible
       </div>
     );
@@ -123,8 +123,8 @@ export default function VoiceRecorder({ onTranscriptComplete, maxDuration = 5 }:
             {/* Instrucciones (primeras 10 veces) */}
             {showInstructions && (
               <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
-                <p className="text-sm font-semibold text-blue-900 mb-2">💡 Ejemplos de uso:</p>
-                <ul className="text-xs text-blue-800 space-y-1">
+                <p className="text-xl font-semibold text-blue-900 mb-2">💡 Ejemplos de uso:</p>
+                <ul className="text-xl text-blue-800 space-y-1">
                   <li>• "Gasté 50 en comida"</li>
                   <li>• "Pagué 150 de taxi"</li>
                   <li>• "Almuerzo 85 pesos"</li>
@@ -140,16 +140,16 @@ export default function VoiceRecorder({ onTranscriptComplete, maxDuration = 5 }:
                 </div>
                 {/* Contador */}
                 <div className="absolute -bottom-2 -right-2 bg-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg border-2 border-red-500">
-                  <span className="text-lg font-bold text-red-600">{timeLeft}</span>
+                  <span className="text-xl font-bold text-red-600">{timeLeft}</span>
                 </div>
               </div>
             </div>
 
             {/* Transcripción en tiempo real */}
             <div className="mb-6">
-              <p className="text-sm font-semibold text-gray-700 mb-2">Transcripción:</p>
+              <p className="text-xl font-semibold text-gray-700 mb-2">Transcripción:</p>
               <div className="min-h-[60px] p-3 bg-gray-50 rounded-xl border-2 border-gray-200">
-                <p className="text-sm text-gray-900">
+                <p className="text-xl text-gray-900">
                   {transcript || <span className="text-gray-400 italic">Esperando...</span>}
                 </p>
               </div>
@@ -158,7 +158,7 @@ export default function VoiceRecorder({ onTranscriptComplete, maxDuration = 5 }:
             {/* Error */}
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{error}</p>
+                <p className="text-xl text-red-600">{error}</p>
               </div>
             )}
 

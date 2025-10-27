@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserPlus, Lock, User, Phone, Eye, EyeOff } from 'lucide-react';
 import { useSupabase } from '@/contexts/SupabaseContext';
+import { useModal } from '@/contexts/ModalContext';
 import ErrorModal from '@/components/ErrorModal';
 
 // Mapeo de países con sus prefijos
@@ -26,6 +27,7 @@ const countries = [
 export default function SignUpPage() {
   const router = useRouter();
   const { createUser } = useSupabase();
+  const { setModalOpen } = useModal();
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
@@ -62,6 +64,7 @@ export default function SignUpPage() {
             message: '¡Cuenta creada exitosamente! Ahora puedes iniciar sesión.',
             type: 'success'
           });
+          setModalOpen(true);
           // Redirigir después de 2 segundos
           setTimeout(() => {
             router.push('/sign-in');
@@ -71,6 +74,7 @@ export default function SignUpPage() {
             isOpen: true,
             message: result.error || 'Error desconocido al crear la cuenta.'
           });
+          setModalOpen(true);
         }
       } catch (error) {
         console.error('Error de registro:', error);
@@ -78,6 +82,7 @@ export default function SignUpPage() {
           isOpen: true,
           message: 'Error inesperado. Verifica tu conexión e intenta nuevamente.'
         });
+        setModalOpen(true);
       } finally {
         setIsLoading(false);
       }
@@ -86,6 +91,7 @@ export default function SignUpPage() {
         isOpen: true,
         message: 'Por favor completa todos los campos antes de continuar.'
       });
+      setModalOpen(true);
     }
   };
 
@@ -116,7 +122,7 @@ export default function SignUpPage() {
             <UserPlus size={40} className="text-purple-600" />
           </div>
           <h1 className="text-4xl font-bold text-white mb-2">Ahorro365</h1>
-          <p className="text-purple-100">Crea tu cuenta gratis</p>
+          <p className="text-purple-100 text-lg">Crea tu cuenta gratis</p>
         </div>
 
         {/* Formulario */}
@@ -138,6 +144,7 @@ export default function SignUpPage() {
                   placeholder="Tu nombre"
                   className="flex-1 bg-transparent text-gray-900 focus:outline-none"
                   autoFocus
+                  suppressHydrationWarning
                 />
               </div>
             </div>
@@ -185,7 +192,7 @@ export default function SignUpPage() {
                   )}
                 </div>
                 {/* Campo de teléfono */}
-                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus-within:border-purple-500 transition-colors flex-1">
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus-within:border-purple-500 transition-colors" style={{ maxWidth: '210px' }}>
                   <Phone size={20} className="text-gray-400" />
                   <input
                     type="tel"
@@ -193,6 +200,7 @@ export default function SignUpPage() {
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} // Solo números
                     placeholder="Número de teléfono"
                     className="flex-1 bg-transparent text-gray-900 focus:outline-none"
+                    suppressHydrationWarning
                   />
                 </div>
               </div>
@@ -211,6 +219,7 @@ export default function SignUpPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="flex-1 bg-transparent text-gray-900 focus:outline-none"
+                  suppressHydrationWarning
                 />
                 <button
                   type="button"
@@ -226,7 +235,7 @@ export default function SignUpPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-lg hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+              className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-base hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -259,7 +268,10 @@ export default function SignUpPage() {
         {/* Modal de Error */}
         <ErrorModal
           isOpen={errorModal.isOpen}
-          onClose={() => setErrorModal({ isOpen: false, message: '' })}
+          onClose={() => {
+            setErrorModal({ isOpen: false, message: '' });
+            setModalOpen(false);
+          }}
           title={errorModal.message.includes('campos') ? "Campos requeridos" : errorModal.message.includes('exitosa') ? "¡Cuenta creada!" : "Error al crear cuenta"}
           message={errorModal.message}
           type={errorModal.message.includes('exitosa') ? 'success' : 'error'}

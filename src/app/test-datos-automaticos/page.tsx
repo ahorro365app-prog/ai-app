@@ -171,10 +171,10 @@ export default function TestDatosAutomaticosPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 p-4 pb-24 flex flex-col items-center justify-center text-center">
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">Crear Datos de Prueba Automáticos</h1>
+      <h1 className="text-xl font-bold text-gray-900 mb-4">Crear Datos de Prueba Automáticos</h1>
       
       <div className="bg-white rounded-xl shadow-lg p-6 mb-6 max-w-md">
-        <h2 className="text-lg font-semibold mb-4">¿Qué se creará?</h2>
+        <h2 className="text-xl font-semibold mb-4">¿Qué se creará?</h2>
         <div className="space-y-2 text-left">
           <p>👤 <span className="font-bold">Usuario:</span> Usuario Demo</p>
           <p>📊 <span className="font-bold">Transacciones:</span> 3 (2 gastos, 1 ingreso)</p>
@@ -200,11 +200,11 @@ export default function TestDatosAutomaticosPage() {
               style={{ width: `${progreso}%` }}
             ></div>
           </div>
-          <p className="text-sm text-gray-600 mt-2">{progreso}% completado</p>
+          <p className="text-xl text-gray-600 mt-2">{progreso}% completado</p>
         </div>
       )}
 
-      <p className={`text-lg font-semibold ${
+      <p className={`text-xl font-semibold ${
         status.includes('✅') ? 'text-green-600' :
         status.includes('❌') ? 'text-red-600' :
         status === 'Creando datos de prueba...' ? 'text-purple-600' :
@@ -213,7 +213,7 @@ export default function TestDatosAutomaticosPage() {
         Estado: {status}
       </p>
 
-      <div className="mt-8 text-left text-gray-600 text-sm max-w-md">
+      <div className="mt-8 text-left text-gray-600 text-xl max-w-md">
         <h4 className="font-bold mb-2">ℹ️ Información:</h4>
         <ul className="list-disc list-inside space-y-1">
           <li>Estos datos se guardarán en Supabase con nombres en español</li>

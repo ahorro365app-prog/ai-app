@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import RootClientWrapper from "@/components/RootClientWrapper";
-import { TransactionsProvider } from "@/contexts/TransactionsContext";
 import { SupabaseProvider } from "@/contexts/SupabaseContext";
+import { ModalProvider } from "@/contexts/ModalContext";
+import { StatusBarProvider } from "@/contexts/StatusBarContext";
+import { VoiceProvider } from "@/contexts/VoiceContext";
+import SupabaseErrorBoundary from "@/components/SupabaseErrorBoundary";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,13 +33,19 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
       >
-        <SupabaseProvider>
-          <TransactionsProvider>
-            <RootClientWrapper>
-              {children}
-            </RootClientWrapper>
-          </TransactionsProvider>
-        </SupabaseProvider>
+        <SupabaseErrorBoundary>
+          <SupabaseProvider>
+            <StatusBarProvider>
+              <ModalProvider>
+                <VoiceProvider>
+                  <RootClientWrapper>
+                    {children}
+                  </RootClientWrapper>
+                </VoiceProvider>
+              </ModalProvider>
+            </StatusBarProvider>
+          </SupabaseProvider>
+        </SupabaseErrorBoundary>
       </body>
     </html>
   );

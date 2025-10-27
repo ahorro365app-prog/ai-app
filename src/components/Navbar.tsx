@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { Home, History, Mic, CreditCard, Target, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSupabase } from "@/contexts/SupabaseContext";
+import { useVoiceRecording } from "@/hooks/useVoiceRecording";
+import TranscriptionDisplay from "./TranscriptionDisplay";
 
 interface NavbarProps {
   onOpenTransaction: () => void;
@@ -18,10 +20,33 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
   const [isGoalsEnabled, setIsGoalsEnabled] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Estados para grabación de audio
-  const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  // Hook de grabación de voz
+  const {
+    state: voiceState,
+    startRecording,
+    stopRecording,
+    getButtonState,
+    handleMouseDown,
+    handleMouseUp,
+    handleMouseMove,
+    handleMouseLeave,
+    handleTouchStart,
+    handleTouchEnd,
+    handleTouchMove,
+    handleTouchCancel,
+    isRecording,
+    isProcessing,
+    hasError,
+    duration,
+    isPressed,
+    isSwipeDetected,
+    // Estados de transcripción
+    isTranscribing,
+    transcriptionText,
+    transcriptionError,
+    transcriptionComplete,
+    clearTranscription
+  } = useVoiceRecording();
 
   // Cargar configuración de menús habilitados
   useEffect(() => {
@@ -33,55 +58,10 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
     }
   }, [user]);
 
-  // Funciones para grabación de audio
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunks.push(event.data);
-        }
-      };
-
-      recorder.onstop = () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/wav' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        
-        // Aquí puedes procesar el audio grabado
-        console.log('Audio grabado:', audioUrl);
-        
-        // Detener todas las pistas de audio
-        stream.getTracks().forEach(track => track.stop());
-        
-        // Limpiar chunks
-        setAudioChunks([]);
-      };
-
-      recorder.start();
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-      setAudioChunks(chunks);
-    } catch (error) {
-      console.error('Error al acceder al micrófono:', error);
-      alert('No se pudo acceder al micrófono. Verifica los permisos.');
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
-      setIsRecording(false);
-      setMediaRecorder(null);
-    }
-  };
-
+  // Manejar click del micrófono (ahora solo para estados de error)
   const handleMicClick = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
+    if (hasError) {
+      // Solo permitir click si hay error para reintentar
       startRecording();
     }
   };
@@ -138,33 +118,67 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
     );
   }
 
-  // Ajustar tamaño según cantidad de elementos
+  // Mantener tamaños consistentes como cuando hay 5 botones activos
   const totalItems = navItems.length;
-  const iconSize = totalItems <= 5 ? 22 : 20;
-  const textSize = totalItems <= 5 ? "text-xs" : "text-[10px]";
-  const spacing = totalItems <= 5 ? "mr-6 ml-6" : "mr-3 ml-3";
+  // Usar siempre los tamaños óptimos (como cuando hay 5 botones activos)
+  const iconSize = 20;
+  // Ajustar solo el espaciado del micrófono según la cantidad de elementos
+  const spacing = totalItems >= 5 ? "mr-8 ml-8" : "mr-6 ml-6";
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white z-50 safe-bottom shadow-lg pt-0 pb-1">
+    <div className="bg-white safe-bottom shadow-lg pt-0 pb-1">
       <ul className="flex items-center justify-around px-6 py-2 relative">
         {navItems.map((item, index) => {
           const active = pathname === item.href;
           const Icon = item.Icon;
           
           // Botón de voz central (más grande y destacado)
-          if (item.isVoice) {
+          if ('isVoice' in item && item.isVoice) {
             return (
               <li key={item.label} className={`relative ${spacing}`}>
+                {/* Ondas de grabación */}
+                {isRecording && (
+                  <>
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full border-2 border-red-400 animate-ping opacity-60"></div>
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 rounded-full border-2 border-red-300 animate-ping opacity-40" style={{ animationDelay: '0.5s' }}></div>
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-28 h-28 rounded-full border-2 border-red-200 animate-ping opacity-20" style={{ animationDelay: '1s' }}></div>
+                  </>
+                )}
+                
                 <button
                   onClick={handleMicClick}
-                  className={`absolute -top-12 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all ${
-                    isRecording 
-                      ? 'bg-gradient-to-r from-red-500 to-red-600 animate-pulse' 
-                      : 'bg-gradient-to-r from-blue-600 to-purple-600'
+                  onMouseDown={handleMouseDown}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseLeave}
+                  onTouchStart={handleTouchStart}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchMove={handleTouchMove}
+                  onTouchCancel={handleTouchCancel}
+                  disabled={isProcessing}
+                  className={`absolute -top-12 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-200 ${
+                    isProcessing
+                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500 animate-spin cursor-not-allowed'
+                      : isRecording 
+                        ? 'bg-gradient-to-r from-red-500 to-red-600 animate-pulse cursor-pointer' 
+                        : hasError
+                          ? 'bg-gradient-to-r from-red-600 to-red-700 cursor-pointer'
+                          : isPressed
+                            ? 'bg-gradient-to-r from-blue-700 to-purple-700 scale-95 cursor-pointer'
+                            : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:scale-110 active:scale-95 cursor-pointer'
                   }`}
-                  aria-label={isRecording ? "Detener grabación" : "Iniciar grabación"}
+                  aria-label={
+                    isProcessing ? "Procesando..." : 
+                    isRecording ? "Mantén presionado para grabar" : 
+                    hasError ? "Error - Reintentar" :
+                    "Mantén presionado para grabar"
+                  }
                 >
-                  <Mic size={28} className="text-white" />
+                  <Mic size={24} className="text-white" />
+                  
+                  {/* Efecto de latido durante grabación */}
+                  {isRecording && (
+                    <div className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-75"></div>
+                  )}
                 </button>
               </li>
             );
@@ -183,19 +197,59 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
                 `}
               >
                 <Icon size={iconSize} />
-                <span className={`${textSize} font-medium`}>{item.label}</span>
+                <span className={`font-medium`} style={{ fontSize: '13px' }}>{item.label}</span>
               </Link>
             </li>
           );
         })}
       </ul>
       
-      {/* Indicador de grabación */}
+      {/* Indicadores de estado */}
       {isRecording && (
-        <div className="absolute -top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium animate-pulse">
-          🎤 Grabando...
+        <div className="absolute -top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse">
+          🎤 Grabando... {duration}s
         </div>
       )}
+      
+      {isRecording && (
+        <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-3 py-1 rounded-full text-xs font-medium">
+          📱 Desliza para cancelar
+        </div>
+      )}
+      
+      {isProcessing && (
+        <div className="absolute -top-20 left-1/2 -translate-x-1/2 bg-yellow-500 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse">
+          ⚡ Procesando...
+        </div>
+      )}
+      
+      {hasError && (
+        <div className="absolute -top-20 left-1/2 -translate-x-1/2 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+          ❌ Error de micrófono
+        </div>
+      )}
+      
+      {isSwipeDetected && (
+        <div className="absolute -top-20 left-1/2 -translate-x-1/2 bg-orange-500 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse">
+          🚫 Grabación cancelada
+        </div>
+      )}
+      
+      {/* Componente de transcripción */}
+      <TranscriptionDisplay
+        isTranscribing={isTranscribing}
+        transcriptionText={transcriptionText}
+        hasError={transcriptionError}
+        errorMessage={transcriptionError ? "Error en transcripción" : undefined}
+        onSendToN8N={(text) => {
+          console.log('📤 Enviando a N8N:', text);
+          // Aquí en la Fase 3 se enviará a N8N
+        }}
+        onRetry={() => {
+          console.log('🔄 Reintentando transcripción...');
+          clearTranscription();
+        }}
+      />
     </div>
   );
 }

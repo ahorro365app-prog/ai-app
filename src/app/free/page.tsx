@@ -15,12 +15,12 @@ export default function FreeTrialsPage() {
         <div className="w-16 h-16 mx-auto mb-3 rounded-xl bg-gradient-to-br from-[#00B2FF] to-[#5A00FF] flex items-center justify-center glow-primary">
           <Gift size={28} className="text-white" />
         </div>
-        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+        <h1 className="text-xl font-bold mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
           <span className="bg-gradient-to-r from-[#00B2FF] to-[#5A00FF] bg-clip-text text-transparent">
             Zona Gratuita
           </span>
         </h1>
-        <p className="text-sm text-[#94A3B8]">
+        <p className="text-xl text-[#94A3B8]">
           Prueba IA sin costo
         </p>
       </div>
@@ -28,10 +28,10 @@ export default function FreeTrialsPage() {
       {/* Contador de créditos */}
       <div className="backdrop-blur-xl bg-white/5 rounded-2xl p-6 border border-[#00B2FF]/20 shadow-xl mb-4 animate-fade-in glow-primary">
         <div className="text-center mb-4">
-          <h2 className="text-sm font-medium text-[#94A3B8] mb-2">
+          <h2 className="text-xl font-medium text-[#94A3B8] mb-2">
             Consultas restantes hoy
           </h2>
-          <div className="text-5xl font-bold mb-3" style={{ fontFamily: 'Space Mono, monospace' }}>
+          <div className="text-xl font-bold mb-3" style={{ fontFamily: 'Space Mono, monospace' }}>
             <span className="bg-gradient-to-r from-[#00B2FF] to-[#5A00FF] bg-clip-text text-transparent">
               {freeCredits} / {maxCredits}
             </span>
@@ -48,7 +48,7 @@ export default function FreeTrialsPage() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-[#94A3B8] mb-4">
+        <p className="text-center text-xl text-[#94A3B8] mb-4">
           {freeCredits > 0 
             ? `Tienes ${freeCredits} consultas. Se renuevan en 24h.`
             : "Límite alcanzado. Actualiza a Premium."
@@ -75,7 +75,7 @@ export default function FreeTrialsPage() {
 
       {/* Features disponibles */}
       <div className="backdrop-blur-xl bg-white/5 rounded-2xl p-5 border border-[#5A00FF]/20 shadow-xl mb-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-        <h2 className="text-base font-bold text-[#E9EDF2] mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
+        <h2 className="text-xl font-bold text-[#E9EDF2] mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
           ¿Qué puedes probar?
         </h2>
 
@@ -102,13 +102,13 @@ export default function FreeTrialsPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <h3 className="text-sm font-semibold text-[#E9EDF2]">{feature.title}</h3>
+                    <h3 className="text-xl font-semibold text-[#E9EDF2]">{feature.title}</h3>
                     <StatusIcon 
                       size={14} 
                       className={feature.available ? "text-[#00FF85]" : "text-[#94A3B8]"} 
                     />
                   </div>
-                  <p className="text-xs text-[#94A3B8]">{feature.desc}</p>
+                  <p className="text-xl text-[#94A3B8]">{feature.desc}</p>
                 </div>
               </div>
             );
@@ -124,7 +124,7 @@ export default function FreeTrialsPage() {
         <h2 className="text-xl font-bold text-[#E9EDF2] mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
           ¿Listo para más?
         </h2>
-        <p className="text-sm text-[#94A3B8] mb-4">
+        <p className="text-xl text-[#94A3B8] mb-4">
           Consultas ilimitadas, modelos avanzados y más por solo B$ 12/mes
         </p>
         <Link

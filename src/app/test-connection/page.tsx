@@ -51,9 +51,9 @@ export default function TestConnection() {
       <div className="bg-white rounded-3xl p-8 shadow-xl max-w-md w-full">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl">🔗</span>
+            <span className="text-xl">🔗</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-xl font-bold text-gray-900 mb-2">
             Test de Conexión
           </h1>
           <p className="text-gray-600">
@@ -72,11 +72,11 @@ export default function TestConnection() {
 
           {status && (
             <div className="p-4 rounded-xl bg-gray-50 border">
-              <p className="text-sm font-medium">{status}</p>
+              <p className="text-xl font-medium">{status}</p>
             </div>
           )}
 
-          <div className="text-xs text-gray-500 space-y-1">
+          <div className="text-xl text-gray-500 space-y-1">
             <p>Este test verifica:</p>
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li>Variables de entorno configuradas</li>

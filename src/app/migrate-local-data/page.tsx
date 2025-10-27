@@ -179,13 +179,13 @@ export default function MigrateLocalDataPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 pb-24">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+        <h1 className="text-xl font-bold text-gray-900 mb-6 text-center">
           Migración de Datos a Supabase
         </h1>
 
         {/* Estado del usuario */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <Database className="text-blue-600" size={20} />
             Estado del Usuario
           </h2>
@@ -204,7 +204,7 @@ export default function MigrateLocalDataPage() {
 
         {/* Datos locales encontrados */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <Database className="text-orange-600" size={20} />
             Datos en localStorage
           </h2>
@@ -213,20 +213,20 @@ export default function MigrateLocalDataPage() {
             <div className="space-y-3">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-blue-50 p-3 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-blue-600">{localData.transactions.length}</div>
-                  <div className="text-sm text-gray-600">Transacciones</div>
+                  <div className="text-xl font-bold text-blue-600">{localData.transactions.length}</div>
+                  <div className="text-xl text-gray-600">Transacciones</div>
                 </div>
                 <div className="bg-green-50 p-3 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-green-600">{localData.debts.length}</div>
-                  <div className="text-sm text-gray-600">Deudas</div>
+                  <div className="text-xl font-bold text-green-600">{localData.debts.length}</div>
+                  <div className="text-xl text-gray-600">Deudas</div>
                 </div>
                 <div className="bg-purple-50 p-3 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-purple-600">{localData.goals.length}</div>
-                  <div className="text-sm text-gray-600">Metas</div>
+                  <div className="text-xl font-bold text-purple-600">{localData.goals.length}</div>
+                  <div className="text-xl text-gray-600">Metas</div>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-gray-600">{localData.user ? '1' : '0'}</div>
-                  <div className="text-sm text-gray-600">Usuario</div>
+                  <div className="text-xl font-bold text-gray-600">{localData.user ? '1' : '0'}</div>
+                  <div className="text-xl text-gray-600">Usuario</div>
                 </div>
               </div>
             </div>
@@ -240,7 +240,7 @@ export default function MigrateLocalDataPage() {
         {/* Botones de acción */}
         {hasLocalData && user && (
           <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4">Acciones</h2>
+            <h2 className="text-xl font-semibold mb-4">Acciones</h2>
             <div className="flex flex-col sm:flex-row gap-4">
               <button
                 onClick={startMigration}
@@ -273,14 +273,14 @@ export default function MigrateLocalDataPage() {
         {/* Barra de progreso */}
         {migrationStatus === 'migrating' && (
           <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-4">Progreso de Migración</h3>
+            <h3 className="text-xl font-semibold mb-4">Progreso de Migración</h3>
             <div className="w-full bg-gray-200 rounded-full h-2.5">
               <div
                 className="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
                 style={{ width: `${migrationProgress}%` }}
               ></div>
             </div>
-            <p className="text-sm text-gray-600 mt-2">{migrationProgress}% completado</p>
+            <p className="text-xl text-gray-600 mt-2">{migrationProgress}% completado</p>
           </div>
         )}
 
@@ -289,7 +289,7 @@ export default function MigrateLocalDataPage() {
           <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-6">
             <div className="flex items-center gap-2 text-green-800">
               <CheckCircle size={20} />
-              <h3 className="text-lg font-semibold">¡Migración Completada!</h3>
+              <h3 className="text-xl font-semibold">¡Migración Completada!</h3>
             </div>
             <p className="text-green-700 mt-2">
               Todos los datos han sido migrados exitosamente a Supabase.
@@ -307,7 +307,7 @@ export default function MigrateLocalDataPage() {
           <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
             <div className="flex items-center gap-2 text-red-800">
               <AlertTriangle size={20} />
-              <h3 className="text-lg font-semibold">Error en la Migración</h3>
+              <h3 className="text-xl font-semibold">Error en la Migración</h3>
             </div>
             <p className="text-red-700 mt-2">{errorMessage}</p>
           </div>
@@ -317,7 +317,7 @@ export default function MigrateLocalDataPage() {
         {showConfirmModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl p-6 max-w-md w-full">
-              <h3 className="text-lg font-semibold mb-4">Confirmar Limpieza</h3>
+              <h3 className="text-xl font-semibold mb-4">Confirmar Limpieza</h3>
               <p className="text-gray-600 mb-6">
                 ¿Estás seguro de que quieres eliminar todos los datos de localStorage? 
                 Esta acción no se puede deshacer.
@@ -342,8 +342,8 @@ export default function MigrateLocalDataPage() {
 
         {/* Información adicional */}
         <div className="bg-white rounded-xl shadow-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">Información Importante</h3>
-          <ul className="space-y-2 text-sm text-gray-600">
+          <h3 className="text-xl font-semibold mb-4">Información Importante</h3>
+          <ul className="space-y-2 text-xl text-gray-600">
             <li>• La migración transferirá todos los datos de localStorage a Supabase</li>
             <li>• Los datos originales permanecerán en localStorage hasta que los elimines</li>
             <li>• Es recomendable hacer un respaldo antes de migrar</li>

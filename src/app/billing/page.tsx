@@ -8,12 +8,12 @@ export default function BillingPage() {
     <div className="min-h-screen px-4 pt-4 pb-8">
       {/* Header */}
       <div className="text-center mb-6 animate-fade-in">
-        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+        <h1 className="text-xl font-bold mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
           <span className="bg-gradient-to-r from-[#00B2FF] to-[#5A00FF] bg-clip-text text-transparent">
             Planes y Precios
           </span>
         </h1>
-        <p className="text-sm text-[#94A3B8]">
+        <p className="text-xl text-[#94A3B8]">
           Elige tu plan perfecto
         </p>
       </div>
@@ -27,14 +27,14 @@ export default function BillingPage() {
               <Gift size={22} className="text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-bold text-[#E9EDF2]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+              <h3 className="text-xl font-bold text-[#E9EDF2]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                 Gratuito
               </h3>
               <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-2xl font-bold text-[#E9EDF2]" style={{ fontFamily: 'Space Mono, monospace' }}>
+                <span className="text-xl font-bold text-[#E9EDF2]" style={{ fontFamily: 'Space Mono, monospace' }}>
                   B$ 0
                 </span>
-                <span className="text-xs text-[#94A3B8]">/mes</span>
+                <span className="text-xl text-[#94A3B8]">/mes</span>
               </div>
             </div>
           </div>
@@ -46,14 +46,14 @@ export default function BillingPage() {
               "Dashboard simple",
               "Soporte por email"
             ].map((feature, idx) => (
-              <li key={idx} className="flex items-start gap-2 text-xs">
+              <li key={idx} className="flex items-start gap-2 text-xl">
                 <CheckCircle size={14} className="text-[#00FF85] mt-0.5 flex-shrink-0" />
                 <span className="text-[#94A3B8]">{feature}</span>
               </li>
             ))}
           </ul>
 
-          <button className="w-full py-2.5 rounded-xl bg-white/5 border border-[#94A3B8]/30 text-[#94A3B8] text-sm font-semibold hover:bg-white/10 transition-all">
+          <button className="w-full py-2.5 rounded-xl bg-white/5 border border-[#94A3B8]/30 text-[#94A3B8] text-xl font-semibold hover:bg-white/10 transition-all">
             Plan Actual
           </button>
         </div>
@@ -71,14 +71,14 @@ export default function BillingPage() {
               <Crown size={22} className="text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-bold text-[#E9EDF2]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+              <h3 className="text-xl font-bold text-[#E9EDF2]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                 Premium
               </h3>
               <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-2xl font-bold bg-gradient-to-r from-[#00B2FF] to-[#5A00FF] bg-clip-text text-transparent" style={{ fontFamily: 'Space Mono, monospace' }}>
+                <span className="text-xl font-bold bg-gradient-to-r from-[#00B2FF] to-[#5A00FF] bg-clip-text text-transparent" style={{ fontFamily: 'Space Mono, monospace' }}>
                   B$ 12
                 </span>
-                <span className="text-xs text-[#94A3B8]">/mes</span>
+                <span className="text-xl text-[#94A3B8]">/mes</span>
               </div>
             </div>
           </div>
@@ -92,14 +92,14 @@ export default function BillingPage() {
               "WhatsApp integración",
               "Soporte prioritario 24/7"
             ].map((feature, idx) => (
-              <li key={idx} className="flex items-start gap-2 text-xs">
+              <li key={idx} className="flex items-start gap-2 text-xl">
                 <CheckCircle size={14} className="text-[#00FF85] mt-0.5 flex-shrink-0" />
                 <span className="text-[#E9EDF2]">{feature}</span>
               </li>
             ))}
           </ul>
 
-          <button className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#00B2FF] to-[#5A00FF] text-white text-sm font-semibold hover:opacity-90 transition-all shadow-lg glow-primary">
+          <button className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#00B2FF] to-[#5A00FF] text-white text-xl font-semibold hover:opacity-90 transition-all shadow-lg glow-primary">
             Actualizar ahora
           </button>
         </div>
@@ -111,14 +111,14 @@ export default function BillingPage() {
               <Building2 size={22} className="text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-bold text-[#E9EDF2]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+              <h3 className="text-xl font-bold text-[#E9EDF2]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                 Empresarial
               </h3>
               <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-2xl font-bold text-[#E9EDF2]" style={{ fontFamily: 'Space Mono, monospace' }}>
+                <span className="text-xl font-bold text-[#E9EDF2]" style={{ fontFamily: 'Space Mono, monospace' }}>
                   B$ 50+
                 </span>
-                <span className="text-xs text-[#94A3B8]">/mes</span>
+                <span className="text-xl text-[#94A3B8]">/mes</span>
               </div>
             </div>
           </div>
@@ -131,7 +131,7 @@ export default function BillingPage() {
               "Reportes avanzados",
               "Consultoría financiera"
             ].map((feature, idx) => (
-              <li key={idx} className="flex items-start gap-2 text-xs">
+              <li key={idx} className="flex items-start gap-2 text-xl">
                 <CheckCircle size={14} className="text-[#00FF85] mt-0.5 flex-shrink-0" />
                 <span className="text-[#94A3B8]">{feature}</span>
               </li>
@@ -140,7 +140,7 @@ export default function BillingPage() {
 
           <Link
             href="/chat"
-            className="w-full py-2.5 rounded-xl bg-white/5 border border-[#5A00FF]/30 text-[#E9EDF2] text-sm font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+            className="w-full py-2.5 rounded-xl bg-white/5 border border-[#5A00FF]/30 text-[#E9EDF2] text-xl font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2"
           >
             <MessageSquare size={16} />
             <span>Contactar</span>
@@ -150,7 +150,7 @@ export default function BillingPage() {
 
       {/* FAQ */}
       <div className="max-w-md mx-auto">
-        <h2 className="text-lg font-bold text-center mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
+        <h2 className="text-xl font-bold text-center mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
           <span className="bg-gradient-to-r from-[#00B2FF] to-[#5A00FF] bg-clip-text text-transparent">
             Preguntas Frecuentes
           </span>
@@ -163,10 +163,10 @@ export default function BillingPage() {
             { q: "¿Hay descuentos por pago anual?", a: "Sí, 2 meses gratis." }
           ].map((faq, idx) => (
             <div key={idx} className="backdrop-blur-xl bg-white/5 rounded-xl p-4 border border-[#00B2FF]/20 animate-fade-in" style={{ animationDelay: `${0.3 + idx * 0.1}s` }}>
-              <h3 className="text-sm font-semibold text-[#E9EDF2] mb-1">
+              <h3 className="text-xl font-semibold text-[#E9EDF2] mb-1">
                 {faq.q}
               </h3>
-              <p className="text-xs text-[#94A3B8]">
+              <p className="text-xl text-[#94A3B8]">
                 {faq.a}
               </p>
             </div>

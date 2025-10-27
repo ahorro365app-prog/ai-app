@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { User, Globe, DollarSign, Calendar, Target, LogOut, Edit2, Save, X, Phone, CreditCard, LayoutGrid } from 'lucide-react';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useSupabase } from '@/contexts/SupabaseContext';
+import { useModal } from '@/contexts/ModalContext';
 
 const COUNTRIES = [
   { code: 'BO', name: 'Bolivia', currency: 'BOB', symbol: 'Bs', flag: '🇧🇴', phoneCode: '+591' },
@@ -31,7 +32,8 @@ const currencyMap: Record<string, { code: string; symbol: string; name: string; 
 export default function ProfilePage() {
   const router = useRouter();
   const { currency, setCountry, setCurrency } = useCurrency();
-  const { user, updateUser } = useSupabase();
+  const { user, updateUser, deleteAllDebts, deleteAllGoals, debts, goals, logout } = useSupabase();
+  const { setModalOpen } = useModal();
 
   const [selectedCountry, setSelectedCountry] = useState('BO');
   const [dailyBudget, setDailyBudget] = useState('');
@@ -60,7 +62,19 @@ export default function ProfilePage() {
   // Estados para modal de confirmación
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'debts' | 'goals' | null>(null);
-  const [confirmData, setConfirmData] = useState<{name: string, count: number}>({name: '', count: 0});
+  const [confirmData, setConfirmData] = useState<{
+    name: string, 
+    count: number,
+    items: Array<{
+      nombre: string;
+      monto?: number;
+      pagado?: number;
+      restante?: number;
+      objetivo?: number;
+      ahorrado?: number;
+      falta?: number;
+    }>
+  }>({name: '', count: 0, items: []});
   
   // Estados para gestión de suscripción
   const [userSubscription, setUserSubscription] = useState<'free' | 'premium'>('free');
@@ -77,13 +91,13 @@ export default function ProfilePage() {
       setSelectedCountry(countryCode);
       setDailyBudget(user.presupuesto_diario?.toString() || '');
       setUserName(user.nombre);
-      setUserEmail(user.correo);
+      setUserEmail(user.correo || '');
       setUserPhone(user.telefono || '');
       
       // Usar configuración de menús desde la base de datos
       setIsDebtsEnabled(user.deudas_habilitado);
       setIsGoalsEnabled(user.metas_habilitado);
-      setUserSubscription(user.suscripcion);
+      setUserSubscription((user.suscripcion as 'free' | 'premium') || 'free');
     }
   }, [user]);
 
@@ -133,6 +147,7 @@ export default function ProfilePage() {
       setCurrency(currencyConfig);
       
       setShowLocationModal(false);
+      setModalOpen(false);
       showToastMessage('✅ Ubicación y moneda actualizadas');
     }
   };
@@ -140,6 +155,7 @@ export default function ProfilePage() {
   const handleOpenBudgetModal = () => {
     setTempDailyBudget(dailyBudget);
     setShowBudgetModal(true);
+    setModalOpen(true);
   };
 
   const handleSaveBudget = async () => {
@@ -152,6 +168,7 @@ export default function ProfilePage() {
       }
       setDailyBudget(tempDailyBudget);
       setShowBudgetModal(false);
+      setModalOpen(false);
       showToastMessage('✅ Presupuesto diario guardado');
     } else {
       showToastMessage('⚠️ Ingresa un presupuesto válido');
@@ -161,16 +178,49 @@ export default function ProfilePage() {
   const handleOpenNameModal = () => {
     setTempUserName(userName);
     setShowNameModal(true);
+    setModalOpen(true);
   };
 
   const handleOpenEmailModal = () => {
     setTempUserEmail(userEmail);
     setShowEmailModal(true);
+    setModalOpen(true);
   };
 
   const handleOpenPhoneModal = () => {
-    setTempUserPhone(userPhone);
+    // Extraer el número sin el prefijo del país usando prefijos conocidos
+    const phoneWithoutPrefix = userPhone ? (() => {
+      const knownPrefixes = [
+        '+591', // Bolivia
+        '+54',  // Argentina
+        '+52',  // México
+        '+34',  // España
+        '+1',   // Estados Unidos/Canadá
+        '+44',  // Reino Unido
+        '+55',  // Brasil
+        '+57',  // Colombia
+        '+51',  // Perú
+        '+56',  // Chile
+        '+58',  // Venezuela
+        '+593', // Ecuador
+        '+595', // Paraguay
+        '+598', // Uruguay
+      ];
+      
+      // Buscar el prefijo más largo que coincida
+      for (const prefix of knownPrefixes.sort((a, b) => b.length - a.length)) {
+        if (userPhone.startsWith(prefix)) {
+          return userPhone.substring(prefix.length);
+        }
+      }
+      
+      // Fallback: usar detección automática
+      const match = userPhone.match(/^(\+\d{2,3})(\d+)$/);
+      return match ? match[2] : userPhone.replace(/^\+\d+/, '');
+    })() : '';
+    setTempUserPhone(phoneWithoutPrefix);
     setShowPhoneModal(true);
+    setModalOpen(true);
   };
 
   const handleSaveName = async () => {
@@ -183,6 +233,7 @@ export default function ProfilePage() {
       }
       setUserName(tempUserName);
       setShowNameModal(false);
+      setModalOpen(false);
       showToastMessage('✅ Nombre actualizado');
     } else {
       showToastMessage('⚠️ El nombre es obligatorio');
@@ -198,39 +249,62 @@ export default function ProfilePage() {
     }
     setUserEmail(tempUserEmail);
     setShowEmailModal(false);
+    setModalOpen(false);
     showToastMessage('✅ Email actualizado');
   };
 
   const handleSavePhone = async () => {
-    if (user) {
+    if (user && currentCountry) {
+      // Agregar el prefijo del país al número
+      const fullPhone = `${currentCountry.phoneCode}${tempUserPhone}`;
+      
       // Usar Supabase si hay usuario
       await updateUser({
-        telefono: tempUserPhone
+        telefono: fullPhone
       });
+      
+      setUserPhone(fullPhone);
+      setShowPhoneModal(false);
+      setModalOpen(false);
+      showToastMessage('✅ Teléfono actualizado');
     }
-    setUserPhone(tempUserPhone);
-    setShowPhoneModal(false);
-    showToastMessage('✅ Teléfono actualizado');
   };
 
   const handleSignOut = () => {
-    // Redirigir al login (sin borrar datos)
+    // Cerrar sesión correctamente
+    logout();
+    setShowLogoutModal(false);
+    setModalOpen(false);
+    // Redirigir al login
     window.location.href = '/sign-in';
   };
 
   const handleToggleDebts = async () => {
     const newValue = !isDebtsEnabled;
     
-    // Actualizar en la base de datos
+    // Si se está desactivando, mostrar modal de confirmación
+    if (!newValue) {
+      setConfirmAction('debts');
+      setConfirmData({ 
+        name: 'Deudas', 
+        count: debts.length,
+        items: debts.map(debt => ({
+          nombre: debt.nombre,
+          monto: debt.monto_total,
+          pagado: debt.monto_pagado,
+          restante: debt.monto_total - debt.monto_pagado
+        }))
+      });
+      setShowConfirmModal(true);
+      setModalOpen(true);
+      return;
+    }
+    
+    // Si se está activando, proceder normalmente
     try {
       await updateUser({ deudas_habilitado: newValue });
       setIsDebtsEnabled(newValue);
-      
-      if (!newValue) {
-        showToastMessage('⚠️ Menú Deudas deshabilitado');
-      } else {
-        showToastMessage('✅ Menú Deudas habilitado');
-      }
+      showToastMessage('✅ Menú Deudas habilitado');
     } catch (error) {
       console.error('Error al actualizar configuración de deudas:', error);
       showToastMessage('❌ Error al actualizar configuración');
@@ -240,16 +314,29 @@ export default function ProfilePage() {
   const handleToggleGoals = async () => {
     const newValue = !isGoalsEnabled;
     
-    // Actualizar en la base de datos
+    // Si se está desactivando, mostrar modal de confirmación
+    if (!newValue) {
+      setConfirmAction('goals');
+      setConfirmData({ 
+        name: 'Metas', 
+        count: goals.length,
+        items: goals.map(goal => ({
+          nombre: goal.nombre,
+          objetivo: goal.monto_objetivo,
+          ahorrado: goal.monto_actual,
+          falta: goal.monto_objetivo - goal.monto_actual
+        }))
+      });
+      setShowConfirmModal(true);
+      setModalOpen(true);
+      return;
+    }
+    
+    // Si se está activando, proceder normalmente
     try {
       await updateUser({ metas_habilitado: newValue });
       setIsGoalsEnabled(newValue);
-      
-      if (!newValue) {
-        showToastMessage('⚠️ Menú Metas deshabilitado');
-      } else {
-        showToastMessage('✅ Menú Metas habilitado');
-      }
+      showToastMessage('✅ Menú Metas habilitado');
     } catch (error) {
       console.error('Error al actualizar configuración de metas:', error);
       showToastMessage('❌ Error al actualizar configuración');
@@ -257,28 +344,46 @@ export default function ProfilePage() {
   };
 
   // Funciones para manejar la confirmación
-  const handleConfirmDisable = () => {
+  const handleConfirmDisable = async () => {
     setShowConfirmModal(false);
+    setModalOpen(false);
     
-    if (confirmAction === 'debts') {
-      setIsDebtsEnabled(false);
-      localStorage.setItem('isDebtsEnabled', 'false');
-      localStorage.removeItem('userDebts');
-      showToastMessage('⚠️ Menú Deudas deshabilitado - Todas las deudas han sido eliminadas');
-    } else if (confirmAction === 'goals') {
-      setIsGoalsEnabled(false);
-      localStorage.setItem('isGoalsEnabled', 'false');
-      localStorage.removeItem('userGoals');
-      showToastMessage('⚠️ Menú Metas deshabilitado - Todas las metas han sido eliminadas');
+    try {
+      if (confirmAction === 'debts') {
+        // Eliminar todas las deudas de Supabase
+        await deleteAllDebts();
+        
+        // Desactivar el menú de deudas
+        await updateUser({ deudas_habilitado: false });
+        setIsDebtsEnabled(false);
+        
+        showToastMessage('⚠️ Menú Deudas deshabilitado - Todas las deudas y comprobantes han sido eliminados');
+      } else if (confirmAction === 'goals') {
+        // Eliminar todas las metas de Supabase
+        await deleteAllGoals();
+        
+        // Desactivar el menú de metas
+        await updateUser({ metas_habilitado: false });
+        setIsGoalsEnabled(false);
+        
+        showToastMessage('⚠️ Menú Metas deshabilitado - Todas las metas han sido eliminadas');
+      }
+      
+      // Limpiar el estado del modal
+      setConfirmAction(null);
+      setConfirmData({ name: '', count: 0, items: [] });
+      
+    } catch (error) {
+      console.error('Error al deshabilitar menú:', error);
+      showToastMessage('❌ Error al deshabilitar menú. Inténtalo nuevamente.');
     }
-    
-    setTimeout(() => window.location.reload(), 500);
   };
 
   const handleCancelDisable = () => {
     setShowConfirmModal(false);
+    setModalOpen(false);
     setConfirmAction(null);
-    setConfirmData({name: '', count: 0});
+    setConfirmData({name: '', count: 0, items: []});
   };
 
   // Funciones para gestión de suscripción
@@ -297,6 +402,7 @@ export default function ProfilePage() {
       
       setUserSubscription('premium');
       setShowUpgradeModal(false);
+      setModalOpen(false);
       setActivationCode('');
       showToastMessage('🎉 ¡Felicidades! Has activado la versión Premium');
     } else {
@@ -317,11 +423,11 @@ export default function ProfilePage() {
   const currentCountry = COUNTRIES.find(c => c.code === selectedCountry);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 pb-24">
+    <div className="pt-[40px] px-4 pb-24">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-3" style={{ marginTop: 0 }}>
         <h1 className="text-xl font-bold text-gray-900 mb-1">Mi Perfil</h1>
-        <p className="text-xs text-gray-600">Gestiona tu cuenta y preferencias</p>
+        <p className="text-gray-600">Gestiona tu cuenta y preferencias</p>
       </div>
 
       {/* User Card */}
@@ -384,7 +490,40 @@ export default function ProfilePage() {
             <div className="flex-1">
               <p className="text-xs text-gray-600">Teléfono</p>
               <p className="font-semibold text-gray-900">
-                {userPhone ? `${currentCountry?.phoneCode} ${userPhone}` : 'No configurado'}
+                {userPhone ? (() => {
+                  // Lista de prefijos conocidos para separación correcta
+                  const knownPrefixes = [
+                    '+591', // Bolivia
+                    '+54',  // Argentina
+                    '+52',  // México
+                    '+34',  // España
+                    '+1',   // Estados Unidos/Canadá
+                    '+44',  // Reino Unido
+                    '+55',  // Brasil
+                    '+57',  // Colombia
+                    '+51',  // Perú
+                    '+56',  // Chile
+                    '+58',  // Venezuela
+                    '+593', // Ecuador
+                    '+595', // Paraguay
+                    '+598', // Uruguay
+                  ];
+                  
+                  // Buscar el prefijo más largo que coincida
+                  for (const prefix of knownPrefixes.sort((a, b) => b.length - a.length)) {
+                    if (userPhone.startsWith(prefix)) {
+                      const number = userPhone.substring(prefix.length);
+                      return `${prefix} ${number}`;
+                    }
+                  }
+                  
+                  // Fallback: usar detección automática para prefijos no conocidos
+                  const match = userPhone.match(/^(\+\d{2,3})(\d+)$/);
+                  if (match) {
+                    return `${match[1]} ${match[2]}`;
+                  }
+                  return userPhone;
+                })() : 'No configurado'}
               </p>
             </div>
             <Edit2 size={16} className="text-purple-500" />
@@ -394,7 +533,10 @@ export default function ProfilePage() {
 
       {/* Ubicación y Moneda */}
       <button
-        onClick={() => setShowLocationModal(true)}
+        onClick={() => {
+          setShowLocationModal(true);
+          setModalOpen(true);
+        }}
         className="w-full bg-white rounded-3xl p-6 mb-4 shadow-sm border border-gray-100 hover:shadow-md transition-all text-left"
       >
         <div className="flex items-center justify-between mb-4">
@@ -477,7 +619,10 @@ export default function ProfilePage() {
           <div className="flex gap-2">
             {userSubscription === 'free' ? (
               <button
-                onClick={() => setShowUpgradeModal(true)}
+                onClick={() => {
+                  setShowUpgradeModal(true);
+                  setModalOpen(true);
+                }}
                 className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-all"
               >
                 Actualizar
@@ -577,7 +722,10 @@ export default function ProfilePage() {
 
       {/* Cerrar Sesión */}
       <button
-        onClick={() => setShowLogoutModal(true)}
+        onClick={() => {
+          setShowLogoutModal(true);
+          setModalOpen(true);
+        }}
         className="w-full p-4 rounded-3xl bg-gradient-to-r from-red-500 to-red-600 text-white font-bold hover:opacity-90 transition-all flex items-center justify-center gap-3 shadow-lg"
       >
         <LogOut size={24} />
@@ -634,7 +782,10 @@ export default function ProfilePage() {
             {/* Botones - fijos al fondo */}
             <div className="flex gap-3 flex-shrink-0 pt-2 border-t border-gray-100">
               <button
-                onClick={() => setShowLocationModal(false)}
+                onClick={() => {
+                  setShowLocationModal(false);
+                  setModalOpen(false);
+                }}
                 className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 Cancelar
@@ -689,7 +840,10 @@ export default function ProfilePage() {
             {/* Botones */}
             <div className="flex gap-3">
               <button
-                onClick={() => setShowBudgetModal(false)}
+                onClick={() => {
+                  setShowBudgetModal(false);
+                  setModalOpen(false);
+                }}
                 className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 Cancelar
@@ -742,7 +896,10 @@ export default function ProfilePage() {
             {/* Botones */}
             <div className="flex gap-3">
               <button
-                onClick={() => setShowNameModal(false)}
+                onClick={() => {
+                  setShowNameModal(false);
+                  setModalOpen(false);
+                }}
                 className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 Cancelar
@@ -795,7 +952,10 @@ export default function ProfilePage() {
             {/* Botones */}
             <div className="flex gap-3">
               <button
-                onClick={() => setShowEmailModal(false)}
+                onClick={() => {
+                  setShowEmailModal(false);
+                  setModalOpen(false);
+                }}
                 className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 Cancelar
@@ -854,7 +1014,10 @@ export default function ProfilePage() {
             {/* Botones */}
             <div className="flex gap-3">
               <button
-                onClick={() => setShowPhoneModal(false)}
+                onClick={() => {
+                  setShowPhoneModal(false);
+                  setModalOpen(false);
+                }}
                 className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 Cancelar
@@ -892,7 +1055,10 @@ export default function ProfilePage() {
             {/* Botones */}
             <div className="flex gap-3">
               <button
-                onClick={() => setShowLogoutModal(false)}
+                onClick={() => {
+                  setShowLogoutModal(false);
+                  setModalOpen(false);
+                }}
                 className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 Cancelar
@@ -920,13 +1086,10 @@ export default function ProfilePage() {
               <h3 className="text-lg font-bold text-gray-900 mb-2">
                 ¿Deshabilitar {confirmData.name}?
               </h3>
-              <p className="text-gray-600 text-xs">
-                Esta acción eliminará permanentemente todas tus {confirmData.name.toLowerCase()} guardadas.
-              </p>
             </div>
 
             {/* Información de Advertencia */}
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <X size={16} className="text-red-600" />
@@ -934,11 +1097,42 @@ export default function ProfilePage() {
                 <div>
                   <h4 className="font-semibold text-red-800 mb-1">Advertencia</h4>
                   <p className="text-xs text-red-700">
-                    Se eliminarán <strong>{confirmData.count}</strong> {confirmData.name.toLowerCase()} y toda su información asociada (historial de pagos, comprobantes, etc.). Esta acción no se puede deshacer.
+                    Se eliminarán <strong>todas</strong> las {confirmData.name.toLowerCase()} y toda su información asociada (historial de pagos, comprobantes, etc.) de la base de datos. Esta acción es irreversible.
                   </p>
                 </div>
               </div>
             </div>
+
+            {/* Resumen de Items */}
+            {confirmData.count > 0 && (
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">
+                <h4 className="font-semibold text-gray-800 mb-3 text-center">
+                  Resumen de {confirmData.name} a eliminar ({confirmData.count})
+                </h4>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {confirmData.items.map((item, index) => (
+                    <div key={index} className="flex justify-between items-center p-2 bg-white rounded-lg border border-gray-100">
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900 text-xs">{item.nombre}</p>
+                        {confirmAction === 'debts' ? (
+                          <p className="text-xs text-gray-500">
+                            Total: {currency.symbol}{item.monto?.toLocaleString()} | 
+                            Pagado: {currency.symbol}{item.pagado?.toLocaleString()} | 
+                            Restante: {currency.symbol}{item.restante?.toLocaleString()}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-500">
+                            Objetivo: {currency.symbol}{item.objetivo?.toLocaleString()} | 
+                            Ahorrado: {currency.symbol}{item.ahorrado?.toLocaleString()} | 
+                            Falta: {currency.symbol}{item.falta?.toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Botones */}
             <div className="flex gap-3">
@@ -1024,7 +1218,10 @@ export default function ProfilePage() {
             {/* Botones */}
             <div className="flex gap-3">
               <button
-                onClick={() => setShowUpgradeModal(false)}
+                onClick={() => {
+                  setShowUpgradeModal(false);
+                  setModalOpen(false);
+                }}
                 className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 Cancelar

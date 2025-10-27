@@ -66,10 +66,10 @@ export default function TestIntegrationPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 pb-24 flex flex-col items-center justify-center text-center">
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">Prueba de Integración Supabase</h1>
+      <h1 className="text-xl font-bold text-gray-900 mb-4">Prueba de Integración Supabase</h1>
       
       <div className="bg-white rounded-xl shadow-lg p-6 mb-6 max-w-md">
-        <h2 className="text-lg font-semibold mb-4">Usuario actual:</h2>
+        <h2 className="text-xl font-semibold mb-4">Usuario actual:</h2>
         {user ? (
           <div className="text-left">
             <p><strong>Nombre:</strong> {user.name}</p>
@@ -104,7 +104,7 @@ export default function TestIntegrationPage() {
         </button>
       </div>
 
-      <p className={`text-lg font-semibold ${
+      <p className={`text-xl font-semibold ${
         status.includes('✅') ? 'text-green-600' :
         status.includes('❌') ? 'text-red-600' :
         'text-gray-600'

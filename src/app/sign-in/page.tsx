@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogIn, Mail, Lock, Phone, Eye, EyeOff } from 'lucide-react';
 import { useSupabase } from '@/contexts/SupabaseContext';
+import { useModal } from '@/contexts/ModalContext';
 import ErrorModal from '@/components/ErrorModal';
 
 // Mapeo de países con sus prefijos
@@ -26,6 +27,7 @@ const countries = [
 export default function SignInPage() {
   const router = useRouter();
   const { signInWithPhone } = useSupabase();
+  const { setModalOpen } = useModal();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('BO'); // Bolivia por defecto
@@ -87,17 +89,31 @@ export default function SignInPage() {
 
                 router.push('/dashboard');
               } else {
-            setErrorModal({
-              isOpen: true,
-              message: result.error || 'Credenciales incorrectas.'
-            });
-          }
+                // Determinar el tipo de error específico
+                let errorMessage = result.error || 'Credenciales incorrectas.';
+                let errorTitle = 'Error al iniciar sesión';
+                
+                if (result.error?.includes('conexión') || result.error?.includes('internet')) {
+                  errorTitle = 'Problema de conexión';
+                  errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión a internet e intenta nuevamente.';
+                } else if (result.error?.includes('Credenciales incorrectas')) {
+                  errorTitle = 'Credenciales incorrectas';
+                  errorMessage = 'El número de teléfono o la contraseña no son correctos. Verifica tus datos e intenta nuevamente.';
+                }
+                
+                setErrorModal({
+                  isOpen: true,
+                  message: errorMessage
+                });
+                setModalOpen(true);
+              }
         } catch (error) {
           console.error('Error de autenticación:', error);
           setErrorModal({
             isOpen: true,
             message: 'Error inesperado. Verifica tu conexión e intenta nuevamente.'
           });
+          setModalOpen(true);
         } finally {
           setIsLoading(false);
         }
@@ -106,12 +122,14 @@ export default function SignInPage() {
           isOpen: true,
           message: 'Por favor completa todos los campos antes de continuar.'
         });
+        setModalOpen(true);
       }
     } else {
       setErrorModal({
         isOpen: true,
         message: 'Login con email no implementado aún. Usa el teléfono.'
       });
+      setModalOpen(true);
     }
   };
 
@@ -138,7 +156,7 @@ export default function SignInPage() {
             <LogIn size={40} className="text-blue-600" />
           </div>
           <h1 className="text-4xl font-bold text-white mb-2">Ahorro365</h1>
-          <p className="text-blue-100">Gestiona tus finanzas con IA</p>
+          <p className="text-blue-100 text-lg">Gestiona tus finanzas con IA</p>
         </div>
 
         {/* Formulario */}
@@ -188,7 +206,7 @@ export default function SignInPage() {
                   )}
                 </div>
                 {/* Campo de teléfono */}
-                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus-within:border-blue-500 transition-colors flex-1">
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus-within:border-blue-500 transition-colors" style={{ maxWidth: '210px' }}>
                   <Phone size={20} className="text-gray-400" />
                   <input
                     type="tel"
@@ -197,6 +215,7 @@ export default function SignInPage() {
                     placeholder="Número de teléfono"
                     className="flex-1 bg-transparent text-gray-900 focus:outline-none"
                     autoFocus
+                    suppressHydrationWarning
                   />
                 </div>
               </div>
@@ -215,6 +234,7 @@ export default function SignInPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="flex-1 bg-transparent text-gray-900 focus:outline-none"
+                  suppressHydrationWarning
                 />
                 <button
                   type="button"
@@ -234,6 +254,7 @@ export default function SignInPage() {
               checked={rememberPassword}
               onChange={(e) => setRememberPassword(e.target.checked)}
               className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              suppressHydrationWarning
             />
             <label htmlFor="rememberPassword" className="text-sm text-gray-600 cursor-pointer select-none">
               Recordar contraseña
@@ -244,7 +265,7 @@ export default function SignInPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-lg hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+              className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-base hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -277,8 +298,17 @@ export default function SignInPage() {
       {/* Modal de Error */}
       <ErrorModal
         isOpen={errorModal.isOpen}
-        onClose={() => setErrorModal({ isOpen: false, message: '' })}
-        title={errorModal.message.includes('campos') ? "Campos requeridos" : "Error al iniciar sesión"}
+        onClose={() => {
+          setErrorModal({ isOpen: false, message: '' });
+          setModalOpen(false);
+        }}
+        title={
+          errorModal.message.includes('campos') ? "Campos requeridos" :
+          errorModal.message.includes('conexión') || errorModal.message.includes('internet') ? "Problema de conexión" :
+          errorModal.message.includes('Credenciales incorrectas') ? "Credenciales incorrectas" :
+          errorModal.message.includes('inesperado') ? "Error inesperado" :
+          "Error al iniciar sesión"
+        }
         message={errorModal.message}
         type="error"
       />

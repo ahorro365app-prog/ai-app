@@ -6,6 +6,21 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     androidScheme: 'https'
+  },
+  plugins: {
+    ScreenOrientation: {
+      orientation: 'portrait'
+    },
+    Permissions: {
+      microphone: {
+        android: {
+          permissions: ['android.permission.RECORD_AUDIO']
+        },
+        ios: {
+          usageDescription: 'Esta aplicación necesita acceso al micrófono para grabar tus gastos por voz.'
+        }
+      }
+    }
   }
 };
 

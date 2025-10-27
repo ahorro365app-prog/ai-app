@@ -92,11 +92,11 @@ export default function ErrorModal({
         {/* Header */}
         <div className={`flex items-center justify-between p-6 border-b ${getBorderColor()} ${getBackgroundColor()}`}>
           <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-full ${getBackgroundColor()} border-2 ${getBorderColor()}`}>
-              <IconComponent size={28} className={getIconColor()} />
+            <div className={`p-2 rounded-full ${getBackgroundColor()} border-2 ${getBorderColor()}`}>
+              <IconComponent size={20} className={getIconColor()} />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-gray-900">{displayTitle}</h3>
+              <h3 className="font-bold text-gray-900" style={{ fontSize: '20px' }}>{displayTitle}</h3>
             </div>
           </div>
           <button
@@ -109,14 +109,14 @@ export default function ErrorModal({
 
         {/* Content */}
         <div className="p-6">
-          <p className="text-gray-700 leading-relaxed text-center">{message}</p>
+          <p className="text-gray-700 leading-relaxed text-center text-sm">{message}</p>
         </div>
 
         {/* Footer */}
         <div className="flex justify-center p-6 border-t border-gray-200">
           <button
             onClick={onClose}
-            className={`px-8 py-3 rounded-xl font-semibold transition-all duration-150 shadow-sm hover:shadow-md active:scale-95 ${
+            className={`px-6 py-2.5 rounded-xl font-semibold transition-all duration-150 shadow-sm hover:shadow-md active:scale-95 text-sm ${
               type === 'success' 
                 ? 'bg-green-600 text-white hover:bg-green-700' 
                 : type === 'warning'

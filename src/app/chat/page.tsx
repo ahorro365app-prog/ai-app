@@ -50,10 +50,10 @@ export default function ChatPage() {
             <Bot size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-[#E9EDF2]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+            <h1 className="text-xl font-bold text-[#E9EDF2]" style={{ fontFamily: 'Poppins, sans-serif' }}>
               Asistente Financiero
             </h1>
-            <p className="text-xs text-[#94A3B8]">
+            <p className="text-xl text-[#94A3B8]">
               Pregunta o registra gastos
             </p>
           </div>
@@ -70,7 +70,7 @@ export default function ChatPage() {
             <h2 className="text-xl font-bold text-[#E9EDF2] mb-3" style={{ fontFamily: 'Poppins, sans-serif' }}>
               ¿Cómo puedo ayudarte?
             </h2>
-            <p className="text-sm text-[#94A3B8] mb-6 px-4">
+            <p className="text-xl text-[#94A3B8] mb-6 px-4">
               Prueba preguntarme algo:
             </p>
             
@@ -89,7 +89,7 @@ export default function ChatPage() {
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00B2FF] to-[#5A00FF] flex items-center justify-center flex-shrink-0">
                     <suggestion.Icon size={16} className="text-white" />
                   </div>
-                  <span className="text-xs text-[#94A3B8] group-hover:text-[#E9EDF2]">
+                  <span className="text-xl text-[#94A3B8] group-hover:text-[#E9EDF2]">
                     {suggestion.text}
                   </span>
                 </button>
@@ -120,7 +120,7 @@ export default function ChatPage() {
             <div className={`flex-1 max-w-[75%] ${m.role === "user" ? "items-end" : "items-start"}`}>
               <div
                 className={`
-                  px-3 py-2 rounded-2xl text-sm leading-relaxed
+                  px-3 py-2 rounded-2xl text-xl leading-relaxed
                   ${m.role === "user"
                     ? "bg-gradient-to-br from-[#00B2FF] to-[#5A00FF] text-white ml-auto"
                     : "bg-white/10 border border-[#5A00FF]/30 text-[#E9EDF2] backdrop-blur-sm"
@@ -161,7 +161,7 @@ export default function ChatPage() {
           <div className="flex gap-2 items-end">
             <div className="flex-1 relative">
               <textarea
-                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-[#00B2FF]/30 text-[#E9EDF2] text-sm placeholder-[#94A3B8] focus:outline-none focus:border-[#00B2FF] focus:ring-2 focus:ring-[#00B2FF]/20 transition-all resize-none"
+                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-[#00B2FF]/30 text-[#E9EDF2] text-xl placeholder-[#94A3B8] focus:outline-none focus:border-[#00B2FF] focus:ring-2 focus:ring-[#00B2FF]/20 transition-all resize-none"
                 placeholder="Escribe tu mensaje..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}

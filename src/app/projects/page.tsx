@@ -14,12 +14,12 @@ export default function ProjectsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 animate-fade-in">
         <div>
-          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+          <h1 className="text-xl font-bold mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
             <span className="bg-gradient-to-r from-[#00B2FF] to-[#5A00FF] bg-clip-text text-transparent">
               Proyectos
             </span>
           </h1>
-          <p className="text-sm text-[#94A3B8]">
+          <p className="text-xl text-[#94A3B8]">
             Gestiona tus proyectos
           </p>
         </div>
@@ -44,12 +44,12 @@ export default function ProjectsPage() {
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-semibold text-[#E9EDF2] mb-1 group-hover:text-[#00B2FF] transition-colors truncate">
+                  <h3 className="text-xl font-semibold text-[#E9EDF2] mb-1 group-hover:text-[#00B2FF] transition-colors truncate">
                     {project.title}
                   </h3>
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-[#94A3B8]">{project.date}</span>
+                    <span className="text-xl text-[#94A3B8]">{project.date}</span>
                     <span className="px-2 py-0.5 rounded-full bg-[#00B2FF]/20 text-[#00B2FF] text-[10px] font-medium">
                       {project.category}
                     </span>
@@ -74,7 +74,7 @@ export default function ProjectsPage() {
             <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-gradient-to-br from-[#00B2FF]/20 to-[#5A00FF]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Plus size={24} className="text-[#00B2FF]" />
             </div>
-            <p className="text-sm text-[#94A3B8] group-hover:text-[#E9EDF2] transition-colors">
+            <p className="text-xl text-[#94A3B8] group-hover:text-[#E9EDF2] transition-colors">
               Crear nuevo proyecto
             </p>
           </div>

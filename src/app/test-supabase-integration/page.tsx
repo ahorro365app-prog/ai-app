@@ -17,7 +17,7 @@ export default function TestSupabaseIntegrationPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-50 to-purple-50 p-4 pb-24 flex flex-col items-center justify-center text-center">
         <div className="text-xl font-semibold text-red-600 mb-4">Error al cargar datos</div>
-        <div className="text-sm text-gray-600">{error}</div>
+        <div className="text-xl text-gray-600">{error}</div>
       </div>
     );
   }
@@ -25,7 +25,7 @@ export default function TestSupabaseIntegrationPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 p-4 pb-24">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+        <h1 className="text-xl font-bold text-gray-900 mb-6 text-center">
           🎉 ¡Integración con Supabase Exitosa!
         </h1>
 
@@ -56,7 +56,7 @@ export default function TestSupabaseIntegrationPage() {
                   <div className="flex justify-between items-center">
                     <div>
                       <div className="font-semibold">{transaction.categoria}</div>
-                      <div className="text-sm text-gray-600">{transaction.descripcion}</div>
+                      <div className="text-xl text-gray-600">{transaction.descripcion}</div>
                     </div>
                     <div className={`font-bold ${transaction.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'}`}>
                       {transaction.tipo === 'ingreso' ? '+' : '-'}{transaction.monto} {user?.moneda}
@@ -65,7 +65,7 @@ export default function TestSupabaseIntegrationPage() {
                 </div>
               ))}
               {transactions.length > 5 && (
-                <div className="text-sm text-gray-500 text-center">
+                <div className="text-xl text-gray-500 text-center">
                   ... y {transactions.length - 5} más
                 </div>
               )}
@@ -85,7 +85,7 @@ export default function TestSupabaseIntegrationPage() {
                   <div className="flex justify-between items-center">
                     <div>
                       <div className="font-semibold">{debt.nombre}</div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-xl text-gray-600">
                         Progreso: {debt.monto_pagado} / {debt.monto_total} {user?.moneda}
                       </div>
                     </div>
@@ -113,7 +113,7 @@ export default function TestSupabaseIntegrationPage() {
                   <div className="flex justify-between items-center">
                     <div>
                       <div className="font-semibold">{goal.nombre}</div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-xl text-gray-600">
                         Progreso: {goal.monto_actual} / {goal.monto_objetivo} {user?.moneda}
                       </div>
                     </div>

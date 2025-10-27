@@ -1,5 +1,8 @@
 apply plugin: 'com.android.application'
 
+// Aplicar script de versionado automático
+apply from: '../increment-version.gradle'
+
 android {
     namespace "com.ahorro365.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,8 +10,12 @@ android {
         applicationId "com.ahorro365.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        
+        // Usar versionado automático
+        def versionInfo = incrementVersion()
+        versionCode versionInfo[0]
+        versionName versionInfo[1]
+        
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

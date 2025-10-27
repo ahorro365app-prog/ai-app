@@ -12,7 +12,7 @@ interface CurrencyConfig {
 const currencyMap: Record<string, CurrencyConfig> = {
   // América Latina
   AR: { code: "ARS", symbol: "$", name: "Peso argentino", locale: "es-AR" },
-  BO: { code: "BOB", symbol: "Bs", name: "Boliviano", locale: "es-BO" },
+  BO: { code: "BOB", symbol: "Bs.", name: "Boliviano", locale: "es-BO" },
   BR: { code: "BRL", symbol: "R$", name: "Real brasileño", locale: "pt-BR" },
   CL: { code: "CLP", symbol: "$", name: "Peso chileno", locale: "es-CL" },
   CO: { code: "COP", symbol: "$", name: "Peso colombiano", locale: "es-CO" },
@@ -61,6 +61,23 @@ export function useCurrency() {
 
     // Detectar país mediante API de geolocalización
     detectCountryAndCurrency();
+  }, []);
+
+  // Función para actualizar la moneda desde Supabase
+  const updateCurrencyFromSupabase = useCallback((supabaseCurrency: string) => {
+    const countryCode = Object.keys(currencyMap).find(key => 
+      currencyMap[key].code === supabaseCurrency
+    );
+    
+    if (countryCode) {
+      const currencyConfig = currencyMap[countryCode];
+      setCurrency(currencyConfig);
+      setCountry(countryCode);
+      
+      // Actualizar localStorage también
+      localStorage.setItem('userCurrency', JSON.stringify(currencyConfig));
+      localStorage.setItem('userCountry', countryCode);
+    }
   }, []);
 
   const detectCountryAndCurrency = async () => {
@@ -112,22 +129,68 @@ export function useCurrency() {
 
   // Memoizar formatAmount para evitar recrearlo en cada render
   const formatAmount = useCallback((amount: number, options?: Intl.NumberFormatOptions) => {
-    return new Intl.NumberFormat(currency.locale, {
-      style: 'currency',
-      currency: currency.code,
+    // Formatear solo el número sin símbolo de moneda
+    const numberFormatter = new Intl.NumberFormat(currency.locale, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
       ...options,
-    }).format(amount);
-  }, [currency.locale, currency.code]);
+    });
+    
+    const formattedNumber = numberFormatter.format(amount);
+    
+    // Agregar nuestro símbolo personalizado al principio
+    return `${currency.symbol}${formattedNumber}`;
+  }, [currency.locale, currency.symbol]);
 
-  const changeCurrency = useCallback((countryCode: string) => {
+  const changeCurrency = useCallback(async (countryCode: string) => {
     const currencyConfig = currencyMap[countryCode] || currencyMap.DEFAULT;
     setCurrency(currencyConfig);
     setCountry(countryCode);
     
     localStorage.setItem('userCurrency', JSON.stringify(currencyConfig));
     localStorage.setItem('userCountry', countryCode);
+    
+    // Guardar país en Supabase si hay usuario logueado
+    try {
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Mapeo de country code a timezone
+        const timezoneMap: Record<string, string> = {
+          'BOL': 'America/La_Paz',
+          'ARG': 'America/Argentina/Buenos_Aires',
+          'MEX': 'America/Mexico_City',
+          'PER': 'America/Lima',
+          'COL': 'America/Bogota',
+          'CHL': 'America/Santiago',
+          'US': 'America/New_York',
+          'ES': 'Europe/Madrid',
+        };
+        
+        const countryCode3 = countryCode === 'BO' ? 'BOL' : 
+                             countryCode === 'AR' ? 'ARG' : 
+                             countryCode === 'MX' ? 'MEX' : 
+                             countryCode === 'PE' ? 'PER' : 
+                             countryCode === 'CO' ? 'COL' : 
+                             countryCode === 'CL' ? 'CHL' : 
+                             countryCode === 'US' ? 'US' : 
+                             countryCode === 'ES' ? 'ES' : 'BOL';
+        
+        const timezone = timezoneMap[countryCode3] || 'America/La_Paz';
+        
+        await supabase
+          .from('usuarios')
+          .update({
+            country_code: countryCode3,
+            timezone: timezone,
+            moneda: currencyConfig.code
+          })
+          .eq('id', user.id);
+      }
+    } catch (error) {
+      console.error('Error updating country in Supabase:', error);
+    }
   }, []);
 
   // Memoizar la lista de países disponibles
@@ -145,6 +208,7 @@ export function useCurrency() {
     availableCountries,
     setCountry,
     setCurrency,
+    updateCurrencyFromSupabase,
   };
 }
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Target, Calendar, DollarSign, Trash2, Gift, Star, History, Camera, Image, X, Pencil, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useSupabase } from '@/contexts/SupabaseContext';
+import { useModal } from '@/contexts/ModalContext';
 
 interface SavingsRecord {
   id: string;
@@ -38,6 +39,7 @@ const GOAL_CATEGORIES = {
 export default function MetasPage() {
   const { formatAmount, currency } = useCurrency();
   const { user, goals: supabaseGoals, addGoal: addSupabaseGoal, updateGoal: updateSupabaseGoal, deleteGoal: deleteSupabaseGoal } = useSupabase();
+  const { setModalOpen } = useModal();
   const [goals, setGoals] = useState<Goal[]>([]);
   // Usar moneda de Supabase si está disponible
   const currentCurrency = user?.moneda || currency;
@@ -78,6 +80,7 @@ export default function MetasPage() {
   const [targetAmount, setTargetAmount] = useState('');
   const [currentAmount, setCurrentAmount] = useState('');
   const [targetDate, setTargetDate] = useState('');
+  const [hasTargetDate, setHasTargetDate] = useState(false);
   const [category, setCategory] = useState<Goal['category']>('otro');
   const [priority, setPriority] = useState<Goal['priority']>('media');
 
@@ -129,9 +132,19 @@ export default function MetasPage() {
     return diffDays;
   };
 
+  // Manejar toggle de fecha objetivo
+  const handleTargetDateToggle = (hasDate: boolean) => {
+    setHasTargetDate(hasDate);
+    
+    if (!hasDate) {
+      // Si se desactiva, limpiar la fecha
+      setTargetDate('');
+    }
+  };
+
   // Agregar nueva meta
   const handleAddGoal = async () => {
-    if (goalName && targetAmount && targetDate) {
+    if (goalName && targetAmount) {
       const newGoal = {
         nombre: goalName,
         descripcion: description,
@@ -173,6 +186,7 @@ export default function MetasPage() {
       setCategory('otro');
       setPriority('media');
       setShowAddGoalModal(false);
+      setModalOpen(false);
     }
   };
 
@@ -180,6 +194,7 @@ export default function MetasPage() {
   const handleDeleteGoal = (goal: Goal) => {
     setGoalToDelete(goal);
     setShowDeleteConfirmModal(true);
+    setModalOpen(true);
   };
 
   // Confirmar eliminación de meta
@@ -194,6 +209,7 @@ export default function MetasPage() {
         saveGoals(newGoals);
       }
       setShowDeleteConfirmModal(false);
+      setModalOpen(false);
       setGoalToDelete(null);
     }
   };
@@ -201,6 +217,7 @@ export default function MetasPage() {
   // Cancelar eliminación de meta
   const handleCancelDeleteGoal = () => {
     setShowDeleteConfirmModal(false);
+    setModalOpen(false);
     setGoalToDelete(null);
   };
 
@@ -274,31 +291,37 @@ export default function MetasPage() {
     setSavingsAmount('');
     setSavingsReceipt(null);
     setShowSavingsModal(true);
+    setModalOpen(true);
   };
 
   // Abrir modal de historial
   const handleShowHistory = (goal: Goal) => {
     setGoalHistory(goal);
     setShowHistoryModal(true);
+    setModalOpen(true);
   };
 
   // Cerrar modal de historial
   const handleCloseHistory = () => {
     setShowHistoryModal(false);
+    setModalOpen(false);
     setGoalHistory(null);
   };
 
   // Funciones para comprobantes
   const handleReceiptClick = () => {
     setShowReceiptOptions(true);
+    setModalOpen(true);
   };
 
   const handleCloseReceiptOptions = () => {
     setShowReceiptOptions(false);
+    setModalOpen(false);
   };
 
   const handleSelectFromGallery = () => {
     setShowReceiptOptions(false);
+    setModalOpen(false);
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -317,6 +340,7 @@ export default function MetasPage() {
 
   const handleTakePhoto = () => {
     setShowReceiptOptions(false);
+    setModalOpen(false);
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -341,10 +365,12 @@ export default function MetasPage() {
   const handleShowReceipt = (image: string) => {
     setReceiptImage(image);
     setShowReceiptModal(true);
+    setModalOpen(true);
   };
 
   const handleCloseReceipt = () => {
     setShowReceiptModal(false);
+    setModalOpen(false);
     setReceiptImage(null);
   };
 
@@ -400,6 +426,7 @@ export default function MetasPage() {
       
       // Cerrar modal y limpiar estados
       setShowSavingsModal(false);
+      setModalOpen(false);
       setGoalToSave(null);
       setSavingsAmount('');
       setSavingsReceipt(null);
@@ -411,10 +438,12 @@ export default function MetasPage() {
     setSavingsToEdit(savings);
     setEditSavingsAmount(savings.amount.toString());
     setShowEditSavingsModal(true);
+    setModalOpen(true);
   };
 
   const handleCloseEditSavings = () => {
     setShowEditSavingsModal(false);
+    setModalOpen(false);
     setSavingsToEdit(null);
     setEditSavingsAmount('');
   };
@@ -476,10 +505,12 @@ export default function MetasPage() {
   const handleDeleteSavings = (savings: SavingsRecord) => {
     setSavingsToDelete(savings);
     setShowDeleteSavingsModal(true);
+    setModalOpen(true);
   };
 
   const handleCloseDeleteSavings = () => {
     setShowDeleteSavingsModal(false);
+    setModalOpen(false);
     setSavingsToDelete(null);
   };
 
@@ -539,10 +570,10 @@ export default function MetasPage() {
   const totalProgress = totalTarget > 0 ? (totalCurrent / totalTarget) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 pb-24">
+    <div className="pt-[40px] px-4 pb-24">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xs font-bold text-gray-900 mb-1">Mis Metas</h1>
+      <div className="mb-6" style={{ marginTop: 0 }}>
+        <h1 className="text-xl font-bold text-gray-900 mb-1">Mis Metas</h1>
         <p className="text-gray-600">Ahorra para tus sueños y recompensas</p>
       </div>
 
@@ -599,10 +630,13 @@ export default function MetasPage() {
       {goals.length === 0 ? (
         <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 text-center">
           <Gift size={64} className="text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xs font-semibold text-gray-900 mb-2">No tienes metas establecidas</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-2">No tienes metas establecidas</h3>
           <p className="text-gray-600 mb-6">Crea tu primera meta de ahorro para alcanzar tus sueños</p>
           <button
-            onClick={() => setShowAddGoalModal(true)}
+            onClick={() => {
+              setShowAddGoalModal(true);
+              setModalOpen(true);
+            }}
             className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-xl hover:opacity-90 transition-all"
           >
             Crear Primera Meta
@@ -621,7 +655,7 @@ export default function MetasPage() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
                     <span className="text-4xl">{categoryInfo.emoji}</span>
-                    <h3 className="font-bold text-gray-900 text-xs">{goal.name}</h3>
+                    <h3 className="font-bold text-gray-900 text-sm">{goal.name}</h3>
                   </div>
                   <div className="flex items-center gap-1">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -755,7 +789,10 @@ export default function MetasPage() {
 
           {/* Botón flotante para agregar */}
           <button
-            onClick={() => setShowAddGoalModal(true)}
+            onClick={() => {
+              setShowAddGoalModal(true);
+              setModalOpen(true);
+            }}
             className="fixed bottom-24 right-4 w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center"
           >
             <Plus size={24} />
@@ -799,22 +836,28 @@ export default function MetasPage() {
                 <label className="block text-xs font-semibold text-gray-700 mb-2">
                   Categoría
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {Object.entries(GOAL_CATEGORIES).map(([key, info]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setCategory(key as Goal['category'])}
-                      className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
-                        category === key
-                          ? 'border-purple-500 bg-purple-50'
-                          : 'border-gray-200 hover:border-purple-300'
-                      }`}
-                    >
-                      <span className="text-2xl mb-1">{info.emoji}</span>
-                      <span className="text-xs font-medium">{info.label}</span>
-                    </button>
-                  ))}
+                <div className="relative">
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory px-1">
+                    {Object.entries(GOAL_CATEGORIES).map(([key, info]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setCategory(key as Goal['category'])}
+                        className={`
+                          flex-shrink-0 flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all min-w-[80px] snap-center
+                          ${category === key
+                            ? 'border-purple-500 bg-gradient-to-r from-purple-500 to-purple-600 shadow-lg text-white'
+                            : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50 text-gray-700'
+                          }
+                        `}
+                      >
+                        <span className="text-lg mb-1">{info.emoji}</span>
+                        <span className={`text-xs font-bold text-center ${category === key ? 'text-white' : 'text-gray-700'}`}>
+                          {info.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -849,17 +892,57 @@ export default function MetasPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-2">
-                  Fecha objetivo *
-                </label>
-                <input
-                  type="date"
-                  value={targetDate}
-                  onChange={(e) => setTargetDate(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-purple-500 focus:outline-none modal-input"
-                />
+              {/* Toggle de fecha objetivo */}
+              <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                    <Calendar size={20} className="text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">Fecha objetivo</p>
+                    <p className="text-xs text-gray-600">¿Tienes una fecha límite para esta meta?</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleTargetDateToggle(!hasTargetDate)}
+                  className={`
+                    relative w-12 h-6 rounded-full transition-all duration-200 ease-in-out
+                    ${hasTargetDate 
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-600' 
+                      : 'bg-gray-300'
+                    }
+                  `}
+                >
+                  <div
+                    className={`
+                      absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-all duration-200 ease-in-out shadow-md
+                      ${hasTargetDate ? 'transform translate-x-6' : ''}
+                    `}
+                  />
+                </button>
               </div>
+
+              {/* Campo de fecha objetivo - solo visible si está activado */}
+              {hasTargetDate && (
+                <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 animate-fade-in">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                      <Calendar size={20} className="text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">Fecha objetivo</p>
+                      <p className="text-xs text-gray-600">Selecciona cuándo quieres alcanzar tu meta</p>
+                    </div>
+                  </div>
+                  
+                  <input
+                    type="date"
+                    value={targetDate}
+                    onChange={(e) => setTargetDate(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-purple-500 focus:outline-none modal-input"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-2">
@@ -872,7 +955,7 @@ export default function MetasPage() {
                     className={`py-2 px-3 rounded-xl border-2 transition-all ${
                       priority === 'baja'
                         ? 'border-green-500 bg-green-50 text-green-600'
-                        : 'border-gray-200 hover:border-green-300'
+                        : 'border-gray-200 hover:border-green-300 text-gray-700'
                     }`}
                   >
                     💤 Baja
@@ -883,7 +966,7 @@ export default function MetasPage() {
                     className={`py-2 px-3 rounded-xl border-2 transition-all ${
                       priority === 'media'
                         ? 'border-yellow-500 bg-yellow-50 text-yellow-600'
-                        : 'border-gray-200 hover:border-yellow-300'
+                        : 'border-gray-200 hover:border-yellow-300 text-gray-700'
                     }`}
                   >
                     ⭐ Media
@@ -894,7 +977,7 @@ export default function MetasPage() {
                     className={`py-2 px-3 rounded-xl border-2 transition-all ${
                       priority === 'alta'
                         ? 'border-red-500 bg-red-50 text-red-600'
-                        : 'border-gray-200 hover:border-red-300'
+                        : 'border-gray-200 hover:border-red-300 text-gray-700'
                     }`}
                   >
                     🔥 Alta
@@ -921,7 +1004,10 @@ export default function MetasPage() {
             <div className="flex-shrink-0 pt-4 border-t border-gray-100">
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowAddGoalModal(false)}
+                  onClick={() => {
+                    setShowAddGoalModal(false);
+                    setModalOpen(false);
+                  }}
                   className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-all"
                 >
                   Cancelar
@@ -1112,6 +1198,7 @@ export default function MetasPage() {
               <button
                 onClick={() => {
                   setShowSavingsModal(false);
+                  setModalOpen(false);
                   setGoalToSave(null);
                   setSavingsAmount('');
                   setSavingsReceipt(null);
