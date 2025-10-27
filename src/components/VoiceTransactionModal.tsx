@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Mic, Edit3, Save, Trash2, CheckCircle, AlertCircle, ChevronDown, TrendingUp, TrendingDown, CreditCard, GraduationCap, ShoppingCart, Car, Heart, Gamepad2, Wrench, Shirt, Home, DollarSign } from 'lucide-react';
+import { Mic, Edit3, Save, Trash2, CheckCircle, AlertCircle, ChevronDown, TrendingUp, TrendingDown, CreditCard, GraduationCap, ShoppingCart, Car, Heart, Gamepad2, Wrench, Shirt, Home, DollarSign, Type } from 'lucide-react';
 import { debtSearchService, DebtSearchResult } from '@/services/debtSearchService';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useModal } from '@/contexts/ModalContext';
@@ -616,8 +616,14 @@ export default function VoiceTransactionModal({
         
         {/* Header fijo */}
         <div className="flex-shrink-0">
-          <div className="w-16 h-16 rounded-full bg-blue-100 mx-auto mb-4 flex items-center justify-center">
-            <Mic size={32} className="text-blue-600" />
+          <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center ${
+            source === 'text' ? 'bg-green-100' : 'bg-blue-100'
+          }`}>
+            {source === 'text' ? (
+              <Type size={32} className="text-green-600" />
+            ) : (
+              <Mic size={32} className="text-blue-600" />
+            )}
           </div>
 
           <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
