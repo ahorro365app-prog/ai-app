@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { registrarAprendizaje } from '@/lib/configMatriz';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -103,7 +104,28 @@ export async function POST(request: NextRequest) {
     // 3. Si confirmado = false, analizar el error para mejorar
     if (confirmado === false) {
       console.log('📊 Analizando error de predicción para mejorar modelo');
-      // Aquí podrías agregar lógica para analizar el error y mejorar
+      
+      // Obtener datos de la predicción para análisis
+      const { data: prediccionData } = await supabase
+        .from('predicciones_groq')
+        .select('resultado')
+        .eq('id', prediction_id)
+        .single();
+
+      if (prediccionData?.resultado) {
+        const categoriaPredicha = (prediccionData.resultado as any)?.categoria;
+        
+        // Registrar para aprendizaje automático
+        try {
+          await registrarAprendizaje(
+            prediction_id,
+            categoriaPredicha,
+            comentario || undefined // comentario puede contener palabra nueva
+          );
+        } catch (error) {
+          console.error('❌ Error registrando aprendizaje:', error);
+        }
+      }
     }
 
     return NextResponse.json({
