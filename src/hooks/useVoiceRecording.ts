@@ -5,6 +5,7 @@ import { VoiceRecordingState, RecordingConfig, MicButtonState } from '@/types/vo
 import { useWhisperTranscription } from './useWhisperTranscription';
 import { groqService } from '@/services/groqService';
 import { useSupabase } from '@/contexts/SupabaseContext';
+import { useVoice } from '@/contexts/VoiceContext';
 
 const DEFAULT_CONFIG: RecordingConfig = {
   sampleRate: 44100,
@@ -16,6 +17,7 @@ const DEFAULT_CONFIG: RecordingConfig = {
 
 export const useVoiceRecording = (config: Partial<RecordingConfig> = {}) => {
   const { addTransaction, user } = useSupabase();
+  const { setVoiceData } = useVoice();
   const finalConfig = { ...DEFAULT_CONFIG, ...config };
 
   // Función para solicitar permisos de micrófono
@@ -203,12 +205,26 @@ export const useVoiceRecording = (config: Partial<RecordingConfig> = {}) => {
                 setModalTranscriptionText(transcribedText || '');
                 setModalGroqData(groqMultipleResult);
                 setShowModal(true);
+                
+                // También actualizar el contexto VoiceContext para el dashboard
+                setVoiceData({
+                  transcriptionText: transcribedText || '',
+                  groqData: groqMultipleResult,
+                  source: 'audio'
+                });
               }
             } else {
               // Si no hay resultado de Groq, mostrar solo transcripción
               setModalTranscriptionText(transcribedText || '');
               setModalGroqData(null);
               setShowModal(true);
+              
+              // También actualizar el contexto VoiceContext
+              setVoiceData({
+                transcriptionText: transcribedText || '',
+                groqData: null,
+                source: 'audio'
+              });
             }
           } catch (e) {
             console.warn('Groq no disponible o sin API key, se omite.');
@@ -216,6 +232,13 @@ export const useVoiceRecording = (config: Partial<RecordingConfig> = {}) => {
             setModalTranscriptionText(transcribedText || '');
             setModalGroqData(null);
             setShowModal(true);
+            
+            // También actualizar el contexto VoiceContext
+            setVoiceData({
+              transcriptionText: transcribedText || '',
+              groqData: null,
+              source: 'audio'
+            });
           }
           
           setState(prev => ({
