@@ -762,32 +762,23 @@ export async function extractExpenseWithCountryContext(
   countryCode: string
 ): Promise<GroqExtraction | null> {
   try {
-    // Importar Supabase dinámicamente (solo en servidor)
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // 1. Buscar reglas del país en Supabase
-    const { data: reglas, error } = await supabase
-      .from('reglas_pais')
-      .select('*')
-      .eq('country_code', countryCode);
-
-    if (error) {
-      console.error('Error fetching reglas:', error);
-    }
+    // Importar servicios dinámicamente (solo en servidor)
+    const { getCountryRules } = await import('@/lib/countryRules');
+    
+    // 1. Obtener reglas del país
+    const rules = await getCountryRules(countryCode);
+    console.log(`🌍 Using rules for: ${rules.country_name}`);
 
     // 2. Construir contexto local con slang y palabras clave
     let contextoLocal = '';
-    if (reglas && reglas.length > 0) {
-      contextoLocal = reglas
+    if (rules.ejemplos && rules.ejemplos.length > 0) {
+      contextoLocal = rules.ejemplos
         .map(regla => {
           const slangKeys = Object.keys(regla.slang || {});
           const palabrasKeys = Object.keys(regla.palabras_clave || {});
           
           if (slangKeys.length > 0 || palabrasKeys.length > 0) {
-            return `En ${regla.country_code}, categoría ${regla.categoria}: ${palabrasKeys.join(', ')}. ${slangKeys.map(k => `${k} = ${regla.slang[k]}`).join('; ')}`;
+            return `En ${countryCode}, categoría ${regla.categoria}: ${palabrasKeys.join(', ')}. ${slangKeys.map(k => `${k} = ${regla.slang[k]}`).join('; ')}`;
           }
           return '';
         })
@@ -795,11 +786,17 @@ export async function extractExpenseWithCountryContext(
         .join('\n');
     }
 
-    // 3. Usar el servicio Groq existente con el contexto adicional
-    // La función processTextWithGroq ya tiene toda la lógica, solo la llamamos
-    const resultado = await processTextWithGroq(transcripcion, countryCode);
+    // 3. Si hay contexto local, agregarlo al principio de la transcripción
+    let transcripcionConContexto = transcripcion;
+    if (contextoLocal) {
+      console.log('🌍 Aplicando contexto local:', contextoLocal);
+      transcripcionConContexto = `Contexto local: ${contextoLocal}\n\nTranscripción: ${transcripcion}`;
+    }
 
-    // 4. Devolver resultado (el formato ya es el mismo que usa la app)
+    // 4. Usar el servicio Groq existente con el contexto adicional
+    const resultado = await processTextWithGroq(transcripcionConContexto, countryCode);
+
+    // 5. Devolver resultado (el formato ya es el mismo que usa la app)
     return resultado;
 
   } catch (error: any) {
