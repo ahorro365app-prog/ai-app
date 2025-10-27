@@ -6,7 +6,7 @@ import { Home, History, Mic, CreditCard, Target, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSupabase } from "@/contexts/SupabaseContext";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
-import TranscriptionDisplay from "./TranscriptionDisplay";
+import VoiceTransactionModal from "./VoiceTransactionModal";
 
 interface NavbarProps {
   onOpenTransaction: () => void;
@@ -45,7 +45,14 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
     transcriptionText,
     transcriptionError,
     transcriptionComplete,
-    clearTranscription
+    clearTranscription,
+    // Estados del modal
+    showModal,
+    modalTranscriptionText,
+    modalGroqData,
+    handleModalClose,
+    handleModalSave,
+    handleModalCancel
   } = useVoiceRecording();
 
   // Cargar configuración de menús habilitados
@@ -235,20 +242,14 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
         </div>
       )}
       
-      {/* Componente de transcripción */}
-      <TranscriptionDisplay
-        isTranscribing={isTranscribing}
-        transcriptionText={transcriptionText}
-        hasError={transcriptionError}
-        errorMessage={transcriptionError ? "Error en transcripción" : undefined}
-        onSendToN8N={(text) => {
-          console.log('📤 Enviando a N8N:', text);
-          // Aquí en la Fase 3 se enviará a N8N
-        }}
-        onRetry={() => {
-          console.log('🔄 Reintentando transcripción...');
-          clearTranscription();
-        }}
+      {/* Modal de transacción de voz */}
+      <VoiceTransactionModal
+        isOpen={showModal}
+        onClose={handleModalClose}
+        transcriptionText={modalTranscriptionText}
+        groqData={modalGroqData}
+        onSave={handleModalSave}
+        onCancel={handleModalCancel}
       />
     </div>
   );
