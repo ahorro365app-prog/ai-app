@@ -6,8 +6,8 @@ WORKDIR /app
 # Copiar archivos de dependencias
 COPY package*.json ./
 
-# Instalar dependencias
-RUN npm ci
+# Instalar dependencias (usar npm install en lugar de ci porque puede no haber lockfile)
+RUN npm install
 
 # Copiar código fuente
 COPY . .
