@@ -1,0 +1,93 @@
+import dotenv from 'dotenv';
+import { WhatsAppService } from './services/whatsapp';
+import { IWhatsAppMessage } from './types';
+import axios from 'axios';
+
+dotenv.config();
+
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+const BACKEND_API_KEY = process.env.BACKEND_API_KEY || '';
+const WHATSAPP_NUMBER = process.env.WHATSAPP_NUMBER || '';
+
+const whatsapp = new WhatsAppService();
+
+// Iniciar servidor
+import './server';
+
+// Procesar mensajes entrantes
+whatsapp.onMessage(async (message: IWhatsAppMessage) => {
+  console.log('📨 Mensaje recibido:', {
+    from: message.from,
+    type: message.type,
+    timestamp: new Date(message.timestamp)
+  });
+
+  // Si es audio, enviar al backend para procesar
+  if (message.type === 'audio') {
+    try {
+      const response = await axios.post(
+        `${BACKEND_URL}/api/webhooks/whatsapp`,
+        {
+          audio: message.data,
+          from: message.from,
+          type: 'audio',
+          timestamp: message.timestamp
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${BACKEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('✅ Backend procesó mensaje:', response.data);
+
+      // Enviar confirmación al usuario
+      if (response.data.success) {
+        await whatsapp.sendMessage(
+          message.from,
+          `✅ Se agregó: ${response.data.amount} ${response.data.currency} - ${response.data.category}`
+        );
+      }
+    } catch (error) {
+      console.error('❌ Error procesando mensaje:', error);
+      
+      // Enviar mensaje de error al usuario
+      await whatsapp.sendMessage(
+        message.from,
+        '❌ Hubo un error procesando tu mensaje. Por favor intenta más tarde.'
+      );
+    }
+  }
+});
+
+// Conectar a WhatsApp
+async function start() {
+  try {
+    console.log('🚀 Iniciando Baileys Worker...');
+    console.log(`📱 Número: ${WHATSAPP_NUMBER}`);
+    console.log(`🔗 Backend: ${BACKEND_URL}`);
+    
+    await whatsapp.connect();
+    
+    console.log('✅ Baileys Worker iniciado correctamente');
+  } catch (error) {
+    console.error('❌ Error iniciando Baileys Worker:', error);
+    process.exit(1);
+  }
+}
+
+// Manejo de errores no capturados
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Iniciar
+start();
+
