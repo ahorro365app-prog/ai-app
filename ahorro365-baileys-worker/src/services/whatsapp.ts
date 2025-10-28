@@ -2,8 +2,10 @@ import makeWASocket, { DisconnectReason, useMultiFileAuthState, fetchLatestBaile
 import { Boom } from '@hapi/boom';
 import QRCode from 'qrcode';
 import pino from 'pino';
+import axios from 'axios';
 import { QRManager } from './qr-manager';
 import { IConnectionStatus, IWhatsAppMessage } from '../types';
+import { setConnectionStatus } from '../server';
 
 export class WhatsAppService {
   private socket: ReturnType<typeof makeWASocket> | null = null;
@@ -14,6 +16,10 @@ export class WhatsAppService {
     lastSync: null,
     uptime: 0
   };
+  private backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+  private whatsappNumber = process.env.WHATSAPP_NUMBER || '';
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
 
   constructor() {
     // Start watcher to update lastSync every minute
@@ -21,8 +27,32 @@ export class WhatsAppService {
       if (this.connectionStatus.connected) {
         this.connectionStatus.lastSync = new Date().toISOString();
         this.connectionStatus.uptime = 99.8; // Simulated uptime
+        this.updateSessionInDatabase();
       }
     }, 60000);
+  }
+
+  // Actualizar sesión en Supabase
+  private async updateSessionInDatabase() {
+    try {
+      console.log('🔄 Actualizando sesión en Supabase...');
+      console.log('📱 Número:', this.whatsappNumber);
+      console.log('🔗 URL:', `${this.backendUrl}/api/whatsapp/update-session`);
+      
+      const adminDashboardUrl = process.env.QR_POLLING_URL || 'http://localhost:3001';
+      
+      const response = await axios.post(`${adminDashboardUrl}/api/whatsapp/update-session`, {
+        number: this.whatsappNumber,
+        status: this.connectionStatus.connected ? 'connected' : 'disconnected',
+        lastSync: this.connectionStatus.lastSync,
+        uptime: this.connectionStatus.uptime
+      });
+      
+      console.log('✅ Sesión actualizada:', response.data);
+    } catch (error: any) {
+      console.error('❌ Error updating session in database:', error.message);
+      console.error('📋 URL intentada:', `${process.env.QR_POLLING_URL || 'http://localhost:3001'}/api/whatsapp/update-session`);
+    }
   }
 
   // Conectar a WhatsApp
@@ -47,7 +77,13 @@ export class WhatsAppService {
 
       // Manejar eventos de conexión
       this.socket.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect, qr } = update;
+        const { connection, lastDisconnect, qr, isNewLogin } = update;
+        
+        console.log('📡 Evento de conexión:', {
+          connection,
+          isNewLogin,
+          qr: qr ? 'Generando...' : null
+        });
 
         if (qr) {
           console.log('QR Code generado, esperando escaneo...');
@@ -60,15 +96,54 @@ export class WhatsAppService {
         }
 
         if (connection === 'close') {
-          const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+          const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+          const shouldReconnect = statusCode !== DisconnectReason.loggedOut 
+                                  && statusCode !== DisconnectReason.badSession;
+          
+          console.log('⚠️  Conexión cerrada:', {
+            statusCode,
+            reason: DisconnectReason[statusCode] || 'unknown',
+            shouldReconnect
+          });
 
-          if (shouldReconnect) {
-            console.log('Reconectando...');
-            await this.connect();
+          if (shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.reconnectAttempts++;
+            console.log(`🔄 Intentando reconectar (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+            this.connectionStatus.connected = false;
+            setConnectionStatus(false);
+            this.updateSessionInDatabase();
+            
+            // Esperar antes de reconectar
+            setTimeout(async () => {
+              try {
+                console.log('🔄 Reconectando...');
+                await this.connect();
+              } catch (error) {
+                console.error('❌ Error al reconectar:', error);
+              }
+            }, 5000);
+          } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            console.error('❌ Máximo de intentos de reconexión alcanzado. Reinicia el worker manualmente.');
+            this.connectionStatus.connected = false;
+            setConnectionStatus(false);
+            this.updateSessionInDatabase();
           } else {
-            console.log('Sesión cerrada, necesitas escanear QR nuevamente');
+            console.log('❌ Sesión inválida o cerrada manualmente');
+            console.log('🔄 Limpiando sesión y generando nuevo QR...');
             this.connectionStatus.connected = false;
             this.qrManager.clearQR();
+            setConnectionStatus(false);
+            this.updateSessionInDatabase();
+            
+            // Intentar reconectar después de limpiar
+            setTimeout(async () => {
+              try {
+                console.log('🔄 Reiniciando conexión...');
+                await this.connect();
+              } catch (error) {
+                console.error('❌ Error al reiniciar:', error);
+              }
+            }, 3000);
           }
         } else if (connection === 'open') {
           console.log('✅ Conectado a WhatsApp!');
@@ -76,6 +151,9 @@ export class WhatsAppService {
           this.connectionStatus.lastSync = new Date().toISOString();
           this.connectionStatus.uptime = 99.8;
           this.qrManager.clearQR();
+          setConnectionStatus(true);
+          this.updateSessionInDatabase();
+          this.reconnectAttempts = 0; // Resetear contador de reconexiones
         }
       });
 
@@ -87,7 +165,7 @@ export class WhatsAppService {
           const messageData: IWhatsAppMessage = {
             from: msg.key.remoteJid || '',
             message: msg.message?.conversation || '',
-            timestamp: msg.messageTimestamp ? msg.messageTimestamp * 1000 : Date.now(),
+            timestamp: msg.messageTimestamp ? Number(msg.messageTimestamp) * 1000 : Date.now(),
             type: msg.message?.audioMessage ? 'audio' : 
                   msg.message?.imageMessage ? 'image' : 'text',
             data: msg.message

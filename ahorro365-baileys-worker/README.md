@@ -36,11 +36,56 @@ npm start
 
 ## 🚢 Deployment en Railway
 
-1. Crea proyecto en [railway.app](https://railway.app)
-2. Conecta este repositorio
-3. Railway automáticamente detecta Dockerfile
-4. Configura variables de entorno en Railway
-5. Deploy automático en cada push
+### 1. Preparar el código
+```bash
+# Asegurar que todo está en Git
+git add .
+git commit -m "Ready for Railway deployment"
+git push origin main
+```
+
+### 2. En Railway Dashboard
+
+1. Clic en **"+ New Project"**
+2. Selecciona **"Deploy from GitHub"**
+3. Selecciona el repo: `ai-app`
+4. Railway automáticamente detecta `Dockerfile`
+5. Agrega variables de entorno (ver `.env.example`)
+6. Clic en **"Deploy"**
+
+### 3. Configurar Variables de Entorno en Railway
+
+Ve a **Variables** → Agrega:
+
+```env
+WHATSAPP_NUMBER=59160360908
+BACKEND_URL=https://tu-backend.vercel.app
+BACKEND_API_KEY=tu-secret-key
+ADMIN_DASHBOARD_URL=https://tu-admin-dashboard.vercel.app
+PORT=3004
+NODE_ENV=production
+LOG_LEVEL=info
+```
+
+### 4. Verificar Deployment
+
+Railway asignará una URL pública:
+```
+https://baileys-worker-xxxxx.railway.app
+```
+
+Verifica que funcione:
+```bash
+curl https://baileys-worker-xxxxx.railway.app/health
+# { "status": "ok", "service": "baileys-worker" }
+```
+
+### 5. Escanear QR
+
+1. Ve a la URL del worker en Railway
+2. Accede a `/qr` para ver el código QR
+3. Escanea con WhatsApp Business
+4. ¡Listo! Tu worker está funcionando 24/7
 
 ## 📡 Endpoints
 

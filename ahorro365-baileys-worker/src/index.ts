@@ -11,7 +11,7 @@ const WHATSAPP_NUMBER = process.env.WHATSAPP_NUMBER || '';
 
 const whatsapp = new WhatsAppService();
 
-// Iniciar servidor
+// Iniciar servidor PRIMERO
 import './server';
 
 // Procesar mensajes entrantes
@@ -68,12 +68,22 @@ async function start() {
     console.log('🚀 Iniciando Baileys Worker...');
     console.log(`📱 Número: ${WHATSAPP_NUMBER}`);
     console.log(`🔗 Backend: ${BACKEND_URL}`);
+    console.log(`⏳ Esperando 2 segundos para que el servidor se inicialice...`);
     
+    // Esperar un poco para que el servidor se inicie
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    console.log('🔄 Llamando a whatsapp.connect()...');
     await whatsapp.connect();
+    console.log('✅ WhatsApp.connect() completado');
     
     console.log('✅ Baileys Worker iniciado correctamente');
   } catch (error) {
     console.error('❌ Error iniciando Baileys Worker:', error);
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
     process.exit(1);
   }
 }
