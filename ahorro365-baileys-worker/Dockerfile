@@ -3,6 +3,9 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# Instalar git para dependencias que lo necesitan
+RUN apk add --no-cache git
+
 # Copiar archivos de dependencias
 COPY package*.json ./
 
