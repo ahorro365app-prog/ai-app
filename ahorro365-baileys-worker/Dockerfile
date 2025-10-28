@@ -26,8 +26,8 @@ RUN apk add --no-cache dumb-init
 # Copiar package.json
 COPY package*.json ./
 
-# Instalar solo dependencias de producción
-RUN npm ci --only=production
+# Instalar solo dependencias de producción (usar install en lugar de ci)
+RUN npm install --only=production
 
 # Copiar código compilado desde builder
 COPY --from=builder /app/dist ./dist
