@@ -20,8 +20,8 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Instalar dumb-init para manejar signals correctamente
-RUN apk add --no-cache dumb-init
+# Instalar dumb-init y git para manejar señales y dependencias
+RUN apk add --no-cache dumb-init git
 
 # Copiar package.json
 COPY package*.json ./
