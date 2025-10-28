@@ -23,14 +23,14 @@ WORKDIR /app
 # Instalar dumb-init y git para manejar señales y dependencias
 RUN apk add --no-cache dumb-init git
 
+# Copiar código compilado desde builder
+COPY --from=builder /app/dist ./dist
+
 # Copiar package.json
 COPY package*.json ./
 
-# Instalar solo dependencias de producción (usar install en lugar de ci)
-RUN npm install --only=production
-
-# Copiar código compilado desde builder
-COPY --from=builder /app/dist ./dist
+# Instalar solo dependencias de producción
+RUN npm install --omit=dev --legacy-peer-deps
 
 # Crear directorio para sesión de WhatsApp
 RUN mkdir -p /app/auth_info
