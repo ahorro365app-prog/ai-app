@@ -36,6 +36,14 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Old deployment configs
+scripts/deploy-*.sh
+scripts/logs-*.sh
+docker-compose.yml
+.railway.json
+railway.json
+.railwayignore
+
 # OS files
 .DS_Store
 Thumbs.db
