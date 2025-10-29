@@ -10,6 +10,7 @@ RUN npm install
 
 COPY src ./src
 COPY tsconfig.json ./
+COPY package.json ./
 
 RUN npm run build
 
@@ -20,7 +21,7 @@ RUN apk add --no-cache git chromium chromium-chromedriver nss dumb-init
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY --from=builder /app/package*.json ./
 
 RUN npm ci --only=production || npm install --only=production
 
@@ -31,10 +32,12 @@ RUN mkdir -p /app/auth_info
 # Variables de entorno para Puppeteer/Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV CHROME_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV NODE_ENV=production
+ENV PORT=3003
 
 EXPOSE 3003
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3003/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 1
+  CMD node -e "require('http').get('http://localhost:3003/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-CMD ["npm", "start"]
+CMD ["node", "dist/index.js"]
