@@ -89,8 +89,10 @@ export class WhatsAppService {
         // Headless para Railway
         ...(isRailway && {
           browser: ['Ahorro365', 'Chrome', '108.0.5359.71'],
-          connectTimeoutMs: 60000,
         }),
+        // Configuración de conexión para Railway
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 60000,
       });
 
       // Manejar evento de credenciales
