@@ -1,0 +1,25 @@
+# ========================================
+# VARIABLES DE ENTORNO PARA RAILWAY
+# ========================================
+# Copia estas variables en Railway Dashboard
+# Settings → Variables
+#
+# NOTA: NO agregues PORT - Railway lo asigna automáticamente
+
+# ========================================
+# VARIABLES OBLIGATORIAS (4 variables)
+# ========================================
+
+WHATSAPP_NUMBER=59160360908
+
+NODE_ENV=production
+
+LOG_LEVEL=info
+
+ADMIN_DASHBOARD_URL=https://admin-dashboard-eta-liard-77.vercel.app
+
+# ========================================
+# OPCIONALES (solo si deployas el backend)
+# ========================================
+# BACKEND_URL=
+# BACKEND_API_KEY=

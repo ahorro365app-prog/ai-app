@@ -1,62 +1,39 @@
-# Build stage
 FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Instalar git para dependencias que lo necesitan
-RUN apk add --no-cache git
+RUN apk add --no-cache git python3 make g++
 
-# Copiar archivos de dependencias
 COPY package*.json ./
 
-# Instalar dependencias (usar npm install en lugar de ci porque puede no haber lockfile)
 RUN npm install
 
-# Copiar código fuente
 COPY . .
 
-# Compilar TypeScript
 RUN npm run build
 
 # Production stage
 FROM node:18-alpine
 
+RUN apk add --no-cache git chromium chromium-chromedriver nss dumb-init
+
 WORKDIR /app
 
-# Instalar dumb-init, git y chromium para WhatsApp
-RUN apk add --no-cache dumb-init git chromium chromium-chromedriver nss
-
-# Copiar código compilado desde builder
-COPY --from=builder /app/dist ./dist
-
-# Copiar package.json
 COPY package*.json ./
 
-# Instalar solo dependencias de producción
-RUN npm install --omit=dev --legacy-peer-deps
+RUN npm ci --only=production || npm install --only=production
+
+COPY --from=builder /app/dist ./dist
+
+RUN mkdir -p /app/auth_info
 
 # Variables de entorno para Puppeteer/Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV CHROME_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
-# Crear directorios para sesión de WhatsApp (usará volumen persistente en Railway)
-RUN mkdir -p /data/auth_info /app/auth_info
+EXPOSE 3003
 
-# Crear usuario no-root
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3003/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 1
 
-# Cambiar propietario de archivos y dar permisos a Chromium
-RUN chown -R nodejs:nodejs /app /data && \
-    chmod 755 /usr/bin/chromium-browser
-
-# Usar usuario no-root
-USER nodejs
-
-# Exponer puerto
-EXPOSE 3004
-
-# Usar dumb-init para manejar signals
-ENTRYPOINT ["dumb-init", "--"]
-
-# Comando de inicio
-CMD ["node", "dist/index.js"]
+CMD ["npm", "start"]

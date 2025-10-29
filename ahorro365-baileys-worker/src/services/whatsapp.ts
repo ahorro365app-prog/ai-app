@@ -60,10 +60,8 @@ export class WhatsAppService {
   // Conectar a WhatsApp
   public async connect(): Promise<void> {
     try {
-      // Usar volumen persistente en Railway (/data/auth_info) o local (auth_info)
-      const sessionPath = process.env.RAILWAY_ENVIRONMENT || process.env.PORT 
-        ? '/data/auth_info'  // En Railway, usa volumen persistente
-        : path.join(process.cwd(), 'auth_info'); // En local, usa carpeta local
+      // Usar path según BAILEYS_SESSION_PATH o default local
+      const sessionPath = process.env.BAILEYS_SESSION_PATH || path.join(process.cwd(), 'auth_info');
       
       console.log(`📁 Session path: ${sessionPath}`);
       
