@@ -80,16 +80,18 @@ export class WhatsAppService {
       this.socket = makeWASocket({
         version,
         printQRInTerminal: true,
-        logger: pino({ level: 'error' }),
+        logger: pino({ level: 'debug' }),
         auth: state,
         generateHighQualityLinkPreview: true,
         markOnlineOnConnect: false,
-        browser: Browsers.ubuntu('Chrome'),
+        browser: ['Ahorro365', 'Chrome', '121'],
         shouldSyncHistoryMessage: () => false,
+        shouldIgnoreJid: () => false,
         retryRequestDelayMs: 10_000,
+        qrTimeout: 60000,
         // Headless para Railway
         ...(isRailway && {
-          browser: Browsers.ubuntu('Chrome'),
+          browser: ['Ahorro365', 'Chrome', '121'],
         }),
         // Configuración de conexión para Railway
         connectTimeoutMs: 60000,
@@ -109,18 +111,21 @@ export class WhatsAppService {
           qr: qr ? 'Generando...' : null
         });
 
-        if (update.qr) {
-          console.log('🟢 QR EN CONNECTION.UPDATE:', update.qr);
-        }
-
+        // Manejo EXPLÍCITO del QR
         if (qr) {
-          console.log('🟡 QR Code generado en connection.update, esperando escaneo...');
-          const qrImage = await QRCode.toDataURL(qr);
-          const qrData = {
-            qr: qrImage,
-            timestamp: Date.now()
-          };
-          this.qrManager.saveQR(qrData);
+          console.log('🎯 QR RECIBIDO:', qr.substring(0, 50) + '...');
+          console.log('🟡 Generando imagen QR...');
+          try {
+            const qrImage = await QRCode.toDataURL(qr);
+            const qrData = {
+              qr: qrImage,
+              timestamp: Date.now()
+            };
+            this.qrManager.saveQR(qrData);
+            console.log('✅ QR guardado exitosamente');
+          } catch (error) {
+            console.error('❌ Error generando imagen QR:', error);
+          }
         }
 
         if (connection === 'close') {

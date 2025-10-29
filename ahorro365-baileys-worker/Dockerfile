@@ -38,6 +38,10 @@ RUN npm install --omit=dev --legacy-peer-deps
 # Crear directorio para sesión de WhatsApp
 RUN mkdir -p /app/auth_info
 
+# Variables de entorno para Puppeteer/Chromium
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV CHROME_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 # Crear usuario no-root
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 
