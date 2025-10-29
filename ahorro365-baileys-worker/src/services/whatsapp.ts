@@ -96,6 +96,11 @@ export class WhatsAppService {
       // Manejar evento de credenciales
       this.socket.ev.on('creds.update', saveCreds);
 
+      // Evento QR dedicado
+      this.socket.ev.on('qr', (qr) => {
+        console.log('🔴 QR EMITIDO POR BAILEYS:', qr);
+      });
+
       // Manejar eventos de conexión
       this.socket.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr, isNewLogin } = update;
@@ -106,8 +111,12 @@ export class WhatsAppService {
           qr: qr ? 'Generando...' : null
         });
 
+        if (update.qr) {
+          console.log('🟢 QR EN CONNECTION.UPDATE:', update.qr);
+        }
+
         if (qr) {
-          console.log('QR Code generado, esperando escaneo...');
+          console.log('🟡 QR Code generado en connection.update, esperando escaneo...');
           const qrImage = await QRCode.toDataURL(qr);
           const qrData = {
             qr: qrImage,
