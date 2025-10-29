@@ -81,6 +81,8 @@ export class WhatsAppService {
         auth: state,
         generateHighQualityLinkPreview: true,
         markOnlineOnConnect: true,
+        browser: ['Ahorro365 Baileys Worker', 'Chrome', '1.0.0'],
+        shouldSyncHistoryMessage: () => true,
       });
 
       // Manejar evento de credenciales
