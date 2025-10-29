@@ -68,6 +68,8 @@ async function start() {
     console.log('🚀 Iniciando Baileys Worker...');
     console.log(`📱 Número: ${WHATSAPP_NUMBER}`);
     console.log(`🔗 Backend: ${BACKEND_URL}`);
+    console.log(`🌍 Environment: ${process.env.RAILWAY_ENVIRONMENT || 'local'}`);
+    console.log(`🔧 PORT: ${process.env.PORT || '3004'}`);
     console.log(`⏳ Esperando 2 segundos para que el servidor se inicialice...`);
     
     // Esperar un poco para que el servidor se inicie

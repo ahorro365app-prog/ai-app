@@ -80,7 +80,7 @@ export class WhatsAppService {
       this.socket = makeWASocket({
         version,
         printQRInTerminal: true,
-        logger: pino({ level: 'silent' }),
+        logger: pino({ level: 'error' }), // Cambiar a 'error' para ver problemas de conexión
         auth: state,
         generateHighQualityLinkPreview: true,
         markOnlineOnConnect: true,
