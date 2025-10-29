@@ -86,6 +86,28 @@ app.post('/process', (req, res) => {
   });
 });
 
+// GET /clean-session - Limpiar sesión (para debugging)
+app.get('/clean-session', (req, res) => {
+  try {
+    console.log('🧹 Limpiando sesión manualmente...');
+    
+    isConnected = false;
+    lastSync = null;
+    qrManager.clearQR();
+    
+    const authInfoPath = path.join(process.cwd(), 'auth_info');
+    if (fs.existsSync(authInfoPath)) {
+      fs.rmSync(authInfoPath, { recursive: true, force: true });
+      console.log('✅ auth_info eliminado');
+    }
+    
+    res.json({ success: true, message: 'Session cleaned. Restart the worker.' });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ success: false, error: 'Failed to clean session' });
+  }
+});
+
 // POST /disconnect - Desconectar WhatsApp y limpiar sesión
 app.post('/disconnect', (req, res) => {
   try {
