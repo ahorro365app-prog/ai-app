@@ -1,4 +1,4 @@
-import makeWASocket, { DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
+import makeWASocket, { DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion, Browsers } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import QRCode from 'qrcode';
 import pino from 'pino';
@@ -80,15 +80,16 @@ export class WhatsAppService {
       this.socket = makeWASocket({
         version,
         printQRInTerminal: true,
-        logger: pino({ level: 'error' }), // Cambiar a 'error' para ver problemas de conexión
+        logger: pino({ level: 'error' }),
         auth: state,
         generateHighQualityLinkPreview: true,
-        markOnlineOnConnect: true,
-        browser: ['Ahorro365 Baileys Worker', 'Chrome', '1.0.0'],
-        shouldSyncHistoryMessage: () => true,
+        markOnlineOnConnect: false,
+        browser: Browsers.ubuntu('Chrome'),
+        shouldSyncHistoryMessage: () => false,
+        retryRequestDelayMs: 10_000,
         // Headless para Railway
         ...(isRailway && {
-          browser: ['Ahorro365', 'Chrome', '108.0.5359.71'],
+          browser: Browsers.ubuntu('Chrome'),
         }),
         // Configuración de conexión para Railway
         connectTimeoutMs: 60000,
