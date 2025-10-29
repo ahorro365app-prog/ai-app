@@ -60,16 +60,22 @@ export class WhatsAppService {
   // Conectar a WhatsApp
   public async connect(): Promise<void> {
     try {
+      // Usar volumen persistente en Railway (/data/auth_info) o local (auth_info)
+      const sessionPath = process.env.RAILWAY_ENVIRONMENT || process.env.PORT 
+        ? '/data/auth_info'  // En Railway, usa volumen persistente
+        : path.join(process.cwd(), 'auth_info'); // En local, usa carpeta local
+      
+      console.log(`📁 Session path: ${sessionPath}`);
+      
       // Si la variable FORCE_NEW_SESSION existe, eliminar auth_info
       if (process.env.FORCE_NEW_SESSION === 'true') {
-        const authInfoPath = path.join(process.cwd(), 'auth_info');
-        if (fs.existsSync(authInfoPath)) {
-          fs.rmSync(authInfoPath, { recursive: true, force: true });
+        if (fs.existsSync(sessionPath)) {
+          fs.rmSync(sessionPath, { recursive: true, force: true });
           console.log('🗑️  auth_info eliminado (FORCE_NEW_SESSION=true)');
         }
       }
       
-      const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+      const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
       const { version, isLatest } = await fetchLatestBaileysVersion();
 
       console.log(`Using WhatsApp version: ${version.join('.')} - Latest: ${isLatest}`);

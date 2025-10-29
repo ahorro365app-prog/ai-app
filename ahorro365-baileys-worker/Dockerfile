@@ -35,18 +35,18 @@ COPY package*.json ./
 # Instalar solo dependencias de producción
 RUN npm install --omit=dev --legacy-peer-deps
 
-# Crear directorio para sesión de WhatsApp
-RUN mkdir -p /app/auth_info
-
 # Variables de entorno para Puppeteer/Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV CHROME_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+# Crear directorios para sesión de WhatsApp (usará volumen persistente en Railway)
+RUN mkdir -p /data/auth_info /app/auth_info
 
 # Crear usuario no-root
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 
 # Cambiar propietario de archivos y dar permisos a Chromium
-RUN chown -R nodejs:nodejs /app && \
+RUN chown -R nodejs:nodejs /app /data && \
     chmod 755 /usr/bin/chromium-browser
 
 # Usar usuario no-root
