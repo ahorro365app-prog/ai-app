@@ -35,11 +35,11 @@ export class WhatsAppService {
   // Actualizar sesión en Supabase
   private async updateSessionInDatabase() {
     try {
+      const adminDashboardUrl = process.env.QR_POLLING_URL || 'http://localhost:3001';
+      
       console.log('🔄 Actualizando sesión en Supabase...');
       console.log('📱 Número:', this.whatsappNumber);
-      console.log('🔗 URL:', `${this.backendUrl}/api/whatsapp/update-session`);
-      
-      const adminDashboardUrl = process.env.QR_POLLING_URL || 'http://localhost:3001';
+      console.log('🔗 URL:', `${adminDashboardUrl}/api/whatsapp/update-session`);
       
       const response = await axios.post(`${adminDashboardUrl}/api/whatsapp/update-session`, {
         number: this.whatsappNumber,
