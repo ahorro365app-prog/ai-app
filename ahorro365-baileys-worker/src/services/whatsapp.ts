@@ -3,6 +3,8 @@ import { Boom } from '@hapi/boom';
 import QRCode from 'qrcode';
 import pino from 'pino';
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
 import { QRManager } from './qr-manager';
 import { IConnectionStatus, IWhatsAppMessage } from '../types';
 import { setConnectionStatus } from '../server';
@@ -58,6 +60,15 @@ export class WhatsAppService {
   // Conectar a WhatsApp
   public async connect(): Promise<void> {
     try {
+      // Si la variable FORCE_NEW_SESSION existe, eliminar auth_info
+      if (process.env.FORCE_NEW_SESSION === 'true') {
+        const authInfoPath = path.join(process.cwd(), 'auth_info');
+        if (fs.existsSync(authInfoPath)) {
+          fs.rmSync(authInfoPath, { recursive: true, force: true });
+          console.log('🗑️  auth_info eliminado (FORCE_NEW_SESSION=true)');
+        }
+      }
+      
       const { state, saveCreds } = await useMultiFileAuthState('auth_info');
       const { version, isLatest } = await fetchLatestBaileysVersion();
 
