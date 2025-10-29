@@ -24,7 +24,7 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Instalar dumb-init, git y chromium para WhatsApp
-RUN apk add --no-cache dumb-init git chromium chromium-chromedriver nss chromium-libs chromium-cateborg
+RUN apk add --no-cache dumb-init git chromium chromium-chromedriver nss
 
 # Copiar código compilado desde builder
 COPY --from=builder /app/dist ./dist
