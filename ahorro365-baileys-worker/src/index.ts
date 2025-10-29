@@ -2,6 +2,11 @@ import dotenv from 'dotenv';
 import { WhatsAppService } from './services/whatsapp';
 import { IWhatsAppMessage } from './types';
 import axios from 'axios';
+import crypto from 'crypto';
+import { webcrypto } from 'crypto';
+
+// Hacer crypto disponible globalmente para Baileys
+(global as any).crypto = webcrypto as any;
 
 dotenv.config();
 
