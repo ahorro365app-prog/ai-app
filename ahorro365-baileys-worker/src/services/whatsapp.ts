@@ -96,11 +96,6 @@ export class WhatsAppService {
       // Manejar evento de credenciales
       this.socket.ev.on('creds.update', saveCreds);
 
-      // Evento QR dedicado
-      this.socket.ev.on('qr', (qr) => {
-        console.log('🔴 QR EMITIDO POR BAILEYS:', qr);
-      });
-
       // Manejar eventos de conexión
       this.socket.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr, isNewLogin } = update;
