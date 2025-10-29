@@ -74,6 +74,9 @@ export class WhatsAppService {
 
       console.log(`Using WhatsApp version: ${version.join('.')} - Latest: ${isLatest}`);
 
+      // Configuración para Railway (headless browser)
+      const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production' || process.env.PORT;
+      
       this.socket = makeWASocket({
         version,
         printQRInTerminal: true,
@@ -83,6 +86,11 @@ export class WhatsAppService {
         markOnlineOnConnect: true,
         browser: ['Ahorro365 Baileys Worker', 'Chrome', '1.0.0'],
         shouldSyncHistoryMessage: () => true,
+        // Headless para Railway
+        ...(isRailway && {
+          browser: ['Ahorro365', 'Chrome', '108.0.5359.71'],
+          connectTimeoutMs: 60000,
+        }),
       });
 
       // Manejar evento de credenciales

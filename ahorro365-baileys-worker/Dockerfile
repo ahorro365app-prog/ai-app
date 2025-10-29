@@ -23,8 +23,8 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Instalar dumb-init y git para manejar señales y dependencias
-RUN apk add --no-cache dumb-init git
+# Instalar dumb-init, git y chromium para WhatsApp
+RUN apk add --no-cache dumb-init git chromium chromium-chromedriver
 
 # Copiar código compilado desde builder
 COPY --from=builder /app/dist ./dist
