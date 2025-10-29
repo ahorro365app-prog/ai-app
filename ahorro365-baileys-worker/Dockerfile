@@ -24,7 +24,7 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Instalar dumb-init, git y chromium para WhatsApp
-RUN apk add --no-cache dumb-init git chromium chromium-chromedriver
+RUN apk add --no-cache dumb-init git chromium chromium-chromedriver nss chromium-libs chromium-cateborg
 
 # Copiar código compilado desde builder
 COPY --from=builder /app/dist ./dist
@@ -41,8 +41,9 @@ RUN mkdir -p /app/auth_info
 # Crear usuario no-root
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 
-# Cambiar propietario de archivos
-RUN chown -R nodejs:nodejs /app
+# Cambiar propietario de archivos y dar permisos a Chromium
+RUN chown -R nodejs:nodejs /app && \
+    chmod 755 /usr/bin/chromium-browser
 
 # Usar usuario no-root
 USER nodejs
