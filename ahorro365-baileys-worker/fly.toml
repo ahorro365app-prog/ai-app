@@ -1,24 +1,22 @@
-app = "ahorro365-baileys-worker"
-primary_region = "dfw"
+# fly.toml app configuration file generated for ahorro365-baileys-worker on 2025-10-29T23:24:03Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'ahorro365-baileys-worker'
+primary_region = 'dfw'
 
 [build]
 
 [http_service]
   internal_port = 3003
   force_https = true
-  
-  [[http_service.checks]]
-    grace_period = "10s"
-    interval = "30s"
-    timeout = "5s"
-    method = "GET"
-    path = "/health"
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
 
-[[mounts]]
-  source = "auth_info"
-  destination = "/app/auth_info"
-
-[vm]
-  cpu_kind = "shared"
+[[vm]]
+  cpu_kind = 'shared'
   cpus = 1
   memory_mb = 256
