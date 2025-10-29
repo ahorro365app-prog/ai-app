@@ -1,99 +1,24 @@
-# ============================================================
-# FLY.IO CONFIGURATION FOR AHORRO365 BAILEYS WORKER
-# ============================================================
-
 app = "ahorro365-baileys-worker"
-primary_region = "mia"  # Miami - Closest to Latin America
-console_command = "/bin/sh"
+primary_region = "mia"
 
-# ============================================================
-# BUILD CONFIGURATION
-# ============================================================
 [build]
-  dockerfile = "Dockerfile"
 
-# ============================================================
-# ENV VARIABLES
-# ============================================================
-[env]
-  NODE_ENV = "production"
-  PORT = "3003"
-  BAILEYS_PORT = "3003"
-  BAILEYS_SESSION_PATH = "/app/auth_info"
+[http_service]
+  internal_port = 3003
+  force_https = true
+  
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    timeout = "5s"
+    method = "GET"
+    path = "/health"
 
-# ============================================================
-# MOUNTS (Persistent Storage)
-# ============================================================
 [[mounts]]
   source = "auth_info"
   destination = "/app/auth_info"
 
-# ============================================================
-# SERVICES (HTTP & Internal Communication)
-# ============================================================
-[[services]]
-  internal_port = 3003
-  processes = ["app"]
-  protocol = "tcp"
-
-  [[services.ports]]
-    port = 80
-    handlers = ["http"]
-    force_https = true
-
-  [[services.ports]]
-    port = 443
-    handlers = ["tls", "http"]
-
-  [[services.http_options]]
-    compress = true
-
-  [services.concurrency]
-    type = "connections"
-    hard_limit = 25
-    soft_limit = 20
-
-# ============================================================
-# DEPLOY CONFIGURATION
-# ============================================================
-[deploy]
-  strategy = "canary"
-
-# ============================================================
-# HTTP SERVICE
-# ============================================================
-[http_service]
-  internal_port = 3003
-  force_https = true
-  auto_stop_machines = false
-  auto_start_machines = true
-  min_machines_running = 1
-  processes = ["app"]
-
-  [http_service.concurrency]
-    type = "connections"
-    hard_limit = 25
-    soft_limit = 20
-
-  [[http_service.checks]]
-    grace_period = "30s"
-    interval = "15s"
-    method = "get"
-    path = "/health"
-    protocol = "http"
-    timeout = "5s"
-    tls_server_name = ""
-    tls_skip_verify = false
-
-# ============================================================
-# MACHINE CONFIGURATION
-# ============================================================
 [vm]
-  size = "shared-cpu-1x"
+  cpu_kind = "shared"
+  cpus = 1
   memory_mb = 256
-
-# ============================================================
-# MONITORING
-# ============================================================
-[monitoring]
-  enabled = true
