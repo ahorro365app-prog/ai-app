@@ -2,7 +2,7 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache git python3 make g++
+RUN apk add --no-cache git python3 make g++ openssl
 
 COPY package*.json ./
 
@@ -17,7 +17,7 @@ RUN npm run build
 # Production stage
 FROM node:18-alpine
 
-RUN apk add --no-cache git chromium chromium-chromedriver nss dumb-init
+RUN apk add --no-cache git chromium chromium-chromedriver nss dumb-init openssl libc6-compat
 
 WORKDIR /app
 
