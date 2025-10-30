@@ -2,18 +2,14 @@ import dotenv from 'dotenv';
 import { WhatsAppService } from './services/whatsapp';
 import { IWhatsAppMessage } from './types';
 import axios from 'axios';
-import crypto from 'crypto';
 import { webcrypto } from 'crypto';
 
-// Hacer crypto disponible globalmente para Baileys
-(global as any).crypto = webcrypto as any;
-
-// Forzar nueva sesión en producción (Fly.io)
-if (process.env.NODE_ENV === 'production' || process.env.PORT) {
-  process.env.FORCE_NEW_SESSION = 'true';
-}
-
 dotenv.config();
+
+// Hacer crypto disponible globalmente para Baileys (solo en Node.js < 20)
+if (typeof globalThis.crypto === 'undefined') {
+  (globalThis as any).crypto = webcrypto as any;
+}
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 const BACKEND_API_KEY = process.env.BACKEND_API_KEY || '';
