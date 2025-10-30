@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { groqWhisperService } from '@/services/groqWhisperService';
 import { groqService } from '@/services/groqService';
 import { createClient } from '@supabase/supabase-js';
-import { downloadMediaMessage } from '@whiskeysockets/baileys';
-import { toBuffer } from 'qrcode';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,14 +14,23 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    console.log('📱 Webhook Baileys recibido:', JSON.stringify(body, null, 2));
+    console.log('📱 Webhook Baileys recibido:', {
+      from: body.from,
+      type: body.type,
+      hasAudio: !!body.audioBase64
+    });
 
-    // Baileys envía: { audio: <objeto Baileys>, from: string, type: 'audio', timestamp: number }
-    const { audio, from, type, timestamp } = body;
+    // Baileys envía: { audioBase64: string, from: string, type: 'audio', timestamp: number }
+    const { audioBase64, from, type, timestamp } = body;
 
     if (type !== 'audio') {
       console.log('❌ Message is not audio');
       return NextResponse.json({ status: 'ignored', message: 'Only audio messages are processed' });
+    }
+
+    if (!audioBase64) {
+      console.error('❌ No audio data in message');
+      return NextResponse.json({ error: 'No audio data' }, { status: 400 });
     }
 
     const phoneNumber = from.replace('@s.whatsapp.net', '');
@@ -43,34 +50,10 @@ export async function POST(req: NextRequest) {
 
     console.log('✅ User found:', user.id);
 
-    // 2. Descargar audio de Baileys
-    // El objeto "audio" de Baileys contiene la información del mensaje
-    // Necesitamos extraer el audio real
-    if (!audio || !audio.audioMessage) {
-      console.error('❌ No audio data in message');
-      return NextResponse.json({ error: 'No audio data' }, { status: 400 });
-    }
-
-    const audioMessage = audio.audioMessage;
-    
-    // Baileys envía la URL del audio directo
-    const audioUrl = audioMessage.url || audioMessage.directPath;
-    
-    if (!audioUrl) {
-      console.error('❌ No audio URL found');
-      return NextResponse.json({ error: 'No audio URL' }, { status: 400 });
-    }
-
-    console.log('📥 Descargando audio de Baileys:', audioUrl);
-
-    // Descargar el audio
-    const audioResponse = await fetch(audioUrl);
-    if (!audioResponse.ok) {
-      throw new Error('Failed to download audio');
-    }
-
-    const audioBlob = await audioResponse.blob();
-    console.log('✅ Audio downloaded:', audioBlob.size, 'bytes');
+    // 2. Convertir base64 a Blob
+    const audioBuffer = Buffer.from(audioBase64, 'base64');
+    const audioBlob = new Blob([audioBuffer], { type: 'audio/ogg; codecs=opus' });
+    console.log('✅ Audio converted from base64:', audioBlob.size, 'bytes');
 
     // 3. Convertir blob a File
     const audioFile = new File([audioBlob], 'audio.ogg', { type: 'audio/ogg; codecs=opus' });
