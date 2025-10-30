@@ -59,10 +59,19 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
 
       // Enviar confirmación al usuario
       if (response.data.success) {
-        await whatsapp.sendMessage(
-          message.from,
-          `✅ Se agregó: ${response.data.amount || response.data.expense_data?.monto || 'N/A'} ${response.data.currency || response.data.expense_data?.moneda || ''} - ${response.data.category || response.data.expense_data?.categoria || ''}`
-        );
+        const amount = response.data.amount || response.data.expense_data?.monto;
+        const currency = response.data.currency || response.data.expense_data?.moneda || 'BOB';
+        const category = response.data.category || response.data.expense_data?.categoria;
+        
+        let confirmationMessage = '✅ Mensaje procesado correctamente';
+        
+        if (amount && amount > 0 && category) {
+          confirmationMessage = `✅ Se agregó: ${amount} ${currency} - ${category}`;
+        } else if (response.data.transcription) {
+          confirmationMessage = `✅ Audio recibido: "${response.data.transcription}"`;
+        }
+        
+        await whatsapp.sendMessage(message.from, confirmationMessage);
       }
     } catch (error: any) {
       console.error('❌ Error procesando mensaje en backend:', error?.response?.data || error?.message);
