@@ -86,6 +86,7 @@ async function start() {
     console.log(`🔗 Backend: ${BACKEND_URL}`);
     console.log(`🌍 Environment: ${process.env.RAILWAY_ENVIRONMENT || 'local'}`);
     console.log(`🔧 PORT: ${process.env.PORT || '3003'}`);
+    console.log(`📁 BAILEYS_SESSION_PATH: ${process.env.BAILEYS_SESSION_PATH || '/app/auth_info'}`);
     console.log(`⏳ Esperando 2 segundos para que el servidor se inicialice...`);
     
     // Esperar un poco para que el servidor se inicie

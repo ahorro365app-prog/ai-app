@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 
 const app = express();
-const PORT = process.env.PORT || 3003;
+const PORT = process.env.PORT || 3004;
 
 app.use(express.json());
 
@@ -48,6 +48,66 @@ app.get('/qr', (req, res) => {
     console.error('Error getting QR:', error);
     return res.status(500).json({ success: false, error: 'Failed to get QR' });
   }
+});
+
+// GET /qr/view - Página HTML que muestra el QR (autorefresco)
+app.get('/qr/view', (_req, res) => {
+  const html = `<!doctype html>
+  <html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WhatsApp QR</title>
+    <style>
+      body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0b1020;color:#e7eaf3;margin:0}
+      .card{background:#111831;border:1px solid #1f2944;border-radius:16px;padding:24px 28px;box-shadow:0 6px 28px rgba(0,0,0,.35);max-width:560px;width:100%;text-align:center}
+      h1{font-size:20px;margin:0 0 6px}
+      p{margin:0 0 14px;color:#aab2cf}
+      #qr{width:320px;height:320px;border-radius:12px;background:#0e1530;border:1px dashed #2b3a67;display:inline-block}
+      .ok{color:#5ee191}
+      .warn{color:#f5a524}
+      small{color:#7e8bb6}
+      button{margin-top:14px;background:#2446f6;color:#fff;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Escanea el código QR</h1>
+      <p>Abre WhatsApp → Dispositivos vinculados → Vincular dispositivo</p>
+      <img id="qr" alt="QR" />
+      <p id="state" class="warn">Generando QR...</p>
+      <small>Se actualiza automáticamente</small><br/>
+      <button onclick="location.reload()">Actualizar</button>
+    </div>
+    <script>
+      async function loadQR(){
+        try{
+          const r = await fetch('/qr',{cache:'no-store'});
+          const d = await r.json();
+          const img = document.getElementById('qr');
+          const state = document.getElementById('state');
+          if(d && d.qr){
+            img.src = d.qr;
+            state.textContent = 'QR listo. Escanéalo con tu teléfono.';
+            state.className = 'ok';
+          }else if(d && d.connected){
+            state.textContent = 'Conectado a WhatsApp';
+            state.className = 'ok';
+          }else{
+            state.textContent = 'Esperando QR...';
+            state.className = 'warn';
+          }
+        }catch(e){
+          console.error(e);
+        }
+      }
+      loadQR();
+      setInterval(loadQR, 2500);
+    </script>
+  </body>
+  </html>`;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
 });
 
 // GET /status - Estado de conexión
