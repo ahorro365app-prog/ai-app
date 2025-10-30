@@ -62,7 +62,7 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
         // Usuario no registrado - enviar mensaje de registro
         await whatsapp.sendMessage(
           message.from,
-          '⚠️ Usted no está aún registrado.\n\nLe invitamos a que se registre. ¿Desea que le enviemos la aplicación? (Sí/No)'
+          '¡Hola! 👋 Parece que aún no tienes una cuenta en Ahorro365.\n\n¿Quieres que te enviemos la app y poder registrarte? 😊'
         );
       } else if (response.data.success) {
         // Usuario registrado y mensaje procesado correctamente
