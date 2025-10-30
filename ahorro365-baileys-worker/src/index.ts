@@ -34,7 +34,7 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
       console.log(`🔗 Enviando audio a backend: ${BACKEND_URL}`);
       
       const response = await axios.post(
-        `${BACKEND_URL}/api/webhooks/whatsapp`,
+        `${BACKEND_URL}/api/webhooks/baileys`,
         {
           audio: message.data,
           from: message.from,
@@ -46,7 +46,7 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
             'Authorization': `Bearer ${BACKEND_API_KEY}`,
             'Content-Type': 'application/json'
           },
-          timeout: 5000 // Timeout de 5 segundos
+          timeout: 10000 // Timeout de 10 segundos
         }
       );
 
@@ -56,11 +56,11 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
       if (response.data.success) {
         await whatsapp.sendMessage(
           message.from,
-          `✅ Se agregó: ${response.data.amount} ${response.data.currency} - ${response.data.category}`
+          `✅ Se agregó: ${response.data.amount || response.data.expense_data?.monto || 'N/A'} ${response.data.currency || response.data.expense_data?.moneda || ''} - ${response.data.category || response.data.expense_data?.categoria || ''}`
         );
       }
-    } catch (error) {
-      console.error('❌ Error procesando mensaje en backend:', error);
+    } catch (error: any) {
+      console.error('❌ Error procesando mensaje en backend:', error?.response?.data || error?.message);
       
       // Enviar mensaje de error al usuario
       await whatsapp.sendMessage(
