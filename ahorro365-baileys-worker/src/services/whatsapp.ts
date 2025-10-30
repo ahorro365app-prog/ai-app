@@ -2,7 +2,6 @@ import makeWASocket, { DisconnectReason, useMultiFileAuthState, fetchLatestBaile
 import { Boom } from '@hapi/boom';
 import QRCode from 'qrcode';
 import pino from 'pino';
-import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import { QRManager } from './qr-manager';
@@ -18,43 +17,18 @@ export class WhatsAppService {
     lastSync: null,
     uptime: 0
   };
-  private backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
   private whatsappNumber = process.env.WHATSAPP_NUMBER || '';
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
 
   constructor() {
-    // Start watcher to update lastSync every minute
+    // Actualizar timestamp cada minuto (sin intentar conectar a backend)
     setInterval(() => {
       if (this.connectionStatus.connected) {
         this.connectionStatus.lastSync = new Date().toISOString();
-        this.connectionStatus.uptime = 99.8; // Simulated uptime
-        this.updateSessionInDatabase();
+        this.connectionStatus.uptime = 99.8;
       }
     }, 60000);
-  }
-
-  // Actualizar sesión en Supabase
-  private async updateSessionInDatabase() {
-    try {
-      const adminDashboardUrl = process.env.QR_POLLING_URL || 'http://localhost:3001';
-      
-      console.log('🔄 Actualizando sesión en Supabase...');
-      console.log('📱 Número:', this.whatsappNumber);
-      console.log('🔗 URL:', `${adminDashboardUrl}/api/whatsapp/update-session`);
-      
-      const response = await axios.post(`${adminDashboardUrl}/api/whatsapp/update-session`, {
-        number: this.whatsappNumber,
-        status: this.connectionStatus.connected ? 'connected' : 'disconnected',
-        lastSync: this.connectionStatus.lastSync,
-        uptime: this.connectionStatus.uptime
-      });
-      
-      console.log('✅ Sesión actualizada:', response.data);
-    } catch (error: any) {
-      console.error('❌ Error updating session in database:', error.message);
-      console.error('📋 URL intentada:', `${process.env.QR_POLLING_URL || 'http://localhost:3001'}/api/whatsapp/update-session`);
-    }
   }
 
   // Conectar a WhatsApp
@@ -78,13 +52,10 @@ export class WhatsAppService {
 
       console.log(`Using WhatsApp version: ${version.join('.')} - Latest: ${isLatest}`);
 
-      // Configuración para Railway (headless browser)
-      const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production' || process.env.PORT;
-      
       this.socket = makeWASocket({
         version,
-        printQRInTerminal: true,
-        logger: pino({ level: 'debug' }),
+        printQRInTerminal: false,
+        logger: pino({ level: 'silent' }), // Sin logs de Baileys
         auth: state,
         generateHighQualityLinkPreview: true,
         markOnlineOnConnect: false,
@@ -93,11 +64,6 @@ export class WhatsAppService {
         shouldIgnoreJid: () => false,
         retryRequestDelayMs: 10_000,
         qrTimeout: 60000,
-        // Headless para Railway
-        ...(isRailway && {
-          browser: ['Ahorro365', 'Chrome', '121'],
-        }),
-        // Configuración de conexión para Railway
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 60000,
       });
@@ -111,14 +77,13 @@ export class WhatsAppService {
         
         console.log('📡 Evento de conexión:', {
           connection,
-          isNewLogin,
-          qr: qr ? 'Generando...' : null
+          isNewLogin: isNewLogin || false,
+          qr: qr ? 'QR Generado' : 'Sin QR'
         });
 
         // Manejo EXPLÍCITO del QR
         if (qr) {
-          console.log('🎯 QR RECIBIDO:', qr.substring(0, 50) + '...');
-          console.log('🟡 Generando imagen QR...');
+          console.log('🎯 QR RECIBIDO - Generando imagen...');
           try {
             const qrImage = await QRCode.toDataURL(qr);
             const qrData = {
@@ -148,7 +113,6 @@ export class WhatsAppService {
             console.log(`🔄 Intentando reconectar (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
             this.connectionStatus.connected = false;
             setConnectionStatus(false);
-            this.updateSessionInDatabase();
             
             // Esperar antes de reconectar
             setTimeout(async () => {
@@ -160,17 +124,14 @@ export class WhatsAppService {
               }
             }, 5000);
           } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.error('❌ Máximo de intentos de reconexión alcanzado. Reinicia el worker manualmente.');
+            console.error('❌ Máximo de intentos de reconexión alcanzado.');
             this.connectionStatus.connected = false;
             setConnectionStatus(false);
-            this.updateSessionInDatabase();
           } else {
             console.log('❌ Sesión inválida o cerrada manualmente');
-            console.log('🔄 Limpiando sesión y generando nuevo QR...');
             this.connectionStatus.connected = false;
             this.qrManager.clearQR();
             setConnectionStatus(false);
-            this.updateSessionInDatabase();
             
             // Intentar reconectar después de limpiar
             setTimeout(async () => {
@@ -189,8 +150,7 @@ export class WhatsAppService {
           this.connectionStatus.uptime = 99.8;
           this.qrManager.clearQR();
           setConnectionStatus(true);
-          this.updateSessionInDatabase();
-          this.reconnectAttempts = 0; // Resetear contador de reconexiones
+          this.reconnectAttempts = 0; // Resetear contador
         }
       });
 
@@ -214,9 +174,9 @@ export class WhatsAppService {
         }
       });
 
-      console.log('WhatsApp socket inicializado');
+      console.log('✅ WhatsApp socket inicializado');
     } catch (error) {
-      console.error('Error connecting to WhatsApp:', error);
+      console.error('❌ Error connecting to WhatsApp:', error);
       throw error;
     }
   }
@@ -231,7 +191,7 @@ export class WhatsAppService {
       await this.socket.sendMessage(to, { text });
       return true;
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('❌ Error sending message:', error);
       return false;
     }
   }
@@ -246,4 +206,3 @@ export class WhatsAppService {
     this.onMessageCallback = callback;
   }
 }
-
