@@ -3,6 +3,7 @@ import { WhatsAppService } from './services/whatsapp';
 import { IWhatsAppMessage } from './types';
 import axios from 'axios';
 import { webcrypto } from 'crypto';
+import { proto } from '@whiskeysockets/baileys';
 
 dotenv.config();
 
@@ -33,10 +34,14 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
     try {
       console.log(`🔗 Enviando audio a backend: ${BACKEND_URL}`);
       
+      // Convertir buffer a base64 para enviar
+      const audioBuffer = (message as any).audioBuffer;
+      const audioBase64 = audioBuffer ? audioBuffer.toString('base64') : null;
+      
       const response = await axios.post(
         `${BACKEND_URL}/api/webhooks/baileys`,
         {
-          audio: message.data,
+          audioBase64,
           from: message.from,
           type: 'audio',
           timestamp: message.timestamp
@@ -46,7 +51,7 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
             'Authorization': `Bearer ${BACKEND_API_KEY}`,
             'Content-Type': 'application/json'
           },
-          timeout: 10000 // Timeout de 10 segundos
+          timeout: 30000 // Timeout de 30 segundos (transcripción puede tardar)
         }
       );
 

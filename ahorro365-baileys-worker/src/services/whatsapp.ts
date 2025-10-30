@@ -1,4 +1,5 @@
-import makeWASocket, { DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion, Browsers } from '@whiskeysockets/baileys';
+import makeWASocket, { DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion, Browsers, downloadMediaMessage } from '@whiskeysockets/baileys';
+import { proto } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import QRCode from 'qrcode';
 import pino from 'pino';
@@ -167,6 +168,25 @@ export class WhatsAppService {
                   msg.message?.imageMessage ? 'image' : 'text',
             data: msg.message
           };
+
+          // Si es audio, descargar el buffer
+          if (msg.message?.audioMessage && this.socket) {
+            try {
+              console.log('🎵 Descargando audio...');
+              const buffer = await downloadMediaMessage(
+                msg,
+                'buffer',
+                {},
+                { reuploadRequest: this.socket.updateMediaMessage, logger: pino({ level: 'silent' }) }
+              );
+              
+              // Agregar buffer a messageData
+              (messageData as any).audioBuffer = buffer;
+              console.log('✅ Audio descargado:', buffer.length, 'bytes');
+            } catch (error) {
+              console.error('❌ Error descargando audio:', error);
+            }
+          }
 
           if (this.onMessageCallback) {
             this.onMessageCallback(messageData);
