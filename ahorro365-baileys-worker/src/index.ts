@@ -8,6 +8,11 @@ import { webcrypto } from 'crypto';
 // Hacer crypto disponible globalmente para Baileys
 (global as any).crypto = webcrypto as any;
 
+// Forzar nueva sesión en producción (Fly.io)
+if (process.env.NODE_ENV === 'production' || process.env.PORT) {
+  process.env.FORCE_NEW_SESSION = 'true';
+}
+
 dotenv.config();
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
