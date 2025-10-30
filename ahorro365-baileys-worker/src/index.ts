@@ -57,8 +57,15 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
 
       console.log('✅ Backend procesó mensaje:', response.data);
 
-      // Enviar confirmación al usuario
-      if (response.data.success) {
+      // Manejar respuesta según el caso
+      if (!response.data.success && response.data.error === 'user_not_registered') {
+        // Usuario no registrado - enviar mensaje de registro
+        await whatsapp.sendMessage(
+          message.from,
+          '⚠️ Usted no está aún registrado.\n\nLe invitamos a que se registre. ¿Desea que le enviemos la aplicación? (Sí/No)'
+        );
+      } else if (response.data.success) {
+        // Usuario registrado y mensaje procesado correctamente
         const amount = response.data.amount || response.data.expense_data?.monto;
         const currency = response.data.currency || response.data.expense_data?.moneda || 'BOB';
         const category = response.data.category || response.data.expense_data?.categoria;
