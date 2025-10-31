@@ -29,29 +29,36 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
     timestamp: new Date(message.timestamp)
   });
 
-  // Si es audio, enviar al backend para procesar (SOLO si BACKEND_URL está configurado)
-  if (message.type === 'audio' && BACKEND_URL && BACKEND_URL !== 'http://localhost:3000') {
+  // Si es audio o texto, enviar al backend para procesar (SOLO si BACKEND_URL está configurado)
+  if ((message.type === 'audio' || message.type === 'text') && BACKEND_URL && BACKEND_URL !== 'http://localhost:3000') {
     try {
-      console.log(`🔗 Enviando audio a backend: ${BACKEND_URL}`);
+      console.log(`🔗 Enviando ${message.type} a backend: ${BACKEND_URL}`);
       
-      // Convertir buffer a base64 para enviar
-      const audioBuffer = (message as any).audioBuffer;
-      const audioBase64 = audioBuffer ? audioBuffer.toString('base64') : null;
+      // Preparar payload según el tipo de mensaje
+      let payload: any = {
+        from: message.from,
+        type: message.type,
+        timestamp: message.timestamp
+      };
+
+      if (message.type === 'audio') {
+        // Convertir buffer a base64 para audio
+        const audioBuffer = (message as any).audioBuffer;
+        payload.audioBase64 = audioBuffer ? audioBuffer.toString('base64') : null;
+      } else if (message.type === 'text') {
+        // Enviar texto directamente
+        payload.text = message.message || '';
+      }
       
       const response = await axios.post(
         `${BACKEND_URL}/api/webhooks/baileys`,
-        {
-          audioBase64,
-          from: message.from,
-          type: 'audio',
-          timestamp: message.timestamp
-        },
+        payload,
         {
           headers: {
             'Authorization': `Bearer ${BACKEND_API_KEY}`,
             'Content-Type': 'application/json'
           },
-          timeout: 30000 // Timeout de 30 segundos (transcripción puede tardar)
+          timeout: message.type === 'audio' ? 30000 : 15000 // Timeout más corto para texto (sin transcripción)
         }
       );
 
@@ -75,21 +82,37 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
         if (amount && amount > 0 && category) {
           confirmationMessage = `✅ Se agregó: ${amount} ${currency} - ${category}`;
         } else if (response.data.transcription) {
+          // Solo mostrar transcripción si es audio
           confirmationMessage = `✅ Audio recibido: "${response.data.transcription}"`;
+        } else if (message.type === 'text') {
+          // Para texto, mostrar el texto procesado
+          confirmationMessage = `✅ Texto procesado: "${message.message}"`;
         }
         
         await whatsapp.sendMessage(message.from, confirmationMessage);
       }
     } catch (error: any) {
-      console.error('❌ Error procesando mensaje en backend:', error?.response?.data || error?.message);
+      console.error('❌ Error procesando mensaje en backend:', {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+        url: `${BACKEND_URL}/api/webhooks/baileys`,
+        type: message.type
+      });
       
-      // Enviar mensaje de error al usuario
-      await whatsapp.sendMessage(
-        message.from,
-        '❌ Hubo un error procesando tu mensaje. Por favor intenta más tarde.'
-      );
+      // Si el backend no está disponible o hay error de conexión, informar al usuario
+      if (error?.code === 'ECONNREFUSED' || error?.code === 'ETIMEDOUT' || error?.response?.status >= 500) {
+        console.error('⚠️ Backend no disponible, no se envió mensaje de error al usuario');
+        // No enviar mensaje de error si el backend está caído
+      } else {
+        // Enviar mensaje de error al usuario solo si es un error del backend
+        await whatsapp.sendMessage(
+          message.from,
+          '❌ Hubo un error procesando tu mensaje. Por favor intenta más tarde.'
+        );
+      }
     }
-  } else if (message.type === 'audio') {
+  } else if (message.type === 'audio' || message.type === 'text') {
     // Sin backend, solo confirmar recepción
     console.log('⚠️ Backend no configurado, solo almacenando mensaje');
     await whatsapp.sendMessage(
