@@ -15,6 +15,7 @@ export interface IWhatsAppMessage {
   timestamp: number;
   type: 'text' | 'audio' | 'image';
   data?: any;
+  messageId?: string;
 }
 
 export interface IUserMessage {
