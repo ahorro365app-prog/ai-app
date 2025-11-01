@@ -94,15 +94,26 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
         const isAudio = respType === 'audio' || message.type === 'audio';
         const isText = respType === 'text' || message.type === 'text';
 
-        let confirmationMessage = '✅ Mensaje procesado correctamente';
+        // Construir confirmación estilo app (VoiceConfirmationModal)
+        const header = isText ? '✅ *Texto procesado:*' : '✅ *Audio procesado:*';
+        const montoStr = typeof amount === 'number' && amount > 0 ? amount.toFixed(2) : 'No detectado';
+        const tipo = (response.data.expense_data?.tipo as string) || 'No detectado';
+        const metodoPago = (response.data.expense_data?.metodoPago as string) || 'No detectado';
+        const categoriaStr = category || 'No detectada';
+        const descripcion =
+          (response.data.expense_data?.descripcion as string) ||
+          (isAudio ? (response.data.transcription as string) : (message.message || '')) ||
+          'No detectada';
 
-        if (amount && amount > 0 && category) {
-          confirmationMessage = `✅ Se agregó: ${amount} ${currency} - ${category}`;
-        } else if (isAudio && response.data.transcription) {
-          confirmationMessage = `✅ Audio recibido: "${response.data.transcription}"`;
-        } else if (isText) {
-          confirmationMessage = `✅ Texto procesado: "${message.message}"`;
-        }
+        const detalles = [
+          `\n*Monto (Bs):* ${montoStr}`,
+          `\n*Tipo de transaccion:* ${tipo}`,
+          `\n*Metodo de Pago:* ${metodoPago}`,
+          `\n*Categoria:* ${categoriaStr}`,
+          `\n*Descripción:* ${descripcion}`
+        ].join('');
+
+        const confirmationMessage = `${header}${detalles}`;
 
         await whatsapp.sendMessage(message.from, confirmationMessage);
       }
