@@ -88,19 +88,22 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
         const amount = response.data.amount || response.data.expense_data?.monto;
         const currency = response.data.currency || response.data.expense_data?.moneda || 'BOB';
         const category = response.data.category || response.data.expense_data?.categoria;
-        
+
+        // Determinar tipo desde la respuesta (preferente) o desde el mensaje original
+        const respType = response.data.message_type as 'audio' | 'text' | undefined;
+        const isAudio = respType === 'audio' || message.type === 'audio';
+        const isText = respType === 'text' || message.type === 'text';
+
         let confirmationMessage = '✅ Mensaje procesado correctamente';
-        
+
         if (amount && amount > 0 && category) {
           confirmationMessage = `✅ Se agregó: ${amount} ${currency} - ${category}`;
-        } else if (response.data.transcription) {
-          // Solo mostrar transcripción si es audio
+        } else if (isAudio && response.data.transcription) {
           confirmationMessage = `✅ Audio recibido: "${response.data.transcription}"`;
-        } else if (message.type === 'text') {
-          // Para texto, mostrar el texto procesado
+        } else if (isText) {
           confirmationMessage = `✅ Texto procesado: "${message.message}"`;
         }
-        
+
         await whatsapp.sendMessage(message.from, confirmationMessage);
       }
     } catch (error: any) {
