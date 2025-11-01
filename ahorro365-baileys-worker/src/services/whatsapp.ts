@@ -160,9 +160,15 @@ export class WhatsAppService {
         for (const msg of messages) {
           if (msg.key.fromMe) continue;
 
+          const messageText = (
+            msg.message?.conversation ||
+            (msg.message as any)?.extendedTextMessage?.text ||
+            ''
+          );
+
           const messageData: IWhatsAppMessage = {
             from: msg.key.remoteJid || '',
-            message: msg.message?.conversation || '',
+            message: messageText,
             timestamp: msg.messageTimestamp ? Number(msg.messageTimestamp) * 1000 : Date.now(),
             type: msg.message?.audioMessage ? 'audio' : 
                   msg.message?.imageMessage ? 'image' : 'text',
