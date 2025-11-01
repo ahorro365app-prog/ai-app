@@ -75,7 +75,7 @@ export class WhatsAppService {
       // Manejar eventos de conexión
       this.socket.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr, isNewLogin } = update;
-        
+
         console.log('📡 Evento de conexión:', {
           connection,
           isNewLogin: isNewLogin || false,
@@ -86,12 +86,12 @@ export class WhatsAppService {
         if (qr) {
           console.log('🎯 QR RECIBIDO - Generando imagen...');
           try {
-            const qrImage = await QRCode.toDataURL(qr);
-            const qrData = {
-              qr: qrImage,
-              timestamp: Date.now()
-            };
-            this.qrManager.saveQR(qrData);
+          const qrImage = await QRCode.toDataURL(qr);
+          const qrData = {
+            qr: qrImage,
+            timestamp: Date.now()
+          };
+          this.qrManager.saveQR(qrData);
             console.log('✅ QR guardado exitosamente');
           } catch (error) {
             console.error('❌ Error generando imagen QR:', error);
@@ -119,7 +119,7 @@ export class WhatsAppService {
             setTimeout(async () => {
               try {
                 console.log('🔄 Reconectando...');
-                await this.connect();
+            await this.connect();
               } catch (error) {
                 console.error('❌ Error al reconectar:', error);
               }
@@ -166,7 +166,8 @@ export class WhatsAppService {
             timestamp: msg.messageTimestamp ? Number(msg.messageTimestamp) * 1000 : Date.now(),
             type: msg.message?.audioMessage ? 'audio' : 
                   msg.message?.imageMessage ? 'image' : 'text',
-            data: msg.message
+          data: msg.message,
+          messageId: msg.key.id
           };
 
           // Si es audio, descargar el buffer

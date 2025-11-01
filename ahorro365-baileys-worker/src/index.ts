@@ -36,9 +36,10 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
       
       // Preparar payload según el tipo de mensaje
       let payload: any = {
-        from: message.from,
+          from: message.from,
         type: message.type,
-        timestamp: message.timestamp
+          timestamp: message.timestamp,
+          wa_message_id: (message as any).messageId
       };
 
       if (message.type === 'audio') {
@@ -66,13 +67,22 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
 
       // Manejar respuesta según el caso
       if (!response.data.success && response.data.error === 'user_not_registered') {
-        // Usuario no registrado - enviar mensaje de registro
-        console.log('👤 Usuario no registrado, enviando mensaje de invitación...');
+        // Usuario no registrado - verificar si debe enviar mensaje (rate limiting)
+        const shouldSendInvitation = response.data.should_send_invitation !== false; // Default true si no viene el flag
+        
+        if (shouldSendInvitation) {
+          // Enviar mensaje de registro solo si el rate limit lo permite
+          console.log('👤 Usuario no registrado, enviando mensaje de invitación...');
         await whatsapp.sendMessage(
           message.from,
-          '¡Hola! 👋 Parece que aún no tienes una cuenta en Ahorro365.\n\n¿Quieres que te enviemos la app y poder registrarte? 😊'
-        );
-        console.log('✅ Mensaje de registro enviado al usuario');
+            '¡Hola! 👋 Parece que aún no tienes una cuenta en Ahorro365.\n\n¿Quieres que te enviemos la app y poder registrarte? 😊'
+          );
+          console.log('✅ Mensaje de registro enviado al usuario');
+        } else {
+          // Rate limit: Ya se envió mensaje recientemente, no enviar de nuevo
+          console.log('⏸️ Rate limit activo: Ya se envió mensaje de invitación recientemente (últimas 24h)');
+          console.log('💡 Ignorando para evitar spam');
+        }
       } else if (response.data.success) {
         // Usuario registrado y mensaje procesado correctamente
         const amount = response.data.amount || response.data.expense_data?.monto;
@@ -108,11 +118,11 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
         // No enviar mensaje de error si el backend está caído
       } else {
         // Enviar mensaje de error al usuario solo si es un error del backend
-        await whatsapp.sendMessage(
-          message.from,
-          '❌ Hubo un error procesando tu mensaje. Por favor intenta más tarde.'
-        );
-      }
+      await whatsapp.sendMessage(
+        message.from,
+        '❌ Hubo un error procesando tu mensaje. Por favor intenta más tarde.'
+      );
+    }
     }
   } else if (message.type === 'audio' || message.type === 'text') {
     // Sin backend, solo confirmar recepción

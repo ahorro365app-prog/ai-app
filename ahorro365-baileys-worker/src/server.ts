@@ -29,11 +29,11 @@ app.get('/qr', (req, res) => {
     
     // Si no hay QR pero está conectado
     if (isConnected) {
-      return res.json({
-        success: true,
-        qr: null,
-        timestamp: null,
-        connected: true
+    return res.json({
+      success: true,
+      qr: null,
+      timestamp: null,
+      connected: true
       });
     }
     
