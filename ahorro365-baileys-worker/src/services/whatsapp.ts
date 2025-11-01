@@ -167,7 +167,7 @@ export class WhatsAppService {
             type: msg.message?.audioMessage ? 'audio' : 
                   msg.message?.imageMessage ? 'image' : 'text',
           data: msg.message,
-          messageId: msg.key.id
+          messageId: msg.key.id || undefined
           };
 
           // Si es audio, descargar el buffer
