@@ -21,6 +21,17 @@ const whatsapp = new WhatsAppService();
 // Iniciar servidor PRIMERO
 import './server';
 
+// Mapa para guardar transaction_id por usuario (última transacción pendiente)
+const pendingTransactions = new Map<string, string>();
+
+// Función para detectar confirmaciones
+function isConfirmation(text: string): boolean {
+  if (!text) return false;
+  const normalized = text.toLowerCase().trim();
+  const confirmations = ['sí', 'si', 'yes', 'ok', 'okay', 'perfecto', 'está bien', 'esta bien', 'correcto', 'confirmado'];
+  return confirmations.includes(normalized);
+}
+
 // Procesar mensajes entrantes
 whatsapp.onMessage(async (message: IWhatsAppMessage) => {
   console.log('📨 Mensaje recibido:', {
@@ -29,7 +40,49 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
     timestamp: new Date(message.timestamp)
   });
 
-  // Si es audio o texto, enviar al backend para procesar (SOLO si BACKEND_URL está configurado)
+  // 1. Verificar si es una confirmación (después de enviar preview)
+  if (message.type === 'text' && isConfirmation(message.message)) {
+    console.log('✅ Mensaje de confirmación detectado:', message.message);
+    
+    // Obtener transaction_id del mapa
+    const transaction_id = pendingTransactions.get(message.from);
+    if (!transaction_id) {
+      console.log('⚠️ No hay transacción pendiente para confirmar');
+      await whatsapp.sendMessage(message.from, '❌ No hay ninguna transacción pendiente para confirmar');
+      return;
+    }
+
+    try {
+      // Llamar al endpoint de confirmación
+      await axios.post(
+        `${BACKEND_URL}/api/webhooks/whatsapp/confirm`,
+        {
+          phone_number: message.from,
+          prediction_id: transaction_id,
+          message: message.message
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${BACKEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // Limpiar transacción pendiente
+      pendingTransactions.delete(message.from);
+      
+      await whatsapp.sendMessage(message.from, '✅ Transacción confirmada y guardada exitosamente! 🎉');
+      console.log('✅ Confirmación registrada exitosamente');
+    } catch (error: any) {
+      console.error('❌ Error registrando confirmación:', error);
+      await whatsapp.sendMessage(message.from, '❌ Error al confirmar transacción. Ya está guardada automáticamente.');
+    }
+    
+    return; // No procesar más
+  }
+
+  // 2. Si es audio o texto, enviar al backend para procesar (SOLO si BACKEND_URL está configurado)
   if ((message.type === 'audio' || message.type === 'text') && BACKEND_URL && BACKEND_URL !== 'http://localhost:3000') {
     try {
       console.log(`🔗 Enviando ${message.type} a backend: ${BACKEND_URL}`);
@@ -85,37 +138,17 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
         }
       } else if (response.data.success) {
         // Usuario registrado y mensaje procesado correctamente
-        const amount = response.data.amount || response.data.expense_data?.monto;
-        const currency = response.data.currency || response.data.expense_data?.moneda || 'BOB';
-        const category = response.data.category || response.data.expense_data?.categoria;
+        // Usar preview_message del backend (ya construido)
+        const previewMessage = response.data.preview_message || 'Mensaje procesado correctamente';
+        
+        await whatsapp.sendMessage(message.from, previewMessage);
 
-        // Determinar tipo desde la respuesta (preferente) o desde el mensaje original
-        const respType = response.data.message_type as 'audio' | 'text' | undefined;
-        const isAudio = respType === 'audio' || message.type === 'audio';
-        const isText = respType === 'text' || message.type === 'text';
-
-        // Construir confirmación estilo app (VoiceConfirmationModal)
-        const header = isText ? '✅ *Texto procesado:*' : '✅ *Audio procesado:*';
-        const montoStr = typeof amount === 'number' && amount > 0 ? amount.toFixed(2) : 'No detectado';
-        const tipo = (response.data.expense_data?.tipo as string) || 'No detectado';
-        const metodoPago = (response.data.expense_data?.metodoPago as string) || 'No detectado';
-        const categoriaStr = category || 'No detectada';
-        const descripcion =
-          (response.data.expense_data?.descripcion as string) ||
-          (isAudio ? (response.data.transcription as string) : (message.message || '')) ||
-          'No detectada';
-
-        const detalles = [
-          `\n*Monto (Bs):* ${montoStr}`,
-          `\n*Tipo de transaccion:* ${tipo}`,
-          `\n*Metodo de Pago:* ${metodoPago}`,
-          `\n*Categoria:* ${categoriaStr}`,
-          `\n*Descripción:* ${descripcion}`
-        ].join('');
-
-        const confirmationMessage = `${header}${detalles}`;
-
-        await whatsapp.sendMessage(message.from, confirmationMessage);
+        // Guardar transaction_id para posible confirmación
+        const transaction_id = response.data.transaction_id;
+        if (transaction_id) {
+          pendingTransactions.set(message.from, transaction_id);
+          console.log('💾 Transacción pendiente guardada para confirmación:', transaction_id);
+        }
       }
     } catch (error: any) {
       console.error('❌ Error procesando mensaje en backend:', {
