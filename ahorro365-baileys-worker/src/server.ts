@@ -155,10 +155,27 @@ app.get('/clean-session', (req, res) => {
     lastSync = null;
     qrManager.clearQR();
     
-    const authInfoPath = path.join(process.cwd(), 'auth_info');
+    // Usar el mismo path que WhatsAppService
+    const authInfoPath = process.env.BAILEYS_SESSION_PATH || path.join(process.cwd(), 'auth_info');
+    console.log(`📁 Intentando limpiar: ${authInfoPath}`);
+    
     if (fs.existsSync(authInfoPath)) {
-      fs.rmSync(authInfoPath, { recursive: true, force: true });
-      console.log('✅ auth_info eliminado');
+      // Intentar eliminar archivos JSON dentro
+      try {
+        const files = fs.readdirSync(authInfoPath);
+        console.log(`📂 Archivos encontrados: ${files.join(', ')}`);
+        for (const file of files) {
+          if (file.endsWith('.json')) {
+            fs.unlinkSync(path.join(authInfoPath, file));
+            console.log(`🗑️ Eliminado: ${file}`);
+          }
+        }
+        console.log('✅ archivos JSON eliminados');
+      } catch (err) {
+        console.error('Error eliminando archivos:', err);
+      }
+    } else {
+      console.log('⚠️ Directorio auth_info no existe');
     }
     
     res.json({ success: true, message: 'Session cleaned. Restart the worker.' });
