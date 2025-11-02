@@ -40,11 +40,21 @@ export class WhatsAppService {
       
       console.log(`📁 Session path: ${sessionPath}`);
       
-      // Si la variable FORCE_NEW_SESSION existe, eliminar auth_info
+      // Si la variable FORCE_NEW_SESSION existe, eliminar solo archivos JSON (no el directorio)
       if (process.env.FORCE_NEW_SESSION === 'true') {
         if (fs.existsSync(sessionPath)) {
-          fs.rmSync(sessionPath, { recursive: true, force: true });
-          console.log('🗑️  auth_info eliminado (FORCE_NEW_SESSION=true)');
+          try {
+            const files = fs.readdirSync(sessionPath);
+            for (const file of files) {
+              if (file.endsWith('.json')) {
+                fs.unlinkSync(path.join(sessionPath, file));
+                console.log(`🗑️ Archivo eliminado: ${file}`);
+              }
+            }
+            console.log('✅ auth_info limpiado (FORCE_NEW_SESSION=true)');
+          } catch (err) {
+            console.error('Error limpiando auth_info:', err);
+          }
         }
       }
       
