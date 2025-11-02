@@ -176,6 +176,14 @@ export class WhatsAppService {
             ''
           );
 
+          console.log('🔍 DEBUG mensaje:', {
+            hasMessage: !!msg.message,
+            hasConversation: !!msg.message?.conversation,
+            hasExtendedText: !!(msg.message as any)?.extendedTextMessage?.text,
+            messageText: messageText,
+            fullMessage: JSON.stringify(msg.message).substring(0, 200)
+          });
+
           const messageData: IWhatsAppMessage = {
             from: msg.key.remoteJid || '',
             message: messageText,

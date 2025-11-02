@@ -37,6 +37,7 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
   console.log('📨 Mensaje recibido:', {
     from: message.from,
     type: message.type,
+    message: message.message,
     timestamp: new Date(message.timestamp)
   });
 
