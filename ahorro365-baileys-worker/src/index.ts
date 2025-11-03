@@ -141,6 +141,7 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
         // Usuario registrado y mensaje procesado correctamente
         // Usar preview_message del backend (ya construido)
         const previewMessage = response.data.preview_message || 'Mensaje procesado correctamente';
+        console.log('📝 DEBUG preview_message:', JSON.stringify(previewMessage).substring(0, 200));
         
         await whatsapp.sendMessage(message.from, previewMessage);
 
