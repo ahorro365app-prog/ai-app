@@ -230,12 +230,34 @@ admin-dashboard/supabase/migrations/010_add_parent_message_id.sql (nuevo)
 
 ---
 
+## 🔧 BONUS: Eliminación de Agrupamiento por Categoría
+
+**Cambio adicional:** Se eliminó el agrupamiento automático por categoría en la App.
+
+**Archivo modificado:**
+```
+src/components/VoiceTransactionModal.tsx (-47 líneas)
+```
+
+**Comportamiento anterior:**
+- "compré 5 bs de pan, 10 bs de leche" → 1 TX de 15 bs (comida)
+
+**Comportamiento actual:**
+- "compré 5 bs de pan, 10 bs de leche" → 2 TX separadas:
+  - Pan: 5 bs (comida)
+  - Leche: 10 bs (comida)
+
+**Razón:** Mayor detalle y precisión en el registro de transacciones.
+
+---
+
 ## 🚀 DEPLOY
 
-✅ Commit realizado: `7b0dc2f`
+✅ Commits realizados: `7b0dc2f`, `19a2f5f`, `7a5e783`
 ✅ Push a `origin/main`
 ✅ Build exitoso en local
 ⏳ Vercel auto-deploy activo
+⏳ Migración SQL pendiente de ejecutar manualmente
 
 ---
 
