@@ -13,10 +13,18 @@ Esta guía documenta el procedimiento probado cuando el panel muestra "Generando
 Si `qr` es `null` por más de 60s, pasa al paso 2.
 
 ## 2) Reiniciar el worker (reactivar emisión de QR)
+
+### Obtener Machine ID:
+```bash
+flyctl machines list -a ahorro365-baileys-worker
+```
+
+### Reiniciar:
 ```bash
 flyctl machines restart <MACHINE_ID> -a ahorro365-baileys-worker
 ```
 - Espera 10–30s y vuelve a abrir el visor `/qr/view?t=NOW`.
+- **NOTA:** Si es la primera vez que usas `flyctl`, debes instalarlo y autenticarlo primero (ver abajo).
 
 ## 3) Evitar bucle EBUSY (no borrar el volumen montado)
 Si se activó `FORCE_NEW_SESSION` y ves `EBUSY: rmdir '/app/auth_info'` en logs:
@@ -45,8 +53,35 @@ flyctl logs -a ahorro365-baileys-worker --no-tail
 ```
 Busca: `QR Generado`, `QR guardado exitosamente`, `connectionClosed (428)`.
 
-## 7) Notas
+## 7) Instalar flyctl (si no está instalado)
+
+### Windows:
+```powershell
+pwsh -Command "iwr https://fly.io/install.ps1 -useb | iex"
+```
+
+O descarga manualmente desde: https://fly.io/docs/getting-started/installing-flyctl/
+
+### Autenticar:
+```bash
+flyctl auth login
+```
+
+Se abrirá el navegador para iniciar sesión en Fly.io.
+
+---
+
+## 8) Notas
 - El visor `/qr/view` consume el MISMO QR que emite Baileys (guardado por `QRManager` en `.qr`). Si no refresca, usa ventana privada o `Ctrl+Shift+R`.
 - La ruta `/qr` devuelve el QR vigente y su `timestamp`.
+- **Si el QR sigue sin aparecer después del reinicio**, ejecuta el Paso 4 (limpieza fina) pero usa SSH manual en lugar del flag `-C`:
+  ```bash
+  flyctl ssh console -a ahorro365-baileys-worker
+  # Dentro de SSH:
+  rm -f /app/auth_info/*.json
+  ls -l /app/auth_info
+  exit
+  ```
+  Luego reinicia nuevamente.
 
 
