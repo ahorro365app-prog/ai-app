@@ -21,9 +21,6 @@ const whatsapp = new WhatsAppService();
 // Iniciar servidor PRIMERO
 import './server';
 
-// Mapa para guardar transaction_id por usuario (última transacción pendiente)
-const pendingTransactions = new Map<string, string>();
-
 // Función para detectar confirmaciones
 function isConfirmation(text: string): boolean {
   if (!text) return false;
@@ -44,22 +41,14 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
   // 1. Verificar si es una confirmación (después de enviar preview)
   if (message.type === 'text' && isConfirmation(message.message)) {
     console.log('✅ Mensaje de confirmación detectado:', message.message);
-    
-    // Obtener transaction_id del mapa
-    const transaction_id = pendingTransactions.get(message.from);
-    if (!transaction_id) {
-      console.log('⚠️ No hay transacción pendiente para confirmar');
-      await whatsapp.sendMessage(message.from, '❌ No hay ninguna transacción pendiente para confirmar');
-      return;
-    }
 
     try {
       // Llamar al endpoint de confirmación
-      await axios.post(
+      // El backend obtendrá la transacción pendiente más reciente desde la BD
+      const response = await axios.post(
         `${BACKEND_URL}/api/webhooks/whatsapp/confirm`,
         {
           phone_number: message.from,
-          prediction_id: transaction_id,
           message: message.message
         },
         {
@@ -70,14 +59,16 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
         }
       );
 
-      // Limpiar transacción pendiente
-      pendingTransactions.delete(message.from);
-      
-      await whatsapp.sendMessage(message.from, '✅ Transacción confirmada y guardada exitosamente! 🎉');
-      console.log('✅ Confirmación registrada exitosamente');
+      if (response.data.success) {
+        await whatsapp.sendMessage(message.from, '✅ Transacción confirmada y guardada exitosamente! 🎉');
+        console.log('✅ Confirmación registrada exitosamente');
+      } else {
+        await whatsapp.sendMessage(message.from, response.data.message || '❌ No hay ninguna transacción pendiente para confirmar');
+      }
     } catch (error: any) {
       console.error('❌ Error registrando confirmación:', error);
-      await whatsapp.sendMessage(message.from, '❌ Error al confirmar transacción. Ya está guardada automáticamente.');
+      const errorMessage = error.response?.data?.message || error.message;
+      await whatsapp.sendMessage(message.from, errorMessage || '❌ Error al confirmar transacción. Ya está guardada automáticamente.');
     }
     
     return; // No procesar más
@@ -141,16 +132,9 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
         // Usuario registrado y mensaje procesado correctamente
         // Usar preview_message del backend (ya construido)
         const previewMessage = response.data.preview_message || 'Mensaje procesado correctamente';
-        console.log('📝 DEBUG preview_message:', JSON.stringify(previewMessage).substring(0, 200));
         
         await whatsapp.sendMessage(message.from, previewMessage);
-
-        // Guardar transaction_id para posible confirmación
-        const transaction_id = response.data.transaction_id;
-        if (transaction_id) {
-          pendingTransactions.set(message.from, transaction_id);
-          console.log('💾 Transacción pendiente guardada para confirmación:', transaction_id);
-        }
+        console.log('✅ Preview enviado al usuario');
       }
     } catch (error: any) {
       console.error('❌ Error procesando mensaje en backend:', {
