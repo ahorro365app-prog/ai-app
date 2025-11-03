@@ -309,46 +309,6 @@ export default function VoiceTransactionModal({
     }
   };
 
-  // Función para agrupar transacciones por categoría
-  const groupTransactionsByCategory = (transactions: GroqTransaction[]): GroqTransaction[] => {
-    const groupedMap = new Map<string, GroqTransaction>();
-    
-    transactions.forEach(transaction => {
-      const key = `${transaction.categoria}-${transaction.tipo}`;
-      
-      if (groupedMap.has(key)) {
-        // Ya existe una transacción de esta categoría y tipo, sumar montos y combinar descripciones
-        const existing = groupedMap.get(key)!;
-        existing.monto = (existing.monto || 0) + (transaction.monto || 0);
-        
-        // Combinar descripciones con comas
-        const existingDesc = existing.descripcion || '';
-        const newDesc = transaction.descripcion || '';
-        
-        if (existingDesc && newDesc && existingDesc !== newDesc) {
-          existing.descripcion = `${existingDesc}, ${newDesc}`;
-        } else if (newDesc && !existingDesc) {
-          existing.descripcion = newDesc;
-        }
-        
-        // Mantener la fecha más reciente si hay fechas diferentes
-        if (transaction.fecha && (!existing.fecha || transaction.fecha > existing.fecha)) {
-          existing.fecha = transaction.fecha;
-        }
-        
-        // Mantener método de pago si es diferente
-        if (transaction.metodoPago && transaction.metodoPago !== existing.metodoPago) {
-          existing.metodoPago = transaction.metodoPago;
-        }
-        
-      } else {
-        // Primera transacción de esta categoría y tipo
-        groupedMap.set(key, { ...transaction });
-      }
-    });
-    
-    return Array.from(groupedMap.values());
-  };
 
   const handleSaveChanges = () => {
     // Solo cambiar a modo de confirmación sin guardar completamente
@@ -365,15 +325,11 @@ export default function VoiceTransactionModal({
       setIsSaving(true);
       
       try {
-        console.log('🔄 Iniciando agrupación de transacciones...');
-        // Agrupar transacciones por categoría antes de guardar
-        const groupedTransactions = groupTransactionsByCategory(editingData);
-        
-        console.log('📊 Transacciones agrupadas:', groupedTransactions);
+        console.log('🔄 Guardando transacciones sin agrupar...');
         
         const updatedGroqData = {
           ...groqData!,
-          transacciones: groupedTransactions
+          transacciones: editingData
         };
         
         console.log('📤 Datos preparados para guardar:', updatedGroqData);
@@ -385,7 +341,7 @@ export default function VoiceTransactionModal({
           throw new Error('Usuario no autenticado');
         }
         
-        for (const transaction of groupedTransactions) {
+        for (const transaction of editingData) {
           // Usar la misma lógica del dashboard para la fecha
           const transactionDate = transaction.fecha || new Date().toISOString().split('T')[0];
           const now = new Date();
