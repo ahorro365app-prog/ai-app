@@ -1,0 +1,46 @@
+name: Notifications Cron
+
+on:
+  schedule:
+    # Ejecuta cada 15 minutos
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  run-notifications-cron:
+    name: Ejecutar notificaciones programadas
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validar configuración
+        run: |
+          if [ -z "${{ secrets.NOTIFICATIONS_CRON_URL }}" ]; then
+            echo "❌ Falta el secret NOTIFICATIONS_CRON_URL en GitHub." >&2
+            exit 1
+          fi
+          if [ -z "${{ secrets.NOTIFICATIONS_CRON_SECRET }}" ]; then
+            echo "❌ Falta el secret NOTIFICATIONS_CRON_SECRET en GitHub." >&2
+            exit 1
+          fi
+      - name: Invocar endpoint de campañas y triggers
+        env:
+          CRON_URL: ${{ secrets.NOTIFICATIONS_CRON_URL }}
+          CRON_SECRET: ${{ secrets.NOTIFICATIONS_CRON_SECRET }}
+        run: |
+          echo "🚀 Ejecutando cron de notificaciones contra ${CRON_URL}"
+          response=$(curl -sS -X POST "${CRON_URL}" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            --write-out "HTTPSTATUS:%{http_code}" )
+
+          http_status=$(echo "$response" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          body=$(echo "$response" | sed -e 's/HTTPSTATUS\:.*//g')
+
+          echo "Respuesta HTTP: ${http_status}"
+          echo "Contenido:"
+          echo "$body"
+
+          if [ "$http_status" -ge 400 ]; then
+            echo "❌ La ejecución del cron falló con código ${http_status}" >&2
+            exit 1
+          fi
+
