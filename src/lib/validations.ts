@@ -139,23 +139,11 @@ export type ConfirmFeedbackInput = z.infer<typeof confirmFeedbackSchema>;
  * Schema para webhook de WhatsApp (Meta)
  * Validación básica de estructura
  */
-export const whatsappWebhookSchema = z.object({
-  object: z.literal('whatsapp_business_account'),
-  entry: z.array(z.object({
-    changes: z.array(z.object({
-      value: z.object({
-        messages: z.array(z.object({
-          type: z.literal('audio'),
-          from: phoneSchema,
-          audio: z.object({
-            id: z.string(),
-            duration: z.number().positive().max(15).optional().nullable(),
-          }),
-        })).optional(),
-      })).optional(),
-    })).optional(),
-  })).optional(),
-}).passthrough(); // Permite campos adicionales pero valida los importantes
+export const whatsappWebhookSchema = z
+  .object({
+    object: z.literal('whatsapp_business_account').optional(),
+  })
+  .passthrough(); // Validación básica: aceptamos payload y lo inspeccionamos manualmente
 
 export type WhatsAppWebhookInput = z.infer<typeof whatsappWebhookSchema>;
 
