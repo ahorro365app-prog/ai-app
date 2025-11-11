@@ -1,5 +1,5 @@
-import path from 'path';
 import type { NextConfig } from "next";
+import path from 'path';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -18,7 +18,12 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   webpack: (config) => {
-    config.resolve.alias['@'] = path.resolve(__dirname, 'src');
+    const srcPath = path.join(process.cwd(), 'src');
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      '@': srcPath,
+      '@/': srcPath,
+    };
     return config;
   },
 };
