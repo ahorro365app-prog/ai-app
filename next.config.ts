@@ -1,12 +1,15 @@
 import type { NextConfig } from "next";
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const nextConfig: NextConfig = {
-  output: 'export',
+  // Cambiamos el directorio de build en desarrollo para evitar conflictos con .next bloqueado
+  distDir: isProduction ? '.next' : '.next-dev',
   trailingSlash: true,
   images: {
     unoptimized: true
   },
-  assetPrefix: process.env.NODE_ENV === 'production' ? '' : '',
+  assetPrefix: isProduction ? '' : '',
   eslint: {
     ignoreDuringBuilds: true,
   },
