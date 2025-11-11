@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
-import { registrarAprendizaje } from '@/lib/configMatriz';
-import { uuidSchema, validateWithZod } from '@/lib/validations';
-import { handleError, handleValidationError } from '@/lib/errorHandler';
-import { logger } from '@/lib/logger';
+import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
+import { registrarAprendizaje } from '../../../../lib/configMatriz';
+import { uuidSchema, validateWithZod } from '../../../../lib/validations';
+import { handleError, handleValidationError } from '../../../../lib/errorHandler';
+import { logger } from '../../../../lib/logger';
 
 export const dynamic = 'force-dynamic';
 
