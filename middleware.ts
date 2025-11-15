@@ -1,38 +1,30 @@
-// Middleware temporalmente deshabilitado para desarrollo sin autenticación
-// Si quieres activar Clerk nuevamente, descomenta el código de abajo
+import { NextRequest, NextResponse } from "next/server";
 
-/*
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-
-const isPublicRoute = createRouteMatcher([
-  '/',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/api/webhooks(.*)',
-]);
-
-export default clerkMiddleware(async (auth, req) => {
-  if (!isPublicRoute(req)) {
-    await auth.protect();
-  }
-});
-
-export const config = {
-  matcher: [
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    '/(api|trpc)(.*)',
-  ],
-};
-*/
-
-export default function middleware() {
-  // Permitir acceso sin autenticación
-  return;
+/**
+ * Middleware DESHABILITADO completamente para evitar errores MIDDLEWARE_INVOCATION_FAILED
+ * 
+ * La app móvil está apuntando a Vercel (https://ahorro365-core.vercel.app)
+ * y el middleware estaba causando errores 500 en producción.
+ * 
+ * SOLUCIÓN: El matcher está configurado para NO ejecutarse en rutas API
+ * Esto previene completamente cualquier error de middleware en las APIs.
+ * 
+ * La autenticación se maneja en cada endpoint API usando Supabase.
+ * Los security headers se aplican en next.config.js
+ */
+export default function middleware(request: NextRequest) {
+  // Este código nunca debería ejecutarse porque el matcher excluye todas las rutas API
+  // Pero por si acaso, retornamos next() sin hacer nada
+  return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    '/(api|trpc)(.*)',
+    // SOLO aplicar a páginas (no a APIs ni archivos estáticos)
+    // Excluir explícitamente:
+    // - /api/* (todas las rutas API)
+    // - /_next/* (archivos internos de Next.js)
+    // - Archivos estáticos (imágenes, CSS, JS, etc.)
+    '/((?!api/|_next/|.*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
   ],
 };
