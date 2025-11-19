@@ -1,13 +1,47 @@
 "use client";
 
 import { useState } from 'react';
-import { Calendar, TrendingDown, TrendingUp, Search, Edit2, Trash2 } from 'lucide-react';
+import { Calendar, TrendingDown, TrendingUp, Edit2, Trash2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useModal } from '@/contexts/ModalContext';
 import { getCategoryLabel } from '@/components/TransactionModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import { getPlanLimits } from '@/lib/planLimits';
+import { logger } from '@/lib/logger';
+
+// Categorías disponibles
+const EXPENSE_CATEGORIES = [
+  { id: 'comida', label: 'Comida', emoji: '🍽️' },
+  { id: 'transporte', label: 'Transporte', emoji: '🚗' },
+  { id: 'entretenimiento', label: 'Entretenimiento', emoji: '🎬' },
+  { id: 'compras', label: 'Compras', emoji: '🛍️' },
+  { id: 'salud', label: 'Salud', emoji: '💊' },
+  { id: 'servicios', label: 'Servicios', emoji: '💡' },
+  { id: 'educacion', label: 'Educación', emoji: '📚' },
+  { id: 'ropa', label: 'Ropa', emoji: '👕' },
+  { id: 'hogar', label: 'Hogar', emoji: '🏠' },
+  { id: 'otros', label: 'Otro', emoji: '📦' },
+];
+
+const INCOME_CATEGORIES = [
+  { id: 'salario', label: 'Salario', emoji: '💰' },
+  { id: 'freelance', label: 'Freelance', emoji: '💼' },
+  { id: 'inversion', label: 'Inversión', emoji: '📈' },
+  { id: 'regalo', label: 'Regalo', emoji: '🎁' },
+  { id: 'venta', label: 'Venta', emoji: '🤝' },
+  { id: 'otros', label: 'Otro', emoji: '💵' },
+];
+
+const PAYMENT_METHODS = [
+  { id: 'efectivo', label: '💵 Efectivo' },
+  { id: 'tarjeta', label: '💳 Tarjeta' },
+  { id: 'transferencia', label: '📱 Transferencia' },
+  { id: 'qr', label: '📲 QR' },
+  { id: 'cheque', label: '📝 Cheque' },
+  { id: 'otro', label: '📎 Otro' },
+];
 
 export default function HistoryPage() {
   const router = useRouter();
@@ -16,6 +50,11 @@ export default function HistoryPage() {
   const { setModalOpen } = useModal();
   // Usar moneda de Supabase si está disponible
   const currentCurrency = user?.moneda || currency;
+  
+  // Verificar si el usuario tiene acceso al historial completo
+  const currentPlan = user?.suscripcion || 'free';
+  const planLimits = getPlanLimits(currentPlan);
+  const hasFullHistoryAccess = planLimits.historicalDataLimit !== null;
   
   // Estado para el modal de confirmación de eliminación
   const [deleteModal, setDeleteModal] = useState<{
@@ -57,17 +96,35 @@ export default function HistoryPage() {
 
   // Función para abrir modal de edición desde el modal de opciones (solo transacciones regulares)
   const handleEditFromOptions = () => {
+    // Buscar la transacción completa
+    const transaction = currentMovements.find(m => m.id === optionsModal.transactionId);
+    
+    if (!transaction) {
+      logger.error('Transacción no encontrada');
+      return;
+    }
+    
     // Cerrar modal de opciones sin afectar la barra inferior
     setOptionsModal({ isOpen: false, transactionId: '', transactionName: '', transactionAmount: 0 });
     
-    // Abrir modal de edición (solo para transacciones regulares)
+    // Preparar fecha para el input date (formato YYYY-MM-DD)
+    const transactionDate = new Date(transaction.date);
+    const year = transactionDate.getFullYear();
+    const month = String(transactionDate.getMonth() + 1).padStart(2, '0');
+    const day = String(transactionDate.getDate()).padStart(2, '0');
+    const fechaStr = `${year}-${month}-${day}`;
+    
+    // Abrir modal de edición con todos los datos
     setEditModal({
       isOpen: true,
-      transactionId: optionsModal.transactionId,
-      currentAmount: optionsModal.transactionAmount,
-      newAmount: optionsModal.transactionAmount.toString()
+      transactionId: transaction.id,
+      tipo: transaction.type === 'expense' ? 'gasto' : 'ingreso',
+      monto: transaction.amount,
+      categoria: transaction.category,
+      descripcion: transaction.description || '',
+      metodo_pago: transaction.paymentMethod || 'efectivo',
+      fecha: fechaStr
     });
-    // No llamar setModalOpen(false) aquí, mantener la barra oculta
   };
 
   // Función para abrir modal de eliminación desde el modal de opciones (solo transacciones regulares)
@@ -75,35 +132,60 @@ export default function HistoryPage() {
     // Cerrar modal de opciones sin afectar la barra inferior
     setOptionsModal({ isOpen: false, transactionId: '', transactionName: '', transactionAmount: 0 });
     
-    // Abrir modal de eliminación (solo para transacciones regulares)
-    setDeleteModal({
-      isOpen: true,
-      transactionId: optionsModal.transactionId,
-      transactionName: optionsModal.transactionName,
-      transactionAmount: optionsModal.transactionAmount
-    });
+          // Abrir modal de eliminación (solo para transacciones regulares)
+      setDeleteModal({
+        isOpen: true,
+        transactionId: optionsModal.transactionId,
+        transactionName: optionsModal.transactionName
+      });
     // No llamar setModalOpen(false) aquí, mantener la barra oculta
   };
 
   // Función para cerrar modal de edición
   const handleCloseEditModal = () => {
-    setEditModal({ isOpen: false, transactionId: '', currentAmount: 0, newAmount: '' });
+    setEditModal({ 
+      isOpen: false, 
+      transactionId: '', 
+      tipo: 'gasto',
+      monto: 0,
+      categoria: '',
+      descripcion: '',
+      metodo_pago: 'efectivo',
+      fecha: new Date().toISOString().split('T')[0]
+    });
     setModalOpen(false);
   };
 
   // Función para confirmar edición
   const handleConfirmEdit = async () => {
-    if (user && editModal.transactionId && editModal.newAmount) {
+    if (user && editModal.transactionId) {
       try {
-        const newAmount = parseFloat(editModal.newAmount);
-        if (newAmount > 0) {
-          await updateSupabaseTransaction(editModal.transactionId, {
-            monto: newAmount
-          });
-          handleCloseEditModal();
+        // Validar que el monto sea mayor que 0
+        if (editModal.monto <= 0) {
+          alert('El monto debe ser mayor que 0');
+          return;
         }
+        
+        // Validar que la categoría esté seleccionada
+        if (!editModal.categoria) {
+          alert('Por favor selecciona una categoría');
+          return;
+        }
+        
+        // Actualizar la transacción usando updateSupabaseTransaction
+        // Esto actualizará automáticamente el estado local
+        await updateSupabaseTransaction(editModal.transactionId, {
+          tipo: editModal.tipo,
+          monto: editModal.monto,
+          categoria: editModal.categoria,
+          descripcion: editModal.descripcion || null,
+          metodo_pago: editModal.metodo_pago
+        });
+        
+        handleCloseEditModal();
       } catch (error) {
-        console.error('Error al editar transacción:', error);
+        logger.error('Error al editar transacción:', error);
+        alert('Error al editar la transacción. Por favor intenta de nuevo.');
       }
     }
   };
@@ -116,7 +198,7 @@ export default function HistoryPage() {
         setDeleteModal({ isOpen: false, transactionId: '', transactionName: '' });
         setModalOpen(false);
       } catch (error) {
-        console.error('Error al eliminar transacción:', error);
+        logger.error('Error al eliminar transacción:', error);
       }
     }
   };
@@ -150,7 +232,6 @@ export default function HistoryPage() {
   };
   
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'expense' | 'income'>('all');
 
   // Estado para swipe con opciones
@@ -165,9 +246,22 @@ export default function HistoryPage() {
   const [editModal, setEditModal] = useState<{
     isOpen: boolean;
     transactionId: string;
-    currentAmount: number;
-    newAmount: string;
-  }>({ isOpen: false, transactionId: '', currentAmount: 0, newAmount: '' });
+    tipo: 'ingreso' | 'gasto';
+    monto: number;
+    categoria: string;
+    descripcion: string;
+    metodo_pago: string;
+    fecha: string;
+  }>({ 
+    isOpen: false, 
+    transactionId: '', 
+    tipo: 'gasto',
+    monto: 0,
+    categoria: '',
+    descripcion: '',
+    metodo_pago: 'efectivo',
+    fecha: new Date().toISOString().split('T')[0]
+  });
 
   // Estado para modal flotante de opciones
   const [optionsModal, setOptionsModal] = useState<{
@@ -242,11 +336,17 @@ export default function HistoryPage() {
 
   // Filtrar movimientos
   const filteredTransactions = currentMovements.filter(movement => {
-    const categoryLabel = getCategoryLabel(movement.category);
-    const matchesSearch = movement.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         categoryLabel.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || movement.type === filterType;
-    return matchesSearch && matchesType;
+    
+    // Filtrar por fecha: solo últimos 3 días
+    let matchesDate = true;
+    const movementDate = new Date(movement.date);
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    threeDaysAgo.setHours(0, 0, 0, 0);
+    matchesDate = movementDate >= threeDaysAgo;
+    
+    return matchesType && matchesDate;
   });
 
   // Obtener estadísticas de los movimientos filtrados
@@ -359,10 +459,35 @@ export default function HistoryPage() {
 
   // Agrupar movimientos por fecha (usando hora local, no UTC)
   const groupedByDate = filteredTransactions.reduce((acc, movement) => {
+    // Extraer año, mes y día en la zona horaria del país del usuario
+    // Esto es crítico para evitar que transacciones después de 9 PM se muestren al día siguiente
+    const userCountry = user?.pais || 'BO';
+    const timeZone = userCountry === 'BO' ? 'America/La_Paz' : 
+                     userCountry === 'AR' ? 'America/Argentina/Buenos_Aires' :
+                     userCountry === 'BR' ? 'America/Sao_Paulo' :
+                     userCountry === 'CL' ? 'America/Santiago' :
+                     userCountry === 'CO' ? 'America/Bogota' :
+                     userCountry === 'EC' ? 'America/Guayaquil' :
+                     userCountry === 'PE' ? 'America/Lima' :
+                     userCountry === 'PY' ? 'America/Asuncion' :
+                     userCountry === 'UY' ? 'America/Montevideo' :
+                     userCountry === 'VE' ? 'America/Caracas' :
+                     userCountry === 'MX' ? 'America/Mexico_City' :
+                     userCountry === 'US' ? 'America/New_York' :
+                     'America/La_Paz';
+    
     const movementDate = new Date(movement.date);
-    const year = movementDate.getFullYear();
-    const month = String(movementDate.getMonth() + 1).padStart(2, '0');
-    const day = String(movementDate.getDate()).padStart(2, '0');
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    
+    const parts = formatter.formatToParts(movementDate);
+    const year = parts.find(p => p.type === 'year')?.value || '';
+    const month = parts.find(p => p.type === 'month')?.value || '';
+    const day = parts.find(p => p.type === 'day')?.value || '';
     const dateStr = `${year}-${month}-${day}`;
     
     if (!acc[dateStr]) {
@@ -377,31 +502,75 @@ export default function HistoryPage() {
   );
 
   const formatDate = (dateStr: string) => {
-    // Parsear la fecha en formato YYYY-MM-DD como hora local
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
+    // Obtener país del usuario para usar su zona horaria
+    const userCountry = user?.pais || 'BO';
+    const timeZone = userCountry === 'BO' ? 'America/La_Paz' : 
+                     userCountry === 'AR' ? 'America/Argentina/Buenos_Aires' :
+                     userCountry === 'BR' ? 'America/Sao_Paulo' :
+                     userCountry === 'CL' ? 'America/Santiago' :
+                     userCountry === 'CO' ? 'America/Bogota' :
+                     userCountry === 'EC' ? 'America/Guayaquil' :
+                     userCountry === 'PE' ? 'America/Lima' :
+                     userCountry === 'PY' ? 'America/Asuncion' :
+                     userCountry === 'UY' ? 'America/Montevideo' :
+                     userCountry === 'VE' ? 'America/Caracas' :
+                     userCountry === 'MX' ? 'America/Mexico_City' :
+                     userCountry === 'US' ? 'America/New_York' :
+                     'America/La_Paz';
     
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+    // Parsear la fecha en formato YYYY-MM-DD
+    const [year, month, day] = dateStr.split('-').map(Number);
+    
+    // Crear fecha en la zona horaria del país usando Intl.DateTimeFormat
+    const formatter = new Intl.DateTimeFormat('es-ES', {
+      timeZone: timeZone,
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long',
+    });
+    
+    // Crear una fecha que represente el día en la zona horaria del país
+    const dateInCountry = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+    const formattedDate = formatter.format(dateInCountry);
+    
+    // Obtener fecha de hoy en la zona horaria del país
+    const now = new Date();
+    const todayFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const todayParts = todayFormatter.formatToParts(now);
+    const todayYear = parseInt(todayParts.find(p => p.type === 'year')?.value || '0', 10);
+    const todayMonth = parseInt(todayParts.find(p => p.type === 'month')?.value || '0', 10);
+    const todayDay = parseInt(todayParts.find(p => p.type === 'day')?.value || '0', 10);
+    
+    const yesterdayFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const yesterdayDate = new Date(now);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayParts = yesterdayFormatter.formatToParts(yesterdayDate);
+    const yesterdayYear = parseInt(yesterdayParts.find(p => p.type === 'year')?.value || '0', 10);
+    const yesterdayMonth = parseInt(yesterdayParts.find(p => p.type === 'month')?.value || '0', 10);
+    const yesterdayDay = parseInt(yesterdayParts.find(p => p.type === 'day')?.value || '0', 10);
 
     // Comparar solo año, mes y día (sin hora)
-    const isSameDay = (d1: Date, d2: Date) => {
-      return d1.getFullYear() === d2.getFullYear() &&
-             d1.getMonth() === d2.getMonth() &&
-             d1.getDate() === d2.getDate();
+    const isSameDay = (y1: number, m1: number, d1: number, y2: number, m2: number, d2: number) => {
+      return y1 === y2 && m1 === m2 && d1 === d2;
     };
 
-    if (isSameDay(date, today)) {
+    if (isSameDay(year, month, day, todayYear, todayMonth, todayDay)) {
       return 'Hoy';
-    } else if (isSameDay(date, yesterday)) {
+    } else if (isSameDay(year, month, day, yesterdayYear, yesterdayMonth, yesterdayDay)) {
       return 'Ayer';
     } else {
-      return date.toLocaleDateString('es-ES', { 
-        weekday: 'long', 
-        day: 'numeric', 
-        month: 'long' 
-      });
+      return formattedDate;
     }
   };
 
@@ -562,20 +731,8 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      {/* Filtros y búsqueda */}
+             {/* Filtros y búsqueda */}
       <div className="px-4 space-y-3">
-        {/* Buscador */}
-        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus-within:border-blue-500 transition-colors shadow-sm">
-          <Search size={18} className="text-gray-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar transacción..."
-            className="flex-1 bg-transparent text-xs text-gray-900 focus:outline-none placeholder-gray-400"
-          />
-        </div>
-
         {/* Filtros de tipo */}
         <div className="flex gap-2">
           <button
@@ -613,20 +770,49 @@ export default function HistoryPage() {
 
       {/* Lista de transacciones agrupadas por fecha */}
       <div className="px-4 pt-6 space-y-8">
-        {sortedDates.length === 0 ? (
+                {sortedDates.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-xs">No hay transacciones</p>
-            <p className="text-gray-400 text-xs mt-1">Comienza a registrar tus gastos e ingresos</p>
+            <p className="text-gray-500 text-xs">No hay transacciones</p>       
+            <p className="text-gray-400 text-xs mt-1">Comienza a registrar tus gastos e ingresos</p>                                                            
           </div>
         ) : (
-          sortedDates.map(date => (
-            <div key={date}>
-              {/* Fecha */}
-              <div className="flex items-center gap-2 mb-3">
+          <div>
+          {sortedDates.map((date, index) => (
+            <div 
+              key={date}
+              className={index > 0 ? 'pt-4' : ''}
+            >
+              {/* Fecha con resumen de gastos e ingresos */}
+              <div className="flex items-center gap-2 mb-4">
                 <Calendar size={16} className="text-purple-600" />
                 <h3 className="text-xs font-bold text-purple-900 capitalize">
                   {formatDate(date)}
                 </h3>
+                {(() => {
+                  // Calcular sumatorias del día
+                  const dayMovements = groupedByDate[date];
+                  const totalExpenses = dayMovements
+                    .filter((m: any) => m.type === 'expense')
+                    .reduce((sum: number, m: any) => sum + m.amount, 0);
+                  const totalIncome = dayMovements
+                    .filter((m: any) => m.type === 'income')
+                    .reduce((sum: number, m: any) => sum + m.amount, 0);
+                  
+                  return (
+                    <div className="flex items-center gap-2 ml-2">
+                      {totalExpenses > 0 && (
+                        <span className="text-xs font-semibold text-red-600">
+                          GASTO: {formatAmountWithCurrency(totalExpenses)}
+                        </span>
+                      )}
+                      {totalIncome > 0 && (
+                        <span className="text-xs font-semibold text-green-600">
+                          INGRESO: {formatAmountWithCurrency(totalIncome)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div className="flex-1 h-px bg-gradient-to-r from-purple-200 to-transparent"></div>
               </div>
 
@@ -705,10 +891,24 @@ export default function HistoryPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                                ))}
               </div>
             </div>
-          ))
+          ))}
+          
+          {/* Botón para ver historial completo (solo si tiene acceso) */}
+          {hasFullHistoryAccess && (
+            <div className="pt-6 pb-2">
+              <button
+                onClick={() => router.push('/history/full')}
+                className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold text-sm shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2"
+              >
+                <Calendar size={20} />
+                VER HISTORIAL COMPLETO
+              </button>
+            </div>
+          )}
+          </div>
         )}
       </div>
       {/* Modal de confirmación para eliminar transacción */}
@@ -740,13 +940,13 @@ export default function HistoryPage() {
             
             {/* Botones de acción */}
             <div className="space-y-3 mb-6">
-              <button
-                onClick={handleEditFromOptions}
-                className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold hover:opacity-90 transition-all shadow-lg flex items-center justify-center gap-3"
-              >
-                <Edit2 size={20} />
-                Editar Monto
-              </button>
+                              <button
+                  onClick={handleEditFromOptions}
+                  className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold hover:opacity-90 transition-all shadow-lg flex items-center justify-center gap-3"
+                >
+                  <Edit2 size={20} />
+                  Editar
+                </button>
               
               <button
                 onClick={handleDeleteFromOptions}
@@ -770,66 +970,171 @@ export default function HistoryPage() {
         </div>
       )}
 
-      {/* Modal de edición de transacción */}
-      {editModal.isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl animate-scale-in">
-            {/* Header */}
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
-                <Edit2 size={32} className="text-blue-600" />
+              {/* Modal de edición de transacción */}
+        {editModal.isOpen && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
+            <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl animate-scale-in my-8">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                    <Edit2 size={24} className="text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Editar Transacción</h3>
+                    <p className="text-xs text-gray-500">Modifica todos los campos</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleCloseEditModal}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                >
+                  <X size={18} className="text-gray-600" />
+                </button>
               </div>
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900">Editar Monto</h3>
-                <p className="text-sm text-gray-600">
-                  Monto actual: <span className="font-semibold">{formatAmountWithCurrency(editModal.currentAmount)}</span>
-                </p>
+
+              <div className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
+                {/* Tipo de transacción */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2">
+                    Tipo
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => {
+                        const newTipo = 'gasto';
+                        const availableCategories = EXPENSE_CATEGORIES.map(c => c.id);
+                        setEditModal(prev => ({
+                          ...prev,
+                          tipo: newTipo,
+                          categoria: availableCategories.includes(prev.categoria) ? prev.categoria : ''
+                        }));
+                      }}
+                      className={`py-3 px-4 rounded-xl font-semibold text-xs transition-all ${
+                        editModal.tipo === 'gasto'
+                          ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      <TrendingDown size={16} className="inline mr-2" />
+                      Gasto
+                    </button>
+                    <button
+                      onClick={() => {
+                        const newTipo = 'ingreso';
+                        const availableCategories = INCOME_CATEGORIES.map(c => c.id);
+                        setEditModal(prev => ({
+                          ...prev,
+                          tipo: newTipo,
+                          categoria: availableCategories.includes(prev.categoria) ? prev.categoria : ''
+                        }));
+                      }}
+                      className={`py-3 px-4 rounded-xl font-semibold text-xs transition-all ${
+                        editModal.tipo === 'ingreso'
+                          ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      <TrendingUp size={16} className="inline mr-2" />
+                      Ingreso
+                    </button>
+                  </div>
+                </div>
+
+                {/* Monto */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2">
+                    Monto *
+                  </label>
+                  <input
+                    type="number"
+                    value={editModal.monto || ''}
+                    onChange={(e) => setEditModal(prev => ({ ...prev, monto: parseFloat(e.target.value) || 0 }))}
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-sm text-gray-900 font-medium"
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    autoFocus
+                  />
+                </div>
+
+                {/* Categoría */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2">
+                    Categoría *
+                  </label>
+                  <select
+                    value={editModal.categoria}
+                    onChange={(e) => setEditModal(prev => ({ ...prev, categoria: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-sm text-gray-900 font-medium"
+                  >
+                    <option value="">Selecciona una categoría</option>
+                    {(editModal.tipo === 'gasto' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map(cat => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.emoji} {cat.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Método de pago */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2">
+                    Método de Pago
+                  </label>
+                  <select
+                    value={editModal.metodo_pago}
+                    onChange={(e) => setEditModal(prev => ({ ...prev, metodo_pago: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-sm text-gray-900 font-medium"
+                  >
+                    {PAYMENT_METHODS.map(method => (
+                      <option key={method.id} value={method.id}>
+                        {method.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Descripción */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2">
+                    Descripción
+                  </label>
+                  <input
+                    type="text"
+                    value={editModal.descripcion}
+                    onChange={(e) => setEditModal(prev => ({ ...prev, descripcion: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-sm text-gray-900 font-medium placeholder-gray-400"
+                    placeholder="Descripción opcional"
+                  />
+                </div>
               </div>
-            </div>
-            
-            {/* Campo de entrada */}
-            <div className="mb-6">
-              <label className="block text-xs font-semibold text-gray-700 mb-2">
-                Nuevo monto
-              </label>
-              <input
-                type="number"
-                value={editModal.newAmount}
-                onChange={(e) => setEditModal(prev => ({ ...prev, newAmount: e.target.value }))}
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-blue-500 focus:outline-none modal-input"
-                placeholder="0.00"
-                step="0.01"
-                min="0"
-                autoFocus
-              />
-            </div>
-            
-            {/* Botones */}
-            <div className="flex gap-3">
-              <button
-                onClick={handleCloseEditModal}
-                className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-all"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleConfirmEdit}
-                disabled={!editModal.newAmount || parseFloat(editModal.newAmount) <= 0}
-                className={`flex-1 py-3.5 px-4 rounded-xl font-semibold transition-all ${
-                  editModal.newAmount && parseFloat(editModal.newAmount) > 0
-                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:opacity-90 shadow-lg'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                Aceptar
-              </button>
+
+              {/* Botones */}
+              <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+                <button
+                  onClick={handleCloseEditModal}
+                  className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-all text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirmEdit}
+                  disabled={!editModal.monto || editModal.monto <= 0 || !editModal.categoria}
+                  className={`flex-1 py-3.5 px-4 rounded-xl font-semibold transition-all text-sm ${
+                    editModal.monto && editModal.monto > 0 && editModal.categoria
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:opacity-90 shadow-lg'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  Guardar Cambios
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 }
-
 
 
