@@ -18,11 +18,17 @@ export async function GET(req: NextRequest) {
 
   const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
 
-  logger.debug('Webhook verification request:', {
+  // Log completo para debugging (usar info para que se vea en producción)
+  logger.info('🔍 Webhook verification request:', {
+    url: req.url,
     mode,
     hasToken: !!token,
+    tokenLength: token?.length || 0,
     hasChallenge: !!challenge,
-    hasVerifyToken: !!verifyToken
+    challengeLength: challenge?.length || 0,
+    hasVerifyToken: !!verifyToken,
+    verifyTokenLength: verifyToken?.length || 0,
+    allParams: Object.fromEntries(searchParams.entries())
   });
 
   // Verificar que es una solicitud de suscripción
@@ -33,7 +39,10 @@ export async function GET(req: NextRequest) {
 
   logger.warn('❌ Webhook verification failed:', {
     mode,
-    tokenMatch: token === verifyToken
+    expectedMode: 'subscribe',
+    tokenMatch: token === verifyToken,
+    tokenProvided: !!token,
+    verifyTokenConfigured: !!verifyToken
   });
 
   return new NextResponse('Forbidden', { status: 403 });
