@@ -10,50 +10,84 @@ import { handleError, handleNotFoundError, ErrorType } from '@/lib/errorHandler'
  * GET: Verificación de webhook por Meta
  * Meta envía un GET request para verificar el webhook durante la configuración
  * 
- * Logging mejorado para diagnóstico (2025-11-19)
- * Force deploy: 2025-11-19 23:30
+ * Logging mejorado para diagnóstico (2025-11-20)
+ * Force deploy: 2025-11-20 07:30 - Logging RAW mejorado
  */
 export async function GET(req: NextRequest) {
+  // Log RAW de la petición completa ANTES de cualquier procesamiento
+  const rawUrl = req.url;
+  const rawHeaders: Record<string, string> = {};
+  req.headers.forEach((value, key) => {
+    rawHeaders[key] = value;
+  });
+
+  logger.info('🔍 RAW Webhook GET Request:', {
+    rawUrl,
+    method: req.method,
+    headers: rawHeaders,
+    urlPathname: req.nextUrl.pathname,
+    urlSearch: req.nextUrl.search,
+    urlSearchRaw: req.nextUrl.search,
+  });
+
   const searchParams = req.nextUrl.searchParams;
   
-  // Intentar leer parámetros de múltiples formas (solución basada en problemas comunes reportados)
+  // Intentar leer parámetros de múltiples formas
   let mode = searchParams.get('hub.mode');
   let token = searchParams.get('hub.verify_token');
   let challenge = searchParams.get('hub.challenge');
 
   // Si no se encontraron parámetros, intentar parsear manualmente desde la URL
-  // (algunos reportes indican que Next.js puede no parsear correctamente en ciertos casos)
-  if (!mode && !token && req.url) {
+  if (!mode && !token && rawUrl) {
     try {
-      const urlObj = new URL(req.url);
-      const manualParams = new URLSearchParams(urlObj.search);
-      mode = manualParams.get('hub.mode') || mode;
-      token = manualParams.get('hub.verify_token') || token;
-      challenge = manualParams.get('hub.challenge') || challenge;
+      // Intentar parsear desde la URL completa
+      const urlMatch = rawUrl.match(/\?(.+)$/);
+      if (urlMatch) {
+        const queryString = urlMatch[1];
+        const manualParams = new URLSearchParams(queryString);
+        mode = manualParams.get('hub.mode') || mode;
+        token = manualParams.get('hub.verify_token') || token;
+        challenge = manualParams.get('hub.challenge') || challenge;
+        
+        logger.info('📝 Parámetros parseados manualmente desde URL:', {
+          queryString,
+          mode,
+          hasToken: !!token,
+          hasChallenge: !!challenge,
+        });
+      }
+      
+      // También intentar desde el objeto URL
+      const urlObj = new URL(rawUrl);
+      const urlObjParams = new URLSearchParams(urlObj.search);
+      if (!mode) mode = urlObjParams.get('hub.mode') || mode;
+      if (!token) token = urlObjParams.get('hub.verify_token') || token;
+      if (!challenge) challenge = urlObjParams.get('hub.challenge') || challenge;
     } catch (e) {
-      logger.debug('Error parsing URL manually:', e);
+      logger.warn('⚠️ Error parsing URL manually:', e);
     }
   }
 
   const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
 
-  // Log completo para debugging (usar info para que se vea en producción)
+  // Log completo para debugging
   const allParams = Object.fromEntries(searchParams.entries());
-  logger.info('🔍 Webhook verification request:', {
+  logger.info('🔍 Webhook verification request (parsed):', {
     url: req.url,
     urlPathname: req.nextUrl.pathname,
     urlSearch: req.nextUrl.search,
+    searchParamsSize: searchParams.size,
+    allParams,
+    allParamsKeys: Object.keys(allParams),
     mode,
     hasToken: !!token,
     tokenLength: token?.length || 0,
-    tokenPreview: token ? `${token.substring(0, 5)}...` : null,
+    tokenPreview: token ? `${token.substring(0, 10)}...` : null,
     hasChallenge: !!challenge,
     challengeLength: challenge?.length || 0,
     hasVerifyToken: !!verifyToken,
     verifyTokenLength: verifyToken?.length || 0,
-    allParams,
-    allParamsKeys: Object.keys(allParams),
-    searchParamsSize: searchParams.size,
+    verifyTokenPreview: verifyToken ? `${verifyToken.substring(0, 10)}...` : null,
     headers: {
       'user-agent': req.headers.get('user-agent'),
       'x-forwarded-for': req.headers.get('x-forwarded-for'),
@@ -62,27 +96,60 @@ export async function GET(req: NextRequest) {
 
   // IMPORTANTE: Según reportes de la comunidad, el botón "Probar" en Meta
   // puede enviar peticiones sin parámetros. Solo "Verificar y guardar" envía los parámetros correctos.
-  if (!mode && !token) {
+  if (!mode && !token && !challenge) {
     logger.warn('⚠️ Solicitud GET sin parámetros. Esto puede ser una petición de prueba de Meta.');
     logger.warn('💡 SOLUCIÓN: Usa "Verificar y guardar" en Meta, NO "Probar"');
+    logger.warn('📋 Verifica en Meta Developer Console:');
+    logger.warn('   1. URL del webhook: https://ahorro365-core-api.vercel.app/api/webhooks/whatsapp');
+    logger.warn('   2. Verify Token debe coincidir con WHATSAPP_WEBHOOK_VERIFY_TOKEN en Vercel');
+    logger.warn('   3. Usa el botón "Verificar y guardar" (NO "Probar")');
     return new NextResponse('Missing verification parameters. Use "Verify and Save" button in Meta, not "Test".', { status: 400 });
   }
 
   // Verificar que es una solicitud de suscripción
   if (mode === 'subscribe' && token === verifyToken) {
-    logger.info('✅ Webhook verified successfully');
+    logger.info('✅ Webhook verified successfully', {
+      mode,
+      tokenMatch: true,
+      challengeLength: challenge?.length || 0,
+    });
     return new NextResponse(challenge, { status: 200 });
   }
+
+  // Diagnóstico detallado del fallo
+  const tokenMatch = token === verifyToken;
+  const tokenComparison = {
+    receivedToken: token ? `${token.substring(0, 10)}...${token.substring(token.length - 5)}` : null,
+    expectedToken: verifyToken ? `${verifyToken.substring(0, 10)}...${verifyToken.substring(verifyToken.length - 5)}` : null,
+    receivedLength: token?.length || 0,
+    expectedLength: verifyToken?.length || 0,
+    exactMatch: tokenMatch,
+  };
 
   logger.warn('❌ Webhook verification failed:', {
     mode,
     expectedMode: 'subscribe',
-    tokenMatch: token === verifyToken,
+    modeMatch: mode === 'subscribe',
+    tokenMatch,
     tokenProvided: !!token,
     verifyTokenConfigured: !!verifyToken,
-    tokenLength: token?.length || 0,
-    verifyTokenLength: verifyToken?.length || 0
+    challengeProvided: !!challenge,
+    tokenComparison,
   });
+
+  // Mensaje más específico según el problema
+  if (!verifyToken) {
+    logger.error('❌ WHATSAPP_WEBHOOK_VERIFY_TOKEN no está configurado en Vercel');
+    return new NextResponse('Webhook verify token not configured', { status: 500 });
+  }
+
+  if (mode !== 'subscribe') {
+    logger.warn(`⚠️ Mode incorrecto: "${mode}" (esperado: "subscribe")`);
+  }
+
+  if (!tokenMatch && token) {
+    logger.warn('⚠️ Token no coincide. Verifica que el token en Meta sea EXACTAMENTE el mismo que en Vercel');
+  }
 
   return new NextResponse('Forbidden', { status: 403 });
 }
