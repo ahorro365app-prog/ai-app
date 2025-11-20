@@ -22,16 +22,22 @@ export async function GET(req: NextRequest) {
   const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
 
   // Log completo para debugging (usar info para que se vea en producción)
+  const allParams = Object.fromEntries(searchParams.entries());
   logger.info('🔍 Webhook verification request:', {
     url: req.url,
+    urlPathname: req.nextUrl.pathname,
+    urlSearch: req.nextUrl.search,
     mode,
     hasToken: !!token,
     tokenLength: token?.length || 0,
+    tokenPreview: token ? `${token.substring(0, 5)}...` : null,
     hasChallenge: !!challenge,
     challengeLength: challenge?.length || 0,
     hasVerifyToken: !!verifyToken,
     verifyTokenLength: verifyToken?.length || 0,
-    allParams: Object.fromEntries(searchParams.entries())
+    allParams,
+    allParamsKeys: Object.keys(allParams),
+    searchParamsSize: searchParams.size
   });
 
   // Verificar que es una solicitud de suscripción
