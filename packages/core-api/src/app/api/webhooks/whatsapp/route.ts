@@ -9,6 +9,9 @@ import { handleError, handleNotFoundError, ErrorType } from '@/lib/errorHandler'
 /**
  * GET: Verificación de webhook por Meta
  * Meta envía un GET request para verificar el webhook durante la configuración
+ * 
+ * Logging mejorado para diagnóstico (2025-11-19)
+ * Force deploy: 2025-11-19 23:30
  */
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
