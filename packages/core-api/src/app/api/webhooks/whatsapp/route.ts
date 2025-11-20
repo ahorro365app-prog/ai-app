@@ -156,6 +156,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
+  
+  logger.info('📥 POST webhook recibido - Iniciando procesamiento');
+  
   const supabase = getSupabaseAdmin(); // Valida y crea cliente aquí
 
   try {
@@ -176,7 +179,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    logger.debug('📥 Parseando body del webhook...');
     const body = await req.json();
+    logger.debug('✅ Body parseado correctamente');
 
     webhookLogger.received(body);
 
@@ -352,6 +357,34 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
+    // Log detallado del error para diagnóstico
+    logger.error('❌ Error al procesar webhook de WhatsApp:', {
+      errorMessage: error?.message || 'Unknown error',
+      errorStack: error?.stack || 'No stack trace',
+      errorName: error?.name || 'Unknown',
+      errorType: typeof error,
+      errorString: String(error),
+    });
+    
+    // Log adicional si es un error de fetch
+    if (error?.message?.includes('fetch') || error?.message?.includes('Failed to download')) {
+      logger.error('❌ Error al descargar audio de Meta:', {
+        audioUrl: error?.audioUrl || 'unknown',
+        accessTokenConfigured: !!process.env.WHATSAPP_ACCESS_TOKEN,
+        apiVersion: process.env.WHATSAPP_API_VERSION || 'v22.0',
+      });
+    }
+    
+    // Log adicional si es un error de Supabase
+    if (error?.code || error?.message?.includes('supabase') || error?.message?.includes('database')) {
+      logger.error('❌ Error de Supabase:', {
+        errorCode: error?.code,
+        errorMessage: error?.message,
+        errorDetails: error?.details,
+        errorHint: error?.hint,
+      });
+    }
+    
     // Usar error handler seguro
     return handleError(error, 'Error al procesar el webhook de WhatsApp');
   }
