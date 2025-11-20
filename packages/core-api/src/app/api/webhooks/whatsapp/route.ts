@@ -15,9 +15,25 @@ import { handleError, handleNotFoundError, ErrorType } from '@/lib/errorHandler'
  */
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
-  const mode = searchParams.get('hub.mode');
-  const token = searchParams.get('hub.verify_token');
-  const challenge = searchParams.get('hub.challenge');
+  
+  // Intentar leer parámetros de múltiples formas (solución basada en problemas comunes reportados)
+  let mode = searchParams.get('hub.mode');
+  let token = searchParams.get('hub.verify_token');
+  let challenge = searchParams.get('hub.challenge');
+
+  // Si no se encontraron parámetros, intentar parsear manualmente desde la URL
+  // (algunos reportes indican que Next.js puede no parsear correctamente en ciertos casos)
+  if (!mode && !token && req.url) {
+    try {
+      const urlObj = new URL(req.url);
+      const manualParams = new URLSearchParams(urlObj.search);
+      mode = manualParams.get('hub.mode') || mode;
+      token = manualParams.get('hub.verify_token') || token;
+      challenge = manualParams.get('hub.challenge') || challenge;
+    } catch (e) {
+      logger.debug('Error parsing URL manually:', e);
+    }
+  }
 
   const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
 
@@ -37,8 +53,20 @@ export async function GET(req: NextRequest) {
     verifyTokenLength: verifyToken?.length || 0,
     allParams,
     allParamsKeys: Object.keys(allParams),
-    searchParamsSize: searchParams.size
+    searchParamsSize: searchParams.size,
+    headers: {
+      'user-agent': req.headers.get('user-agent'),
+      'x-forwarded-for': req.headers.get('x-forwarded-for'),
+    }
   });
+
+  // IMPORTANTE: Según reportes de la comunidad, el botón "Probar" en Meta
+  // puede enviar peticiones sin parámetros. Solo "Verificar y guardar" envía los parámetros correctos.
+  if (!mode && !token) {
+    logger.warn('⚠️ Solicitud GET sin parámetros. Esto puede ser una petición de prueba de Meta.');
+    logger.warn('💡 SOLUCIÓN: Usa "Verificar y guardar" en Meta, NO "Probar"');
+    return new NextResponse('Missing verification parameters. Use "Verify and Save" button in Meta, not "Test".', { status: 400 });
+  }
 
   // Verificar que es una solicitud de suscripción
   if (mode === 'subscribe' && token === verifyToken) {
@@ -51,7 +79,9 @@ export async function GET(req: NextRequest) {
     expectedMode: 'subscribe',
     tokenMatch: token === verifyToken,
     tokenProvided: !!token,
-    verifyTokenConfigured: !!verifyToken
+    verifyTokenConfigured: !!verifyToken,
+    tokenLength: token?.length || 0,
+    verifyTokenLength: verifyToken?.length || 0
   });
 
   return new NextResponse('Forbidden', { status: 403 });
