@@ -67,21 +67,24 @@ export async function POST(req: NextRequest) {
 
     // Validar que es webhook de Meta
     if (body.object !== 'whatsapp_business_account') {
-      logger.debug('Not a WhatsApp webhook');
+      logger.info('⚠️ Webhook recibido pero object no es whatsapp_business_account:', body.object);
       return NextResponse.json({ status: 'ignored' });
     }
 
     const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
     
     if (!message) {
-      logger.debug('No message in webhook');
+      logger.info('⚠️ Webhook recibido pero no hay mensaje en el payload');
       return NextResponse.json({ status: 'no_message' });
     }
 
+    // Log del tipo de mensaje recibido
+    logger.info(`📨 Mensaje recibido de WhatsApp Cloud API - Tipo: ${message.type}, From: ${message.from?.substring(0, 5)}...`);
+
     // Solo procesar audios
     if (message.type !== 'audio') {
-      logger.debug('Message is not audio');
-      return NextResponse.json({ status: 'not_audio' });
+      logger.info(`ℹ️ Mensaje de tipo '${message.type}' recibido pero no procesado (solo se procesan audios)`);
+      return NextResponse.json({ status: 'not_audio', message_type: message.type });
     }
 
     const { from: phoneNumber, audio } = message;
