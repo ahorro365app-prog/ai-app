@@ -239,11 +239,18 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Descargar audio de Meta
-    const audioUrl = `https://graph.facebook.com/v18.0/${audio.id}`;
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN || process.env.META_WHATSAPP_TOKEN; // Fallback para compatibilidad
+    const apiVersion = process.env.WHATSAPP_API_VERSION || 'v22.0';
+    const audioUrl = `https://graph.facebook.com/${apiVersion}/${audio.id}`;
+    
+    if (!accessToken) {
+      logger.error('❌ WHATSAPP_ACCESS_TOKEN no está configurado');
+      throw new Error('WhatsApp access token not configured');
+    }
     
     const audioResponse = await fetch(audioUrl, {
       headers: {
-        Authorization: `Bearer ${process.env.META_WHATSAPP_TOKEN}`,
+        Authorization: `Bearer ${accessToken}`,
       },
     });
 
