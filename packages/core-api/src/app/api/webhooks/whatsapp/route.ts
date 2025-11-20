@@ -232,34 +232,3 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET para verificación de webhook Meta
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const mode = searchParams.get('hub.mode');
-  const token = searchParams.get('hub.verify_token');
-  const challenge = searchParams.get('hub.challenge');
-
-  const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
-
-  logger.debug('Webhook verification request:', {
-    mode,
-    hasToken: !!token,
-    hasChallenge: !!challenge,
-    hasVerifyToken: !!verifyToken
-  });
-
-  // Verificar que es una solicitud de suscripción
-  if (mode === 'subscribe' && token === verifyToken) {
-    logger.info('✅ Webhook verified successfully');
-    return new NextResponse(challenge, { status: 200 });
-  }
-
-  logger.warn('❌ Webhook verification failed:', {
-    mode,
-    tokenMatch: token === verifyToken
-  });
-
-  return new NextResponse('Forbidden', { status: 403 });
-}
-
-
