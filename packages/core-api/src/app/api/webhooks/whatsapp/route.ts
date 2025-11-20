@@ -6,6 +6,39 @@ import { logger, webhookLogger } from '@/lib/logger';
 import { webhookRateLimit, getClientIdentifier, checkRateLimit } from '@/lib/rateLimit';
 import { handleError, handleNotFoundError, ErrorType } from '@/lib/errorHandler';
 
+/**
+ * GET: Verificación de webhook por Meta
+ * Meta envía un GET request para verificar el webhook durante la configuración
+ */
+export async function GET(req: NextRequest) {
+  const searchParams = req.nextUrl.searchParams;
+  const mode = searchParams.get('hub.mode');
+  const token = searchParams.get('hub.verify_token');
+  const challenge = searchParams.get('hub.challenge');
+
+  const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
+
+  logger.debug('Webhook verification request:', {
+    mode,
+    hasToken: !!token,
+    hasChallenge: !!challenge,
+    hasVerifyToken: !!verifyToken
+  });
+
+  // Verificar que es una solicitud de suscripción
+  if (mode === 'subscribe' && token === verifyToken) {
+    logger.info('✅ Webhook verified successfully');
+    return new NextResponse(challenge, { status: 200 });
+  }
+
+  logger.warn('❌ Webhook verification failed:', {
+    mode,
+    tokenMatch: token === verifyToken
+  });
+
+  return new NextResponse('Forbidden', { status: 403 });
+}
+
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
   const supabase = getSupabaseAdmin(); // Valida y crea cliente aquí
