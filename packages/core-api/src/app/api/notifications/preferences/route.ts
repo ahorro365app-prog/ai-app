@@ -114,24 +114,27 @@ export async function PUT(request: NextRequest) {
         updated_at: new Date().toISOString(),
       };
 
-      // Incluir solo los campos que están presentes en validated (incluyendo false)
-      if ('push_enabled' in validated) {
+      // Incluir campos que están presentes en validated (incluyendo false)
+      // Usar hasOwnProperty para verificar existencia, no solo truthiness
+      if (validated.hasOwnProperty('push_enabled')) {
         updateData.push_enabled = validated.push_enabled;
       }
-      if ('transaction_enabled' in validated) {
+      if (validated.hasOwnProperty('transaction_enabled')) {
         updateData.transaction_enabled = validated.transaction_enabled;
       }
-      if ('reminder_enabled' in validated) {
+      if (validated.hasOwnProperty('reminder_enabled')) {
         updateData.reminder_enabled = validated.reminder_enabled;
       }
-      if ('marketing_enabled' in validated) {
+      if (validated.hasOwnProperty('marketing_enabled')) {
         updateData.marketing_enabled = validated.marketing_enabled;
       }
-      if ('timezone' in validated) {
+      if (validated.hasOwnProperty('timezone')) {
         updateData.timezone = validated.timezone;
       }
 
       logger.debug('Datos de actualización:', updateData);
+      logger.debug('Validated object keys:', Object.keys(validated));
+      logger.debug('Validated object:', JSON.stringify(validated, null, 2));
 
       // Actualizar registro existente
       const { data, error } = await supabase
@@ -142,12 +145,23 @@ export async function PUT(request: NextRequest) {
         .single();
 
       if (error) {
+        logger.error('Error en actualización de Supabase:', {
+          error,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          updateData,
+          userId,
+        });
         return handleError(
           error,
           'Error al actualizar preferencias',
           ErrorType.DATABASE
         );
       }
+
+      logger.debug('Actualización exitosa, datos retornados:', data);
 
       return NextResponse.json({
         success: true,
