@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { securityHeadersMiddleware } from './lib/securityHeaders';
+import { securityHeadersMiddleware } from '@/lib/securityHeaders';
 
 /**
  * Middleware de seguridad para Core API
