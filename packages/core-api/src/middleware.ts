@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { securityHeadersMiddleware } from '@/lib/securityHeaders';
 
 /**
  * Middleware de seguridad para Core API
@@ -17,6 +16,65 @@ import { securityHeadersMiddleware } from '@/lib/securityHeaders';
  * - NO agregar logs que expongan información sensible
  * - El middleware debe ser silencioso en producción
  */
+
+/**
+ * Genera los security headers para todas las respuestas
+ */
+function getSecurityHeaders(request: NextRequest): Record<string, string> {
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // Content Security Policy
+  // Permite recursos necesarios: Supabase, Groq, Facebook, Sentry, etc.
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.sentry.io",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
+    "img-src 'self' data: https: blob:",
+    "connect-src 'self' https://*.supabase.co https://*.supabase.io https://api.groq.com https://graph.facebook.com https://*.sentry.io wss://*.supabase.co wss://*.supabase.io",
+    "frame-src 'none'",
+    "media-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests",
+  ].join('; ');
+
+  const headers: Record<string, string> = {
+    'Content-Security-Policy': csp,
+    'X-Frame-Options': 'DENY',
+    'X-Content-Type-Options': 'nosniff',
+    'X-XSS-Protection': '1; mode=block',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+  };
+
+  // Strict-Transport-Security: Solo en producción con HTTPS
+  if (isProduction) {
+    headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload';
+  }
+
+  return headers;
+}
+
+/**
+ * Aplica security headers a una respuesta NextResponse
+ */
+function applySecurityHeaders(
+  response: NextResponse,
+  request: NextRequest
+): NextResponse {
+  const headers = getSecurityHeaders(request);
+
+  // Aplicar cada header
+  Object.entries(headers).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
+
+  return response;
+}
+
 export function middleware(request: NextRequest) {
   const origin = request.headers.get('origin');
   
@@ -48,7 +106,7 @@ export function middleware(request: NextRequest) {
     response.headers.set('Access-Control-Max-Age', '86400'); // 24 horas
     
     // Aplicar security headers
-    return securityHeadersMiddleware(request, response);
+    return applySecurityHeaders(response, request);
   }
 
   // Para requests normales, crear respuesta y agregar headers CORS
@@ -63,7 +121,7 @@ export function middleware(request: NextRequest) {
   }
   
   // Aplicar security headers a todas las respuestas
-  return securityHeadersMiddleware(request, response);
+  return applySecurityHeaders(response, request);
 }
 
 export const config = {
