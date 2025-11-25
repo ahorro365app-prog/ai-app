@@ -109,32 +109,25 @@ export async function PUT(request: NextRequest) {
     }
 
     if (existingData) {
-      // Construir objeto de actualización explícitamente para asegurar que false se incluya
+      // Construir objeto de actualización
+      // Incluir todos los campos de validated (incluyendo false)
+      // Filtrar undefined pero mantener false, null, y otros valores
       const updateData: Record<string, any> = {
         updated_at: new Date().toISOString(),
       };
 
-      // Incluir campos que están presentes en validated (incluyendo false)
-      // Usar hasOwnProperty para verificar existencia, no solo truthiness
-      if (validated.hasOwnProperty('push_enabled')) {
-        updateData.push_enabled = validated.push_enabled;
-      }
-      if (validated.hasOwnProperty('transaction_enabled')) {
-        updateData.transaction_enabled = validated.transaction_enabled;
-      }
-      if (validated.hasOwnProperty('reminder_enabled')) {
-        updateData.reminder_enabled = validated.reminder_enabled;
-      }
-      if (validated.hasOwnProperty('marketing_enabled')) {
-        updateData.marketing_enabled = validated.marketing_enabled;
-      }
-      if (validated.hasOwnProperty('timezone')) {
-        updateData.timezone = validated.timezone;
-      }
+      // Incluir todos los campos de validated que no sean undefined
+      Object.keys(validated).forEach(key => {
+        const value = validated[key as keyof typeof validated];
+        if (value !== undefined) {
+          updateData[key] = value;
+        }
+      });
 
       logger.debug('Datos de actualización:', updateData);
       logger.debug('Validated object keys:', Object.keys(validated));
       logger.debug('Validated object:', JSON.stringify(validated, null, 2));
+      logger.debug('Body original:', JSON.stringify(body, null, 2));
 
       // Actualizar registro existente
       const { data, error } = await supabase
