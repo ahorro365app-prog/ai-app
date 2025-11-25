@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { z } from 'zod';
+import { handleError, handleValidationError, ErrorType } from '@/lib/errorHandler';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,10 +20,7 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('userId');
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, message: 'userId es requerido' },
-        { status: 400 }
-      );
+      return handleValidationError('userId es requerido');
     }
 
     const supabase = getSupabaseAdmin();
@@ -32,10 +31,10 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
 
     if (error && error.code !== 'PGRST116') {
-      console.error('Error obteniendo preferencias:', error);
-      return NextResponse.json(
-        { success: false, message: 'Error al obtener preferencias' },
-        { status: 500 }
+      return handleError(
+        error,
+        'Error al obtener preferencias',
+        ErrorType.DATABASE
       );
     }
 
@@ -58,10 +57,10 @@ export async function GET(request: NextRequest) {
       preferences: data,
     });
   } catch (error: any) {
-    console.error('Error en GET /api/notifications/preferences:', error);
-    return NextResponse.json(
-      { success: false, message: 'Error interno del servidor' },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error interno del servidor',
+      ErrorType.INTERNAL
     );
   }
 }
@@ -73,21 +72,34 @@ export async function PUT(request: NextRequest) {
     const userId = searchParams.get('userId');
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, message: 'userId es requerido' },
-        { status: 400 }
-      );
+      return handleValidationError('userId es requerido');
     }
 
     const validated = updatePreferencesSchema.parse(body);
     const supabase = getSupabaseAdmin();
 
     // Intentar actualizar primero
-    const { data: existingData } = await supabase
+    // Usar .maybeSingle() con manejo de errores mejorado
+    const { data: existingData, error: searchError } = await supabase
       .from('notification_preferences')
       .select('id')
       .eq('user_id', userId)
       .maybeSingle();
+
+    // Si hay un error de búsqueda (no es "no encontrado"), reportarlo
+    if (searchError && searchError.code !== 'PGRST116') {
+      logger.error('Error buscando preferencias existentes:', {
+        error: searchError,
+        code: searchError.code,
+        message: searchError.message,
+        userId,
+      });
+      return handleError(
+        searchError,
+        'Error al buscar preferencias existentes',
+        ErrorType.DATABASE
+      );
+    }
 
     if (existingData) {
       // Actualizar registro existente
@@ -102,10 +114,10 @@ export async function PUT(request: NextRequest) {
         .single();
 
       if (error) {
-        console.error('Error actualizando preferencias:', error);
-        return NextResponse.json(
-          { success: false, message: 'Error al actualizar preferencias' },
-          { status: 500 }
+        return handleError(
+          error,
+          'Error al actualizar preferencias',
+          ErrorType.DATABASE
         );
       }
 
@@ -131,10 +143,10 @@ export async function PUT(request: NextRequest) {
         .single();
 
       if (error) {
-        console.error('Error creando preferencias:', error);
-        return NextResponse.json(
-          { success: false, message: 'Error al crear preferencias' },
-          { status: 500 }
+        return handleError(
+          error,
+          'Error al crear preferencias',
+          ErrorType.DATABASE
         );
       }
 
@@ -145,16 +157,13 @@ export async function PUT(request: NextRequest) {
     }
   } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, message: 'Datos inválidos', errors: error.errors },
-        { status: 400 }
-      );
+      return handleValidationError('Datos inválidos', error.errors);
     }
 
-    console.error('Error en PUT /api/notifications/preferences:', error);
-    return NextResponse.json(
-      { success: false, message: 'Error interno del servidor' },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error interno del servidor',
+      ErrorType.INTERNAL
     );
   }
 }

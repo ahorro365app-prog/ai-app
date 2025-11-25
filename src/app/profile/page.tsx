@@ -1,11 +1,17 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Globe, DollarSign, Calendar, Target, LogOut, Edit2, Save, X, Phone, CreditCard, LayoutGrid } from 'lucide-react';
+import { User as UserIcon, Globe, DollarSign, Calendar, Target, LogOut, Edit2, Save, X, Phone, CreditCard, LayoutGrid, CheckCircle, Copy, Bell, Eye, EyeOff, Lock } from 'lucide-react';
 import { useCurrency } from '@/hooks/useCurrency';
-import { useSupabase } from '@/contexts/SupabaseContext';
+import { useSupabase, type User } from '@/contexts/SupabaseContext';
 import { useModal } from '@/contexts/ModalContext';
+import WhatsAppVerificationModal from '@/components/WhatsAppVerificationModal';
+import PhoneChangeModal from '@/components/PhoneChangeModal';
+import { LifeBuoy } from 'lucide-react';
+import { logger } from '@/lib/logger';
+import { Capacitor } from '@capacitor/core';
+import { getApiBaseUrl } from '@/lib/apiConfig';
 
 const COUNTRIES = [
   { code: 'BO', name: 'Bolivia', currency: 'BOB', symbol: 'Bs', flag: '🇧🇴', phoneCode: '+591' },
@@ -32,7 +38,7 @@ const currencyMap: Record<string, { code: string; symbol: string; name: string; 
 export default function ProfilePage() {
   const router = useRouter();
   const { currency, setCountry, setCurrency } = useCurrency();
-  const { user, updateUser, deleteAllDebts, deleteAllGoals, debts, goals, logout } = useSupabase();
+  const { user, updateUser, deleteAllDebts, deleteAllGoals, debts, goals, logout, checkCanChangePhone, fetchUserData, signInWithPhone } = useSupabase();
   const { setModalOpen } = useModal();
 
   const [selectedCountry, setSelectedCountry] = useState('BO');
@@ -53,7 +59,16 @@ export default function ProfilePage() {
   const [tempUserPhone, setTempUserPhone] = useState('');
   const [showNameModal, setShowNameModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [showPhoneChangeModal, setShowPhoneChangeModal] = useState(false);
+  const [phoneChangeInfo, setPhoneChangeInfo] = useState<{ canChange: boolean; daysRemaining?: number } | null>(null);
 
   // Estados para habilitación de menús
   const [isDebtsEnabled, setIsDebtsEnabled] = useState(true);
@@ -77,9 +92,211 @@ export default function ProfilePage() {
   }>({name: '', count: 0, items: []});
   
   // Estados para gestión de suscripción
-  const [userSubscription, setUserSubscription] = useState<'free' | 'premium'>('free');
+  const [userSubscription, setUserSubscription] = useState<'free' | 'smart' | 'pro' | 'caducado'>('free');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [activationCode, setActivationCode] = useState('');
+
+  // Estados para modales de verificación WhatsApp
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [whatsappCodePending, setWhatsappCodePending] = useState<{ timeRemaining: number; expiresAt: string } | null>(null);
+  
+  // Estados para cambio de teléfono pendiente
+  const [phoneChangePending, setPhoneChangePending] = useState<{ phone: string; timeRemaining: number; expiresAt: string } | null>(null);
+
+  // Función para verificar si hay cambio de teléfono pendiente en localStorage
+  const checkPendingPhoneChange = useCallback(() => {
+    try {
+      // Buscar todas las claves que empiecen con phone_change_verification_
+      const keys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('phone_change_verification_')) {
+          keys.push(key);
+        }
+      }
+      
+      // Buscar el código activo más reciente
+      let latestCode: { phone: string; expiresAt: string } | null = null;
+      let latestTime = 0;
+      
+      for (const key of keys) {
+        try {
+          const stored = localStorage.getItem(key);
+          if (!stored) continue;
+          
+          const data = JSON.parse(stored);
+          const expiresAtDate = new Date(data.expiresAt);
+          
+          // Verificar que no haya expirado
+          if (expiresAtDate <= new Date()) {
+            // Código expirado, limpiar
+            localStorage.removeItem(key);
+            continue;
+          }
+          
+          // Encontrar el más reciente
+          const savedAtTime = new Date(data.savedAt || data.expiresAt).getTime();
+          if (savedAtTime > latestTime) {
+            latestTime = savedAtTime;
+            latestCode = { phone: data.phone, expiresAt: data.expiresAt };
+          }
+        } catch (error) {
+          logger.error('❌ Error procesando clave de localStorage:', key, error);
+        }
+      }
+      
+      if (latestCode) {
+        const expiresAtDate = new Date(latestCode.expiresAt);
+        const now = new Date();
+        const timeRemaining = Math.max(0, Math.floor((expiresAtDate.getTime() - now.getTime()) / 1000));
+        
+        if (timeRemaining > 0) {
+          setPhoneChangePending({
+            phone: latestCode.phone,
+            timeRemaining,
+            expiresAt: latestCode.expiresAt
+          });
+          // Sanitizar teléfono para logs
+          const sanitizedPhone = latestCode.phone ? `${latestCode.phone.substring(0, 3)}***${latestCode.phone.substring(latestCode.phone.length - 2)}` : 'null';
+          logger.debug('✅ Cambio de teléfono pendiente encontrado:', { phone: sanitizedPhone, timeRemaining });
+        } else {
+          // Código expirado
+          setPhoneChangePending(null);
+        }
+      } else {
+        setPhoneChangePending(null);
+      }
+    } catch (error) {
+      logger.error('❌ Error verificando cambio de teléfono pendiente:', error);
+      setPhoneChangePending(null);
+    }
+  }, []);
+
+  // Función para verificar si hay código pendiente en localStorage
+  const checkPendingCode = useCallback(() => {
+    if (!user?.telefono) {
+      setWhatsappCodePending(null);
+      return;
+    }
+
+    try {
+      const cleanedPhone = user.telefono.replace(/\D/g, '');
+      const storageKey = `whatsapp_verification_${cleanedPhone}`;
+      const stored = localStorage.getItem(storageKey);
+      
+      if (!stored) {
+        setWhatsappCodePending(null);
+        return;
+      }
+
+      const data = JSON.parse(stored);
+      const expiresAtDate = new Date(data.expiresAt);
+      const now = new Date();
+      const timeRemaining = Math.floor((expiresAtDate.getTime() - now.getTime()) / 1000);
+
+      if (timeRemaining > 0) {
+        setWhatsappCodePending({ timeRemaining, expiresAt: data.expiresAt });
+      } else {
+        // Código expirado, limpiar
+        localStorage.removeItem(storageKey);
+        setWhatsappCodePending(null);
+      }
+    } catch (error) {
+      logger.error('Error verificando código pendiente:', error);
+      setWhatsappCodePending(null);
+    }
+  }, [user?.telefono]);
+
+  // Función para formatear tiempo restante
+  const formatTimeRemaining = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatPhoneChangeTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Verificar código pendiente al cargar y cuando cambia el usuario
+  useEffect(() => {
+    checkPendingCode();
+    checkPendingPhoneChange();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.telefono]); // Solo cuando cambia el teléfono del usuario
+
+  // Actualizar tiempo restante cada segundo si hay código pendiente de WhatsApp
+  useEffect(() => {
+    if (!whatsappCodePending) return;
+
+    const interval = setInterval(() => {
+      checkPendingCode();
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [whatsappCodePending, checkPendingCode]);
+
+  // Actualizar tiempo restante cada segundo si hay cambio de teléfono pendiente
+  useEffect(() => {
+    if (!phoneChangePending) return;
+
+    const interval = setInterval(() => {
+      // Actualizar solo el tiempo restante sin llamar a checkPendingPhoneChange
+      // para evitar bucles infinitos
+      setPhoneChangePending(prev => {
+        if (!prev) return null;
+        
+        const now = new Date().getTime();
+        const expiresAt = new Date(prev.expiresAt).getTime();
+        const timeRemaining = Math.max(0, Math.floor((expiresAt - now) / 1000));
+        
+        if (timeRemaining <= 0) {
+          // Tiempo expirado, limpiar
+          return null;
+        }
+        
+        return {
+          ...prev,
+          timeRemaining
+        };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [phoneChangePending]);
+
+  // Verificar cuando se cierra el modal de WhatsApp
+  const handleWhatsAppModalClose = async () => {
+    setShowWhatsAppModal(false);
+    setModalOpen(false);
+    // Verificar código pendiente después de cerrar
+    setTimeout(() => checkPendingCode(), 100);
+    
+    // Refrescar datos del usuario después de cerrar el modal
+    try {
+      await fetchUserData();
+    } catch (error) {
+      logger.error('Error refrescando datos después de verificación:', error);
+    }
+    // Mostrar toast de éxito si se verificó
+    if (user?.whatsapp_verificado) {
+      setShowToast(true);
+      setToastMessage('✅ WhatsApp verificado correctamente');
+    }
+  };
+
+  // Estados para preferencias de notificaciones
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    push_enabled: true,
+    transaction_enabled: true,
+    reminder_enabled: true,
+    marketing_enabled: true,
+    timezone: null as string | null,
+  });
+  const [loadingPreferences, setLoadingPreferences] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showMenusModal, setShowMenusModal] = useState(false);
 
   // Cargar configuración guardada
   useEffect(() => {
@@ -97,9 +314,146 @@ export default function ProfilePage() {
       // Usar configuración de menús desde la base de datos
       setIsDebtsEnabled(user.deudas_habilitado);
       setIsGoalsEnabled(user.metas_habilitado);
-      setUserSubscription((user.suscripcion as 'free' | 'premium') || 'free');
+      setUserSubscription((user.suscripcion as 'free' | 'smart' | 'pro' | 'caducado') || 'free');
     }
   }, [user]);
+
+  useEffect(() => {
+    const refreshUser = async () => {
+      try {
+        await fetchUserData();
+      } catch (error) {
+        logger.error('Error refrescando datos del usuario:', error);
+      }
+    };
+
+    refreshUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Cargar preferencias de notificaciones
+  useEffect(() => {
+    const loadNotificationPreferences = async () => {
+      if (!user?.id) return;
+
+      try {
+        // Construir URL correcta para web y móvil
+        let apiUrl: string;
+        const isNativePlatform = typeof window !== 'undefined' && 
+          typeof (window as any).Capacitor !== 'undefined' &&
+          Capacitor.isNativePlatform();
+        
+        if (isNativePlatform) {
+          // En móvil, usar función centralizada para obtener URL del API
+          const baseUrl = getApiBaseUrl();
+          apiUrl = `${baseUrl}/api/notifications/preferences?userId=${user.id}`;
+        } else {
+          // En web, usar ruta relativa
+          apiUrl = `/api/notifications/preferences?userId=${user.id}`;
+        }
+
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+        
+        if (data.success && data.preferences) {
+          setNotificationPreferences({
+            push_enabled: data.preferences.push_enabled ?? true,
+            transaction_enabled: data.preferences.transaction_enabled ?? true,
+            reminder_enabled: data.preferences.reminder_enabled ?? true,
+            marketing_enabled: data.preferences.marketing_enabled ?? true,
+            timezone: data.preferences.timezone ?? null,
+          });
+        }
+      } catch (error) {
+        logger.error('Error cargando preferencias de notificaciones:', error);
+      }
+    };
+
+    loadNotificationPreferences();
+  }, [user?.id]);
+
+  // Función para actualizar preferencias de notificaciones
+  const updateNotificationPreference = async (key: string, value: boolean) => {
+    if (!user?.id) return;
+
+    setLoadingPreferences(true);
+    const previousPreferences = { ...notificationPreferences };
+    
+    try {
+      const updatedPreferences = { ...notificationPreferences, [key]: value };
+      setNotificationPreferences(updatedPreferences);
+
+      // Construir URL correcta para web y móvil
+      let apiUrl: string;
+      
+      // Detectar si estamos en una app nativa (Android/iOS)
+      // Usar Capacitor.isNativePlatform() para detección precisa
+      const isNativePlatform = typeof window !== 'undefined' && 
+        typeof (window as any).Capacitor !== 'undefined' &&
+        Capacitor.isNativePlatform();
+      
+      if (isNativePlatform) {
+        // En móvil (app nativa), usar la URL del servidor remoto
+        // Usar función centralizada para obtener URL del API
+        const baseUrl = getApiBaseUrl();
+        apiUrl = `${baseUrl}/api/notifications/preferences?userId=${user.id}`;
+        logger.debug('Actualizando preferencias desde móvil, URL:', apiUrl);
+      } else {
+        // En web (localhost o producción web), usar ruta relativa
+        // Esto evita problemas de CSP y usa el endpoint local
+        apiUrl = `/api/notifications/preferences?userId=${user.id}`;
+        logger.debug('Actualizando preferencias desde web, URL:', apiUrl);
+      }
+
+      logger.debug('Enviando petición PUT a:', apiUrl, { key, value });
+
+      const response = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: value }),
+      });
+
+      logger.debug('Respuesta recibida:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
+
+      // Verificar si la respuesta es JSON válido
+      let data;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        logger.error('Respuesta no es JSON:', text);
+        throw new Error(`Respuesta inválida del servidor: ${response.status} ${response.statusText}`);
+      }
+
+      logger.debug('Datos recibidos:', data);
+      
+      if (!response.ok || !data.success) {
+        // Revertir cambio si falla
+        setNotificationPreferences(previousPreferences);
+        const errorMessage = data.message || `Error ${response.status}: ${response.statusText}`;
+        logger.error('Error al actualizar preferencias:', {
+          status: response.status,
+          data,
+          errorMessage,
+        });
+        showToastMessage(`❌ Error al actualizar preferencias: ${errorMessage}`);
+      } else {
+        showToastMessage('✅ Preferencias actualizadas');
+      }
+    } catch (error) {
+      logger.error('Error actualizando preferencias:', error);
+      setNotificationPreferences(previousPreferences);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      showToastMessage(`❌ Error al actualizar preferencias: ${errorMessage}`);
+    } finally {
+      setLoadingPreferences(false);
+    }
+  };
 
   // Auto-ocultar toast después de 3 segundos
   useEffect(() => {
@@ -110,6 +464,57 @@ export default function ProfilePage() {
       return () => clearTimeout(timer);
     }
   }, [showToast]);
+
+  const daysUntilExpiration = useMemo(() => {
+    if (!user?.fecha_expiracion_suscripcion) return null;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const expiration = new Date(user.fecha_expiracion_suscripcion);
+    if (Number.isNaN(expiration.getTime())) {
+      return null;
+    }
+    expiration.setHours(0, 0, 0, 0);
+
+    return Math.ceil((expiration.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  }, [user?.fecha_expiracion_suscripcion]);
+
+  const expirationStyles = useMemo(() => {
+    if (daysUntilExpiration === null) {
+      return {
+        container: 'mb-3 p-3 bg-gray-50 rounded-xl border border-gray-200',
+        icon: 'text-gray-500',
+        label: 'text-gray-600',
+        value: 'text-gray-900',
+      };
+    }
+
+    if (daysUntilExpiration <= 1) {
+      return {
+        container: 'mb-3 p-3 bg-red-50 rounded-xl border border-red-200',
+        icon: 'text-red-500',
+        label: 'text-red-600',
+        value: 'text-red-800',
+      };
+    }
+
+    if (daysUntilExpiration <= 7) {
+      return {
+        container: 'mb-3 p-3 bg-orange-50 rounded-xl border border-orange-200',
+        icon: 'text-orange-500',
+        label: 'text-orange-600',
+        value: 'text-orange-700',
+      };
+    }
+
+    return {
+      container: 'mb-3 p-3 bg-blue-50 rounded-xl border border-blue-200',
+      icon: 'text-blue-500',
+      label: 'text-blue-600',
+      value: 'text-blue-900',
+    };
+  }, [daysUntilExpiration]);
 
   // Función para mostrar toast
   const showToastMessage = (message: string) => {
@@ -187,7 +592,37 @@ export default function ProfilePage() {
     setModalOpen(true);
   };
 
-  const handleOpenPhoneModal = () => {
+  const handleOpenPhoneModal = async () => {
+    // No permitir editar teléfono si hay código de verificación pendiente
+    if (whatsappCodePending) {
+      showToastMessage('⏳ Completa la verificación de WhatsApp antes de editar el teléfono');
+      return;
+    }
+
+    // No permitir cambiar teléfono si hay cambio pendiente
+    if (phoneChangePending) {
+      showToastMessage('⏳ Debes completar el cambio pendiente primero');
+      return;
+    }
+
+    // Si el teléfono está verificado, usar el proceso especial de cambio
+    if (user?.whatsapp_verificado) {
+      const result = await checkCanChangePhone();
+      setPhoneChangeInfo({ canChange: result.canChange, daysRemaining: result.daysRemaining });
+      
+      if (!result.canChange) {
+        // Mostrar mensaje de cooldown
+        showToastMessage(`⏳ ${result.reason || 'No puedes cambiar el teléfono en este momento'}`);
+        return;
+      }
+      
+      // Abrir modal de cambio de teléfono
+      setShowPhoneChangeModal(true);
+      setModalOpen(true);
+      return;
+    }
+
+    // Si no está verificado, usar edición simple
     // Extraer el número sin el prefijo del país usando prefijos conocidos
     const phoneWithoutPrefix = userPhone ? (() => {
       const knownPrefixes = [
@@ -253,6 +688,51 @@ export default function ProfilePage() {
     showToastMessage('✅ Email actualizado');
   };
 
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      showToastMessage('⚠️ Completa todos los campos');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      showToastMessage('⚠️ La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      showToastMessage('⚠️ Las contraseñas no coinciden');
+      return;
+    }
+
+    try {
+      // Verificar contraseña actual
+      const { success: loginSuccess } = await signInWithPhone(user?.telefono || '', currentPassword);
+      
+      if (!loginSuccess) {
+        showToastMessage('❌ Contraseña actual incorrecta');
+        return;
+      }
+
+      // Actualizar contraseña
+      if (user) {
+        await updateUser({
+          contrasena: newPassword
+        });
+      }
+
+      // Limpiar campos
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowPasswordModal(false);
+      setModalOpen(false);
+      showToastMessage('✅ Contraseña actualizada exitosamente');
+    } catch (error) {
+      logger.error('Error cambiando contraseña:', error);
+      showToastMessage('❌ Error al actualizar contraseña');
+    }
+  };
+
   const handleSavePhone = async () => {
     if (user && currentCountry) {
       // Agregar el prefijo del país al número
@@ -306,7 +786,7 @@ export default function ProfilePage() {
       setIsDebtsEnabled(newValue);
       showToastMessage('✅ Menú Deudas habilitado');
     } catch (error) {
-      console.error('Error al actualizar configuración de deudas:', error);
+      logger.error('Error al actualizar configuración de deudas:', error);
       showToastMessage('❌ Error al actualizar configuración');
     }
   };
@@ -338,7 +818,7 @@ export default function ProfilePage() {
       setIsGoalsEnabled(newValue);
       showToastMessage('✅ Menú Metas habilitado');
     } catch (error) {
-      console.error('Error al actualizar configuración de metas:', error);
+      logger.error('Error al actualizar configuración de metas:', error);
       showToastMessage('❌ Error al actualizar configuración');
     }
   };
@@ -374,7 +854,7 @@ export default function ProfilePage() {
       setConfirmData({ name: '', count: 0, items: [] });
       
     } catch (error) {
-      console.error('Error al deshabilitar menú:', error);
+      logger.error('Error al deshabilitar menú:', error);
       showToastMessage('❌ Error al deshabilitar menú. Inténtalo nuevamente.');
     }
   };
@@ -387,28 +867,6 @@ export default function ProfilePage() {
   };
 
   // Funciones para gestión de suscripción
-  const handleActivatePremium = () => {
-    // Códigos válidos para activación
-    const validCodes = ['PREMIUM2024', 'PROMO50', 'VIP100', 'ADMIN123'];
-    
-    if (validCodes.includes(activationCode.toUpperCase())) {
-      const subscription = {
-        type: 'premium',
-        activationCode: activationCode.toUpperCase(),
-        startDate: new Date().toISOString(),
-        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-        features: ['basic', 'advanced', 'export', 'sync', 'analytics']
-      };
-      
-      setUserSubscription('premium');
-      setShowUpgradeModal(false);
-      setModalOpen(false);
-      setActivationCode('');
-      showToastMessage('🎉 ¡Felicidades! Has activado la versión Premium');
-    } else {
-      showToastMessage('❌ Código de activación inválido');
-    }
-  };
 
   const handleDowngradeToFree = () => {
     const subscription = {
@@ -434,7 +892,7 @@ export default function ProfilePage() {
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-6 mb-6 text-white shadow-xl">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-            <User size={32} />
+            <UserIcon size={32} />
           </div>
           <div className="flex-1">
             <h2 className="text-lg font-bold">{userName || 'Usuario Demo'}</h2>
@@ -450,7 +908,7 @@ export default function ProfilePage() {
       {/* Información Personal */}
       <div className="bg-white rounded-3xl p-6 mb-4 shadow-sm border border-gray-100">
         <div className="flex items-center gap-2 mb-4">
-          <User size={20} className="text-green-600" />
+          <UserIcon size={20} className="text-green-600" />
           <h3 className="text-sm font-bold text-gray-900">Información Personal</h3>
         </div>
         <div className="space-y-3">
@@ -482,10 +940,23 @@ export default function ProfilePage() {
             <Edit2 size={16} className="text-blue-500" />
           </button>
           
-          {/* Campo Teléfono - clickeable */}
+                     {/* Campo Teléfono - editable */}
+            <div className="w-full flex items-center gap-2 p-3 bg-purple-50 rounded-xl border border-purple-200">
           <button
-            onClick={handleOpenPhoneModal}
-            className="w-full flex items-center gap-3 p-3 bg-purple-50 rounded-xl border border-purple-200 hover:bg-purple-100 hover:shadow-sm transition-all text-left"
+            onClick={phoneChangePending ? () => setShowPhoneChangeModal(true) : handleOpenPhoneModal}
+            disabled={!!whatsappCodePending}
+            className={`flex-1 flex items-center gap-3 rounded-lg p-2 -m-2 transition-all text-left ${
+              whatsappCodePending
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'hover:bg-purple-100'
+            }`}
+            title={
+              whatsappCodePending 
+                ? 'Completa la verificación de WhatsApp antes de editar el teléfono'
+                : phoneChangePending
+                ? 'Completa el cambio de teléfono pendiente'
+                : 'Editar teléfono'
+            }
           >
             <div className="flex-1">
               <p className="text-xs text-gray-600">Teléfono</p>
@@ -526,7 +997,62 @@ export default function ProfilePage() {
                 })() : 'No configurado'}
               </p>
             </div>
-            <Edit2 size={16} className="text-purple-500" />
+              {user?.whatsapp_verificado ? (
+                phoneChangePending ? (
+                  <span className="text-xs text-purple-600 font-semibold">
+                    Completar cambio ({formatPhoneChangeTime(phoneChangePending.timeRemaining)})
+                  </span>
+                ) : (
+                  <span className="text-xs text-purple-600 font-semibold">Cambiar</span>
+                )
+              ) : (
+            <Edit2 size={16} className={whatsappCodePending ? "text-gray-400" : "text-purple-500"} />
+              )}
+          </button>
+            
+            {/* Estado de verificación */}
+            {user?.whatsapp_verificado && (
+              <div className="flex items-center gap-2 px-2 py-1 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold rounded-full whitespace-nowrap">
+                <CheckCircle size={12} />
+                <span>WhatsApp verificado</span>
+              </div>
+            )}
+            
+            {/* Botón Verificar WhatsApp / Ingresar código (solo si no está verificado y hay teléfono) */}
+              {userPhone && !user?.whatsapp_verificado && (userSubscription === 'free' || userSubscription === 'smart') && (
+                <button
+                  onClick={() => setShowWhatsAppModal(true)}
+                  className="px-3 py-1.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white text-xs font-semibold rounded-lg hover:opacity-90 transition-all flex items-center gap-1.5 whitespace-nowrap"
+                  title={whatsappCodePending ? "Ingresar código de verificación" : "Verificar WhatsApp"}
+                >
+                  <CheckCircle size={14} />
+                  <span>
+                    {whatsappCodePending 
+                      ? `Ingresar el código (${formatTimeRemaining(whatsappCodePending.timeRemaining)})`
+                      : 'Verificar por WhatsApp'
+                    }
+                  </span>
+                </button>
+              )}
+              
+              {/* Badge de verificado */}
+            </div>
+          
+          {/* Campo Contraseña - clickeable */}
+          <button
+            onClick={() => {
+              setShowPasswordModal(true);
+              setModalOpen(true);
+            }}
+            className="w-full flex items-center gap-3 p-3 bg-red-50 rounded-xl border border-red-200 hover:bg-red-100 hover:shadow-sm transition-all text-left"
+          >
+            <div className="flex-1">
+              <p className="text-xs text-gray-600">Contraseña</p>
+              <p className="font-semibold text-gray-900">
+                ••••••••
+              </p>
+            </div>
+            <Lock size={16} className="text-red-500" />
           </button>
         </div>
       </div>
@@ -601,123 +1127,270 @@ export default function ProfilePage() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              userSubscription === 'premium' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' : 'bg-gray-200'
+              userSubscription === 'pro' ? 'bg-gradient-to-r from-purple-500 to-pink-500' :
+              userSubscription === 'smart' ? 'bg-gradient-to-r from-blue-500 to-cyan-500' :
+              userSubscription === 'caducado' ? 'bg-gradient-to-r from-gray-400 to-gray-600' :
+              'bg-gradient-to-r from-gray-300 to-gray-400'
             }`}>
               <span className="text-white text-xs font-bold">
-                {userSubscription === 'premium' ? '👑' : '🔒'}
+                {userSubscription === 'pro' ? '👑' :
+                 userSubscription === 'smart' ? '✨' :
+                 userSubscription === 'caducado' ? '⏰' : '🎁'}
               </span>
             </div>
             <div>
               <h3 className="text-sm font-bold text-gray-900">
-                {userSubscription === 'premium' ? 'Versión Premium' : 'Versión Gratuita'}
+                {(() => {
+                  const planNames: Record<string, string> = {
+                    'free': 'Free (14 días)',
+                    'smart': 'Smart (14 días)',
+                    'pro': 'Pro ($2.99/mes)',
+                    'caducado': 'Caducado (3 transacciones/día)'
+                  };
+                  return planNames[userSubscription] || 'Plan Free';
+                })()}
               </h3>
               <p className="text-xs text-gray-600">
-                {userSubscription === 'premium' ? 'Tienes acceso a todas las funciones' : 'Funciones básicas disponibles'}
+                {(() => {
+                  if (userSubscription === 'caducado') return 'Límite: 3 transacciones/día';
+                  if (userSubscription === 'free') return '1 deuda, 1 meta, 10 transacciones/día';
+                  if (userSubscription === 'smart') return '1 deuda, 1 meta, 10 transacciones/día';
+                  if (userSubscription === 'pro') return '5 deudas, 5 metas, 20 transacciones/día';
+                  return 'Funciones básicas disponibles';
+                })()}
               </p>
             </div>
           </div>
           <div className="flex gap-2">
-            {userSubscription === 'free' ? (
               <button
                 onClick={() => {
+                if (userSubscription === 'pro') {
+                  router.push('/billing/pay');
+                } else {
+                  // Abrir modal de actualización
                   setShowUpgradeModal(true);
                   setModalOpen(true);
-                }}
-                className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-all"
-              >
-                Actualizar
+                }
+              }}
+              className={`px-4 py-2 ${
+                userSubscription === 'pro'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600'
+                  : 'bg-gradient-to-r from-purple-500 to-pink-500'
+              } text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-all`}
+            >
+              {userSubscription === 'pro' ? 'Renovar Pro' : 'Actualizar'}
               </button>
-            ) : (
-              <button
-                onClick={handleDowngradeToFree}
-                className="px-4 py-2 bg-gray-500 text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-all"
-              >
-                Degradar
-              </button>
-            )}
           </div>
         </div>
         
-        {/* Características */}
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className={`flex items-center gap-2 ${userSubscription === 'premium' ? 'text-green-600' : 'text-gray-500'}`}>
-            <span>{userSubscription === 'premium' ? '✅' : '❌'}</span>
+        {/* Fecha de expiración */}
+        {user?.fecha_expiracion_suscripcion && (
+          <div className={expirationStyles.container}>
+            <div className="flex items-center gap-2">
+              <Calendar size={16} className={expirationStyles.icon} />
+              <div className="flex-1">
+                <p className={`text-xs font-semibold ${expirationStyles.label}`}>Expira el</p>
+                <p className={`text-sm font-semibold ${expirationStyles.value}`}>
+                  {new Date(user.fecha_expiracion_suscripcion).toLocaleDateString('es-ES', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  })}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Referidos verificados (Free, Smart, Caducado o Pro si nunca ganó Smart) */}
+        {(
+          (
+            (['free', 'smart', 'caducado'] as const).includes(userSubscription) ||
+            (userSubscription === 'pro' && (user as any)?.ha_ganado_smart === false)
+          ) &&
+          user?.referidos_verificados !== undefined
+        ) && (
+          <div className="mb-3 p-3 bg-green-50 rounded-xl border border-green-200">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <UserIcon size={16} className="text-green-600" />
+                <p className="text-xs font-semibold text-gray-900">Referidos verificados</p>
+              </div>
+              <p className="text-sm font-bold text-green-600">
+                {user.referidos_verificados || 0}/5
+              </p>
+            </div>
+            <div className="w-full bg-green-200 rounded-full h-2">
+              <div 
+                className="bg-green-600 h-2 rounded-full transition-all"
+                style={{ width: `${Math.min((user.referidos_verificados || 0) * 20, 100)}%` }}
+              />
+            </div>
+            {user.referidos_verificados !== undefined && user.referidos_verificados < 5 && (
+              <p className="text-xs text-gray-600 mt-2">
+                {5 - (user.referidos_verificados || 0)} más para ganar 14 días Smart
+              </p>
+            )}
+            {user.referidos_verificados !== undefined && user.referidos_verificados >= 5 && (
+              <p className="text-xs text-green-600 mt-2 font-semibold">
+                ¡Ya ganaste 14 días Smart! 🎉
+              </p>
+            )}
+          </div>
+        )}
+        
+        {/* Mostrar código de referido si está verificado */}
+        {user?.whatsapp_verificado && user?.codigo_referido && (
+          <div className="mb-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <UserIcon size={16} className="text-green-600" />
+                <p className="text-xs font-semibold text-gray-900">Tu código de referido</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 px-3 py-2 bg-white border border-green-300 rounded-lg text-sm font-mono font-bold text-gray-900 text-center">
+                {user.codigo_referido}
+              </code>
+              <button
+                onClick={async () => {
+                  if (user.codigo_referido) {
+                    try {
+                      await navigator.clipboard.writeText(user.codigo_referido);
+                      showToastMessage('✅ Código copiado al portapapeles');
+                    } catch (error) {
+                      logger.error('Error copiando código:', error);
+                    }
+                  }
+                }}
+                className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
+                title="Copiar código"
+              >
+                <Copy size={16} />
+              </button>
+          </div>
+            <p className="text-xs text-gray-600 mt-2">
+              Comparte este código con tus amigos para que se registren y ambos ganen beneficios
+            </p>
+        </div>
+        )}
+        
+        {/* Botón de referir (aparece siempre después de verificar WhatsApp) */}
+        {user?.whatsapp_verificado && (
+          <button
+            onClick={() => router.push('/referrals')}
+            className="w-full mb-3 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2"
+          >
+            <UserIcon size={16} />
+            <span>Referir amigos</span>
+          </button>
+        )}
+        
+        {/* Mensaje si no está verificado */}
+        {!user?.whatsapp_verificado && (
+          <p className="text-xs text-gray-500 text-center mb-3">
+            Verifica tu WhatsApp para poder referir amigos y ganar 14 días Smart
+          </p>
+        )}
+        
+        {/* Características del plan */}
+        <div className="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-gray-200">
+          <div className={`flex items-center gap-2 ${
+            userSubscription === 'pro' || userSubscription === 'smart' ? 'text-green-600' : 'text-gray-500'
+          }`}>
+            <span>{userSubscription === 'pro' || userSubscription === 'smart' ? '✅' : '❌'}</span>
             <span>Deudas y Metas</span>
           </div>
-          <div className={`flex items-center gap-2 ${userSubscription === 'premium' ? 'text-green-600' : 'text-gray-500'}`}>
-            <span>{userSubscription === 'premium' ? '✅' : '❌'}</span>
-            <span>Historial Completo</span>
+          <div className={`flex items-center gap-2 ${
+            userSubscription === 'pro' || userSubscription === 'smart' ? 'text-green-600' : 'text-gray-500'
+          }`}>
+            <span>{userSubscription === 'pro' || userSubscription === 'smart' ? '✅' : '❌'}</span>
+            <span>Transacciones</span>
           </div>
-          <div className={`flex items-center gap-2 ${userSubscription === 'premium' ? 'text-green-600' : 'text-gray-500'}`}>
-            <span>{userSubscription === 'premium' ? '✅' : '❌'}</span>
-            <span>Exportar Datos</span>
+          <div className={`flex items-center gap-2 ${
+            userSubscription === 'pro' ? 'text-green-600' : 'text-gray-500'
+          }`}>
+            <span>{userSubscription === 'pro' ? '✅' : '❌'}</span>
+            <span>Múltiples deudas</span>
           </div>
-          <div className={`flex items-center gap-2 ${userSubscription === 'premium' ? 'text-green-600' : 'text-gray-500'}`}>
-            <span>{userSubscription === 'premium' ? '✅' : '❌'}</span>
-            <span>Sincronización</span>
+          <div className={`flex items-center gap-2 ${
+            userSubscription === 'pro' ? 'text-green-600' : 'text-gray-500'
+          }`}>
+            <span>{userSubscription === 'pro' ? '✅' : '❌'}</span>
+            <span>Sin esperas</span>
           </div>
         </div>
       </div>
 
-      {/* Habilitación de Menús */}
-      <div className="bg-white rounded-3xl p-6 mb-4 shadow-sm border border-gray-100">
-        <div className="flex items-center gap-2 mb-4">
-          <LayoutGrid size={20} className="text-indigo-600" />
+      {/* Botón de Menús Disponibles */}
+      <button
+        onClick={() => {
+          setShowMenusModal(true);
+          setModalOpen(true);
+        }}
+        className="w-full bg-white rounded-3xl p-6 mb-4 shadow-sm border border-gray-100 hover:shadow-md transition-all text-left"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-indigo-100">
+              <LayoutGrid size={24} className="text-indigo-600" />
+            </div>
+            <div>
           <h3 className="text-sm font-bold text-gray-900">Menús Disponibles</h3>
+              <p className="text-xs text-gray-500">Activa o desactiva los menús que deseas ver</p>
         </div>
-        <p className="text-xs text-gray-600 mb-4">Activa o desactiva los menús que deseas ver</p>
-        
-        <div className="space-y-3">
-          {/* Toggle Deudas */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                isDebtsEnabled ? 'bg-red-100' : 'bg-gray-200'
-              }`}>
-                <CreditCard size={24} className={isDebtsEnabled ? 'text-red-600' : 'text-gray-400'} />
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900">Deudas</p>
-                <p className="text-xs text-gray-500">Gestiona tus préstamos</p>
-              </div>
-            </div>
-            <button
-              onClick={handleToggleDebts}
-              className={`relative w-14 h-7 rounded-full transition-all ${
-                isDebtsEnabled ? 'bg-red-500' : 'bg-gray-300'
-              }`}
-            >
-              <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
-                isDebtsEnabled ? 'right-1' : 'left-1'
-              }`} />
-            </button>
           </div>
+          <Edit2 size={18} className="text-gray-400" />
+        </div>
+      </button>
 
-          {/* Toggle Metas */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+      {/* Botón de Notificaciones */}
+      <button
+        onClick={() => {
+          setShowNotificationsModal(true);
+          setModalOpen(true);
+        }}
+        className="w-full bg-white rounded-3xl p-6 mb-4 shadow-sm border border-gray-100 hover:shadow-md transition-all text-left"
+      >
+        <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                isGoalsEnabled ? 'bg-purple-100' : 'bg-gray-200'
+              notificationPreferences.push_enabled ? 'bg-indigo-100' : 'bg-gray-200'
               }`}>
-                <Target size={24} className={isGoalsEnabled ? 'text-purple-600' : 'text-gray-400'} />
+              <Bell size={24} className={notificationPreferences.push_enabled ? 'text-indigo-600' : 'text-gray-400'} />
               </div>
               <div>
-                <p className="font-semibold text-gray-900">Metas</p>
-                <p className="text-xs text-gray-500">Ahorra para tus objetivos</p>
+              <h3 className="text-sm font-bold text-gray-900">Notificaciones</h3>
+              <p className="text-xs text-gray-500">Controla qué notificaciones deseas recibir</p>
+              </div>
+            </div>
+          <Edit2 size={18} className="text-gray-400" />
+          </div>
+      </button>
+
+      {/* Ayuda / soporte */}
+      <div className="bg-blue-50 rounded-3xl p-4 mb-4 border border-blue-200">
+            <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-blue-100">
+            <LifeBuoy size={20} className="text-blue-600" />
+              </div>
+          <div className="flex-1">
+            <h4 className="text-sm font-semibold text-blue-900">¿Necesitas ayuda?</h4>
+            <p className="text-xs text-blue-700">
+              Si tienes dudas con los planes, pagos, algún problema o quieres sugerir una mejora, contáctanos por WhatsApp y te asistimos.
+            </p>
               </div>
             </div>
             <button
-              onClick={handleToggleGoals}
-              className={`relative w-14 h-7 rounded-full transition-all ${
-                isGoalsEnabled ? 'bg-purple-500' : 'bg-gray-300'
-              }`}
-            >
-              <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
-                isGoalsEnabled ? 'right-1' : 'left-1'
-              }`} />
+          onClick={() => {
+            const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_SUPPORT || '+59161600190';
+            const message = encodeURIComponent('Hola, necesito ayuda con mi cuenta de Ahorro365, tengo un problema o quiero sugerir una mejora');
+            window.open(`https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}?text=${message}`, '_blank');
+          }}
+          className="mt-3 w-full py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+        >
+          <span>Contactar Soporte</span>
             </button>
-          </div>
-        </div>
       </div>
 
       {/* Cerrar Sesión */}
@@ -865,7 +1538,7 @@ export default function ProfilePage() {
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-scale-in">
             {/* Icono */}
             <div className="w-16 h-16 rounded-full bg-green-100 mx-auto mb-4 flex items-center justify-center">
-              <User size={32} className="text-green-600" />
+              <UserIcon size={32} className="text-green-600" />
             </div>
 
             {/* Título */}
@@ -921,7 +1594,7 @@ export default function ProfilePage() {
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-scale-in">
             {/* Icono */}
             <div className="w-16 h-16 rounded-full bg-blue-100 mx-auto mb-4 flex items-center justify-center">
-              <User size={32} className="text-blue-600" />
+              <UserIcon size={32} className="text-blue-600" />
             </div>
 
             {/* Título */}
@@ -965,6 +1638,120 @@ export default function ProfilePage() {
                 className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
               >
                 Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Cambiar Contraseña */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-scale-in max-h-[90vh] overflow-y-auto">
+            {/* Icono */}
+            <div className="w-16 h-16 rounded-full bg-red-100 mx-auto mb-4 flex items-center justify-center">
+              <Lock size={32} className="text-red-600" />
+            </div>
+
+            {/* Título */}
+            <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
+              Cambiar Contraseña
+            </h3>
+
+            {/* Mensaje */}
+            <p className="text-gray-600 text-center mb-6">
+              Ingresa tu contraseña actual y la nueva contraseña
+            </p>
+
+            {/* Input Contraseña Actual */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">
+                Contraseña Actual
+              </label>
+              <div className="relative">
+                <input
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Ingresa tu contraseña actual"
+                  className="w-full px-4 py-3 pr-12 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none text-gray-900 modal-input"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showCurrentPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Input Nueva Contraseña */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">
+                Nueva Contraseña
+              </label>
+              <div className="relative">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  className="w-full px-4 py-3 pr-12 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none text-gray-900 modal-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Input Confirmar Contraseña */}
+            <div className="mb-6">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">
+                Confirmar Nueva Contraseña
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirma tu nueva contraseña"
+                  className="w-full px-4 py-3 pr-12 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-red-500 focus:outline-none text-gray-900 modal-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setModalOpen(false);
+                  setCurrentPassword('');
+                  setNewPassword('');
+                  setConfirmPassword('');
+                }}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleChangePassword}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+              >
+                Cambiar
               </button>
             </div>
           </div>
@@ -1153,48 +1940,46 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Modal de Activación Premium */}
+      {/* Modal de Actualización de Plan */}
       {showUpgradeModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-scale-in">
             {/* Header */}
             <div className="text-center mb-6">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 mx-auto mb-4 flex items-center justify-center">
-                <span className="text-white text-2xl">👑</span>
+              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 mx-auto mb-4 flex items-center justify-center">
+                <span className="text-white text-2xl">💎</span>
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2">
-                Activar Premium
+                Actualizar Plan
               </h3>
               <p className="text-gray-600 text-xs">
-                Ingresa tu código de activación para desbloquear todas las funciones premium.
+                Elige cómo quieres actualizar a Pro
               </p>
             </div>
 
-            {/* Código de activación */}
-            <div className="mb-6">
-              <label className="block text-xs font-semibold text-gray-700 mb-2">
-                Código de Activación
-              </label>
-              <input
-                type="text"
-                value={activationCode}
-                onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
-                placeholder="PREMIUM2024"
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-yellow-500 focus:outline-none modal-input text-center font-mono text-sm"
-                autoFocus
-              />
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                Códigos válidos: PREMIUM2024, PROMO50, VIP100, ADMIN123
-              </p>
-            </div>
-
-            {/* Características Premium */}
-            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-4 mb-6 border border-yellow-200">
-              <h4 className="font-semibold text-gray-900 mb-3 text-center">✨ Funciones Premium</h4>
+            {/* Características Pro */}
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 mb-6 border border-purple-200">
+              <h4 className="font-semibold text-gray-900 mb-3 text-center">✨ Plan Pro - $3.00 USD/mes</h4>
               <div className="space-y-2 text-xs">
                 <div className="flex items-center gap-2 text-green-700">
                   <span>✅</span>
-                  <span>Deudas y Metas ilimitadas</span>
+                  <span>5 Deudas, 5 Metas</span>
+                </div>
+                <div className="flex items-center gap-2 text-green-700">
+                  <span>✅</span>
+                  <span>20 transacciones/día</span>
+                </div>
+                <div className="flex items-center gap-2 text-green-700">
+                  <span>✅</span>
+                  <span>Categorías Personalizadas</span>
+                </div>
+                <div className="flex items-center gap-2 text-green-700">
+                  <span>✅</span>
+                  <span>Registra transacciones por WhatsApp</span>
+                </div>
+                <div className="flex items-center gap-2 text-green-700">
+                  <span>✅</span>
+                  <span>Asistente de IA para finanzas</span>
                 </div>
                 <div className="flex items-center gap-2 text-green-700">
                   <span>✅</span>
@@ -1202,11 +1987,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex items-center gap-2 text-green-700">
                   <span>✅</span>
-                  <span>Exportar datos a Excel/PDF</span>
-                </div>
-                <div className="flex items-center gap-2 text-green-700">
-                  <span>✅</span>
-                  <span>Sincronización en la nube</span>
+                  <span>Backup automático en la nube</span>
                 </div>
                 <div className="flex items-center gap-2 text-green-700">
                   <span>✅</span>
@@ -1227,10 +2008,285 @@ export default function ProfilePage() {
                 Cancelar
               </button>
               <button
-                onClick={handleActivatePremium}
-                className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+                onClick={() => {
+                  setShowUpgradeModal(false);
+                  setModalOpen(false);
+                  router.push('/billing/payment-methods');
+                }}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
               >
-                Activar Premium
+                💳 Comprar Plan Pro
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Cambio de Teléfono */}
+      <PhoneChangeModal
+        isOpen={showPhoneChangeModal}
+        onClose={() => {
+          setShowPhoneChangeModal(false);
+          setModalOpen(false);
+          // Verificar cambio pendiente después de cerrar modal
+          setTimeout(() => checkPendingPhoneChange(), 100);
+        }}
+        onSuccess={async () => {
+          // Recargar datos del usuario después del cambio exitoso
+          try {
+            const updatedUser = await fetchUserData();
+            // Usar el usuario retornado directamente en lugar del estado (que puede no haberse actualizado aún)
+            if (updatedUser) {
+              setUserPhone(updatedUser.telefono || '');
+            }
+            // Limpiar estado de cambio pendiente
+            setPhoneChangePending(null);
+            setShowToast(true);
+            setToastMessage('✅ Teléfono cambiado exitosamente');
+          } catch (error) {
+            logger.error('Error refrescando datos después de cambio:', error);
+          }
+        }}
+      />
+
+      {/* Modal de Verificación WhatsApp */}
+      <WhatsAppVerificationModal
+        isOpen={showWhatsAppModal}
+        onClose={handleWhatsAppModalClose}
+        onVerify={async () => {
+          // Refrescar datos del usuario después de verificar
+          try {
+            await fetchUserData();
+            setShowToast(true);
+            setToastMessage('✅ WhatsApp verificado correctamente');
+          } catch (error) {
+            logger.error('Error refrescando datos después de verificación:', error);
+          }
+        }}
+      />
+
+      {/* Modal de Menús Disponibles */}
+      {showMenusModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl animate-scale-in max-h-[85vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4 flex-shrink-0">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-indigo-100">
+                <LayoutGrid size={24} className="text-indigo-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900">Menús Disponibles</h3>
+                <p className="text-xs text-gray-500">Activa o desactiva los menús que deseas ver</p>
+              </div>
+            </div>
+
+            {/* Contenido - scrolleable */}
+            <div className="flex-1 overflow-y-auto mb-4 scrollbar-hide">
+              <div className="space-y-3">
+                {/* Toggle Deudas */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      isDebtsEnabled ? 'bg-red-100' : 'bg-gray-200'
+                    }`}>
+                      <CreditCard size={24} className={isDebtsEnabled ? 'text-red-600' : 'text-gray-400'} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">Deudas</p>
+                      <p className="text-xs text-gray-500">Gestiona tus préstamos</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleToggleDebts}
+                    className={`relative w-14 h-7 rounded-full transition-all ${
+                      isDebtsEnabled ? 'bg-red-500' : 'bg-gray-300'
+                    }`}
+                  >
+                    <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
+                      isDebtsEnabled ? 'right-1' : 'left-1'
+                    }`} />
+                  </button>
+                </div>
+
+                {/* Toggle Metas */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      isGoalsEnabled ? 'bg-purple-100' : 'bg-gray-200'
+                    }`}>
+                      <Target size={24} className={isGoalsEnabled ? 'text-purple-600' : 'text-gray-400'} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">Metas</p>
+                      <p className="text-xs text-gray-500">Ahorra para tus objetivos</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleToggleGoals}
+                    className={`relative w-14 h-7 rounded-full transition-all ${
+                      isGoalsEnabled ? 'bg-purple-500' : 'bg-gray-300'
+                    }`}
+                  >
+                    <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
+                      isGoalsEnabled ? 'right-1' : 'left-1'
+                    }`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Botón de cerrar - fijo al fondo */}
+            <div className="flex-shrink-0 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => {
+                  setShowMenusModal(false);
+                  setModalOpen(false);
+                }}
+                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Notificaciones */}
+      {showNotificationsModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl animate-scale-in max-h-[85vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4 flex-shrink-0">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                notificationPreferences.push_enabled ? 'bg-indigo-100' : 'bg-gray-200'
+              }`}>
+                <Bell size={24} className={notificationPreferences.push_enabled ? 'text-indigo-600' : 'text-gray-400'} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900">Notificaciones</h3>
+                <p className="text-xs text-gray-500">Controla qué notificaciones deseas recibir</p>
+              </div>
+            </div>
+
+            {/* Contenido - scrolleable */}
+            <div className="flex-1 overflow-y-auto mb-4 scrollbar-hide">
+              <div className="space-y-3">
+                {/* Toggle Notificaciones Push (General) */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      notificationPreferences.push_enabled ? 'bg-indigo-100' : 'bg-gray-200'
+                    }`}>
+                      <Bell size={24} className={notificationPreferences.push_enabled ? 'text-indigo-600' : 'text-gray-400'} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">Notificaciones Push</p>
+                      <p className="text-xs text-gray-500">Activar todas las notificaciones</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => updateNotificationPreference('push_enabled', !notificationPreferences.push_enabled)}
+                    disabled={loadingPreferences}
+                    className={`relative w-14 h-7 rounded-full transition-all ${
+                      notificationPreferences.push_enabled ? 'bg-indigo-500' : 'bg-gray-300'
+                    } ${loadingPreferences ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
+                      notificationPreferences.push_enabled ? 'right-1' : 'left-1'
+                    }`} />
+                  </button>
+                </div>
+
+                {/* Toggle Alertas de Transacciones */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      notificationPreferences.transaction_enabled ? 'bg-green-100' : 'bg-gray-200'
+                    }`}>
+                      <DollarSign size={24} className={notificationPreferences.transaction_enabled ? 'text-green-600' : 'text-gray-400'} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">Alertas de Transacciones</p>
+                      <p className="text-xs text-gray-500">Notificaciones de ingresos y gastos</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => updateNotificationPreference('transaction_enabled', !notificationPreferences.transaction_enabled)}
+                    disabled={loadingPreferences || !notificationPreferences.push_enabled}
+                    className={`relative w-14 h-7 rounded-full transition-all ${
+                      notificationPreferences.transaction_enabled && notificationPreferences.push_enabled ? 'bg-green-500' : 'bg-gray-300'
+                    } ${loadingPreferences || !notificationPreferences.push_enabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
+                      notificationPreferences.transaction_enabled && notificationPreferences.push_enabled ? 'right-1' : 'left-1'
+                    }`} />
+                  </button>
+                </div>
+
+                {/* Toggle Recordatorios */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      notificationPreferences.reminder_enabled ? 'bg-yellow-100' : 'bg-gray-200'
+                    }`}>
+                      <Calendar size={24} className={notificationPreferences.reminder_enabled ? 'text-yellow-600' : 'text-gray-400'} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">Recordatorios</p>
+                      <p className="text-xs text-gray-500">Recordatorios de pagos y metas</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => updateNotificationPreference('reminder_enabled', !notificationPreferences.reminder_enabled)}
+                    disabled={loadingPreferences || !notificationPreferences.push_enabled}
+                    className={`relative w-14 h-7 rounded-full transition-all ${
+                      notificationPreferences.reminder_enabled && notificationPreferences.push_enabled ? 'bg-yellow-500' : 'bg-gray-300'
+                    } ${loadingPreferences || !notificationPreferences.push_enabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
+                      notificationPreferences.reminder_enabled && notificationPreferences.push_enabled ? 'right-1' : 'left-1'
+                    }`} />
+                  </button>
+                </div>
+
+                {/* Toggle Marketing */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      notificationPreferences.marketing_enabled ? 'bg-purple-100' : 'bg-gray-200'
+                    }`}>
+                      <Target size={24} className={notificationPreferences.marketing_enabled ? 'text-purple-600' : 'text-gray-400'} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">Marketing y Promociones</p>
+                      <p className="text-xs text-gray-500">Ofertas y novedades</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => updateNotificationPreference('marketing_enabled', !notificationPreferences.marketing_enabled)}
+                    disabled={loadingPreferences || !notificationPreferences.push_enabled}
+                    className={`relative w-14 h-7 rounded-full transition-all ${
+                      notificationPreferences.marketing_enabled && notificationPreferences.push_enabled ? 'bg-purple-500' : 'bg-gray-300'
+                    } ${loadingPreferences || !notificationPreferences.push_enabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
+                      notificationPreferences.marketing_enabled && notificationPreferences.push_enabled ? 'right-1' : 'left-1'
+                    }`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Botón de cerrar - fijo al fondo */}
+            <div className="flex-shrink-0 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => {
+                  setShowNotificationsModal(false);
+                  setModalOpen(false);
+                }}
+                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+              >
+                Cerrar
               </button>
             </div>
           </div>
@@ -1239,7 +2295,7 @@ export default function ProfilePage() {
 
       {/* Toast de Notificación */}
       {showToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+        <div className="fixed top-[60px] left-1/2 -translate-x-1/2 z-50 animate-fade-in">
           <div className="bg-gray-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-sm">
             <span>{toastMessage}</span>
           </div>
