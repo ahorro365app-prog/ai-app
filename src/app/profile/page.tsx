@@ -443,6 +443,17 @@ export default function ProfilePage() {
         });
         showToastMessage(`❌ Error al actualizar preferencias: ${errorMessage}`);
       } else {
+        // Actualizar estado con los datos del servidor para asegurar sincronización
+        if (data.preferences) {
+          setNotificationPreferences({
+            push_enabled: data.preferences.push_enabled ?? true,
+            transaction_enabled: data.preferences.transaction_enabled ?? true,
+            reminder_enabled: data.preferences.reminder_enabled ?? true,
+            marketing_enabled: data.preferences.marketing_enabled ?? true,
+            timezone: data.preferences.timezone ?? null,
+          });
+          logger.debug('Estado actualizado con datos del servidor:', data.preferences);
+        }
         showToastMessage('✅ Preferencias actualizadas');
       }
     } catch (error) {

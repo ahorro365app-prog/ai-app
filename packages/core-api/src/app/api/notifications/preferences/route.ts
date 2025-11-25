@@ -124,8 +124,8 @@ export async function PUT(request: NextRequest) {
         }
       });
 
-      // Logging detallado (usar logger.info para que aparezca en producción)
-      logger.info('🔄 ACTUALIZANDO PREFERENCIAS:', {
+      // Logging detallado (usar logger.warn para que aparezca en producción)
+      logger.warn('🔄 ACTUALIZANDO PREFERENCIAS:', {
         userId,
         bodyOriginal: body,
         validated: validated,
@@ -159,10 +159,12 @@ export async function PUT(request: NextRequest) {
         );
       }
 
-      logger.info('✅ ACTUALIZACIÓN EXITOSA:', {
+      logger.warn('✅ ACTUALIZACIÓN EXITOSA:', {
         userId,
         dataRetornada: data,
         updateDataEnviado: updateData,
+        pushEnabledEnData: data?.push_enabled,
+        pushEnabledEnUpdateData: updateData.push_enabled,
       });
 
       return NextResponse.json({
