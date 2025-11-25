@@ -124,10 +124,15 @@ export async function PUT(request: NextRequest) {
         }
       });
 
-      logger.debug('Datos de actualización:', updateData);
-      logger.debug('Validated object keys:', Object.keys(validated));
-      logger.debug('Validated object:', JSON.stringify(validated, null, 2));
-      logger.debug('Body original:', JSON.stringify(body, null, 2));
+      // Logging detallado (usar logger.info para que aparezca en producción)
+      logger.info('🔄 ACTUALIZANDO PREFERENCIAS:', {
+        userId,
+        bodyOriginal: body,
+        validated: validated,
+        updateData: updateData,
+        keysInValidated: Object.keys(validated),
+        keysInUpdateData: Object.keys(updateData),
+      });
 
       // Actualizar registro existente
       const { data, error } = await supabase
@@ -138,7 +143,7 @@ export async function PUT(request: NextRequest) {
         .single();
 
       if (error) {
-        logger.error('Error en actualización de Supabase:', {
+        logger.error('❌ ERROR EN ACTUALIZACIÓN DE SUPABASE:', {
           error,
           code: error.code,
           message: error.message,
@@ -154,7 +159,11 @@ export async function PUT(request: NextRequest) {
         );
       }
 
-      logger.debug('Actualización exitosa, datos retornados:', data);
+      logger.info('✅ ACTUALIZACIÓN EXITOSA:', {
+        userId,
+        dataRetornada: data,
+        updateDataEnviado: updateData,
+      });
 
       return NextResponse.json({
         success: true,
