@@ -78,6 +78,13 @@ export async function PUT(request: NextRequest) {
     const validated = updatePreferencesSchema.parse(body);
     const supabase = getSupabaseAdmin();
 
+    // Log para debugging
+    logger.debug('Actualizando preferencias:', {
+      userId,
+      body,
+      validated,
+    });
+
     // Intentar actualizar primero
     // Usar .maybeSingle() con manejo de errores mejorado
     const { data: existingData, error: searchError } = await supabase
@@ -102,13 +109,34 @@ export async function PUT(request: NextRequest) {
     }
 
     if (existingData) {
+      // Construir objeto de actualización explícitamente para asegurar que false se incluya
+      const updateData: Record<string, any> = {
+        updated_at: new Date().toISOString(),
+      };
+
+      // Incluir solo los campos que están presentes en validated (incluyendo false)
+      if ('push_enabled' in validated) {
+        updateData.push_enabled = validated.push_enabled;
+      }
+      if ('transaction_enabled' in validated) {
+        updateData.transaction_enabled = validated.transaction_enabled;
+      }
+      if ('reminder_enabled' in validated) {
+        updateData.reminder_enabled = validated.reminder_enabled;
+      }
+      if ('marketing_enabled' in validated) {
+        updateData.marketing_enabled = validated.marketing_enabled;
+      }
+      if ('timezone' in validated) {
+        updateData.timezone = validated.timezone;
+      }
+
+      logger.debug('Datos de actualización:', updateData);
+
       // Actualizar registro existente
       const { data, error } = await supabase
         .from('notification_preferences')
-        .update({
-          ...validated,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('user_id', userId)
         .select()
         .single();
