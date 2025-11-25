@@ -453,6 +453,7 @@ export default function ProfilePage() {
             timezone: data.preferences.timezone ?? null,
           });
           logger.debug('Estado actualizado con datos del servidor:', data.preferences);
+          logger.debug('push_enabled en respuesta:', data.preferences.push_enabled);
         }
         showToastMessage('✅ Preferencias actualizadas');
       }
