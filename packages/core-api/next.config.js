@@ -19,7 +19,7 @@ try {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   distDir: isProduction ? '.next' : '.next-dev',
-  trailingSlash: true,
+  trailingSlash: false, // Deshabilitado para evitar redirects que rompen CORS preflight
   images: {
     unoptimized: true,
   },
