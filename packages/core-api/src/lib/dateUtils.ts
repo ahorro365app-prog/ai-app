@@ -35,7 +35,7 @@ const COUNTRY_TIMEZONE: Record<SupportedCountry, string> = {
 
 const DEFAULT_TIMEZONE = COUNTRY_TIMEZONE.BO;
 
-const getTimezoneForCountry = (countryCode?: string) => {
+export const getTimezoneForCountry = (countryCode?: string) => {
   if (!countryCode) return DEFAULT_TIMEZONE;
   const normalized = countryCode.toUpperCase() as SupportedCountry;
   return COUNTRY_TIMEZONE[normalized] || DEFAULT_TIMEZONE;
