@@ -2,10 +2,10 @@ name: Confirm Expired Transactions Cron
 
 on:
   schedule:
-    # Ejecuta cada 1 minuto
-    # Con pocos usuarios actuales, el tiempo real es muy bajo (~90-180 min/mes)
-    # Cuando lleguemos a 1,000 usuarios, migraremos a Vercel Pro (ilimitado)
-    - cron: '* * * * *'
+    # Ejecuta cada 30 minutos para timeout exacto de 30 min
+    # Uso estimado: 48 ejecuciones/día × 30 días = 1,440 ejecuciones/mes
+    # Tiempo: ~1 segundo/ejecución = 24 minutos/mes (dentro del límite gratis de 2,000 min/mes)
+    - cron: '*/30 * * * *'
   workflow_dispatch: # Permite ejecución manual
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Invoke confirm-expired endpoint
         env:
-          CRON_URL: ${{ secrets.CRON_URL || 'https://tu-app.vercel.app/api/cron/confirm-expired' }}
+          CRON_URL: ${{ secrets.CRON_URL || 'https://ai-app-core-api.vercel.app/api/cron/confirm-expired' }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           echo "🕐 Ejecutando cron de confirmaciones expiradas..."
