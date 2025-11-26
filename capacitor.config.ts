@@ -6,7 +6,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const API_URL = 
   process.env.NEXT_PUBLIC_API_URL || 
   process.env.CAPACITOR_SERVER_URL ||
-  'https://ahorro365-core.vercel.app'; // URL de producción en Vercel
+  'https://ahorro365-core-api.vercel.app'; // URL de producción en Vercel (core-api separado)
 
 const config: CapacitorConfig = {
   appId: 'com.ahorro365.app',

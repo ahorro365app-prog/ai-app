@@ -20,6 +20,6 @@ export function getApiBaseUrl(): string {
   }
 
   // Usar variable de entorno o fallback a producción
-  return process.env.NEXT_PUBLIC_API_URL || 'https://ahorro365-core.vercel.app';
+  return process.env.NEXT_PUBLIC_API_URL || 'https://ahorro365-core-api.vercel.app';
 }
 
