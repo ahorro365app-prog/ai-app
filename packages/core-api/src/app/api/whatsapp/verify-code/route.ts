@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { z } from 'zod';
 import { generateReferralCode } from '@/lib/referralUtils';
 import { logger } from '@/lib/logger';
+import { handleError, handleValidationError, handleNotFoundError, ErrorType } from '@/lib/errorHandler';
 
 const verifyCodeSchema = z.object({
   phone: z.string().min(1, 'Teléfono requerido'),
@@ -24,14 +25,7 @@ export async function POST(request: NextRequest) {
     const validation = verifyCodeSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Datos inválidos',
-          errors: validation.error.errors,
-        },
-        { status: 400 }
-      );
+      return handleValidationError('Datos inválidos', validation.error.errors);
     }
 
     const { phone, code, isPhoneChange, userId } = validation.data;
@@ -53,17 +47,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (codeError || !verificationCode) {
-      console.error('❌ Código no encontrado o inválido:', codeError);
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Código inválido o expirado',
-        },
-        { status: 400 }
-      );
+      return handleValidationError('Código inválido o expirado');
     }
 
-    console.log(`✅ Código válido encontrado, ID: ${verificationCode.id}`);
+    logger.debug('✅ Código válido encontrado');
 
     // 2. Marcar código como usado
     const { error: updateCodeError } = await supabase
@@ -72,14 +59,10 @@ export async function POST(request: NextRequest) {
       .eq('id', verificationCode.id);
 
     if (updateCodeError) {
-      console.error('❌ Error marcando código como usado:', updateCodeError);
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Error al procesar verificación',
-          error: updateCodeError.message,
-        },
-        { status: 500 }
+      return handleError(
+        updateCodeError,
+        'Error al procesar verificación',
+        ErrorType.DATABASE
       );
     }
 
@@ -100,48 +83,172 @@ export async function POST(request: NextRequest) {
       userError = err;
 
       if (userError || !user) {
-        console.error('❌ Usuario no encontrado para cambio de teléfono:', userError);
-        return NextResponse.json(
-          {
-            success: false,
-            message: 'Usuario no encontrado',
-          },
-          { status: 404 }
-        );
+        return handleNotFoundError('Usuario');
       }
 
       // Verificar que el teléfono pendiente coincida
       if (user.telefono_pendiente !== phone) {
-        // No exponer números de teléfono en logs
-        logger.error('❌ El teléfono no coincide con el pendiente');
-        return NextResponse.json(
-          {
-            success: false,
-            message: 'El teléfono no coincide con el cambio pendiente',
-          },
-          { status: 400 }
-        );
+        return handleValidationError('El teléfono no coincide con el cambio pendiente');
       }
     } else {
       // Para verificación normal: verificar por teléfono
-      const { data: userData, error: err } = await supabase
+      // Usar la misma lógica que el webhook de transacciones (búsqueda con/sin + y flexible)
+      const phoneWithPlus = phone.startsWith('+') ? phone : `+${phone}`;
+      const phoneWithoutPlus = phone.startsWith('+') ? phone.substring(1) : phone;
+      
+      logger.debug('🔍 Buscando usuario con teléfono:', {
+        originalLength: phone?.length || 0,
+        withPlusLength: phoneWithPlus.length,
+        withoutPlusLength: phoneWithoutPlus.length,
+        withPlusPrefix: phoneWithPlus.substring(0, 6) + '...',
+        withoutPlusPrefix: phoneWithoutPlus.substring(0, 5) + '...'
+      });
+      
+      // Intentar buscar primero con el formato con +
+      let { data: userData, error: err } = await supabase
         .from('usuarios')
         .select('id, whatsapp_verificado, codigo_referido')
-        .eq('telefono', phone)
+        .eq('telefono', phoneWithPlus)
         .single();
 
       user = userData;
       userError = err;
 
+      logger.debug('🔍 Resultado búsqueda con +:', {
+        found: !!user,
+        errorCode: userError?.code,
+        errorMessage: userError?.message?.substring(0, 50)
+      });
+
+      // Si no se encontró con +, intentar sin +
       if (userError || !user) {
-        console.error('❌ Usuario no encontrado:', userError);
-        return NextResponse.json(
-          {
-            success: false,
-            message: 'Usuario no encontrado',
-          },
-          { status: 404 }
-        );
+        logger.debug('📱 Usuario no encontrado con formato +, intentando sin +');
+        const result = await supabase
+          .from('usuarios')
+          .select('id, whatsapp_verificado, codigo_referido')
+          .eq('telefono', phoneWithoutPlus)
+          .single();
+        
+        user = result.data;
+        userError = result.error;
+        
+        logger.debug('🔍 Resultado búsqueda sin +:', {
+          found: !!user,
+          errorCode: userError?.code,
+          errorMessage: userError?.message?.substring(0, 50)
+        });
+      }
+      
+      // Si aún no se encontró, intentar búsqueda más flexible (por si hay espacios u otros caracteres)
+      if (userError || !user) {
+        logger.debug('📱 Intentando búsqueda flexible (LIKE)');
+        
+        try {
+          let query = supabase
+            .from('usuarios')
+            .select('id, whatsapp_verificado, codigo_referido, telefono');
+          
+          if (phoneWithoutPlus.length < 10) {
+            // Número truncado: buscar que empiece con estos dígitos
+            logger.debug('⚠️ Número parece truncado, buscando usuarios que empiecen con estos dígitos');
+            
+            const { data: users1 } = await supabase
+              .from('usuarios')
+              .select('id, whatsapp_verificado, codigo_referido, telefono')
+              .ilike('telefono', `${phoneWithoutPlus}%`)
+              .limit(5);
+            
+            const { data: users2 } = await supabase
+              .from('usuarios')
+              .select('id, whatsapp_verificado, codigo_referido, telefono')
+              .ilike('telefono', `${phoneWithPlus}%`)
+              .limit(5);
+            
+            const allUsers = [...(users1 || []), ...(users2 || [])];
+            const uniqueUsers = Array.from(
+              new Map(allUsers.map(u => [u.id, u])).values()
+            );
+            
+            if (uniqueUsers.length === 1) {
+              // Solo un resultado: usarlo directamente
+              const { data: fullUser } = await supabase
+                .from('usuarios')
+                .select('id, whatsapp_verificado, codigo_referido')
+                .eq('id', uniqueUsers[0].id)
+                .single();
+              
+              if (fullUser) {
+                user = fullUser;
+                userError = null;
+                logger.debug('✅ Usuario encontrado con búsqueda flexible (número truncado, único resultado)');
+              }
+            } else if (uniqueUsers.length > 1) {
+              // Múltiples resultados: buscar el que mejor coincida
+              const normalizedSearch = phoneWithoutPlus.replace(/\D/g, '');
+              const bestMatch = uniqueUsers.find(u => {
+                const telNormalized = (u.telefono || '').replace(/\D/g, '');
+                return telNormalized.startsWith(normalizedSearch);
+              }) || uniqueUsers[0];
+              
+              const { data: fullUser } = await supabase
+                .from('usuarios')
+                .select('id, whatsapp_verificado, codigo_referido')
+                .eq('id', bestMatch.id)
+                .single();
+              
+              if (fullUser) {
+                user = fullUser;
+                userError = null;
+                logger.debug('✅ Usuario encontrado con búsqueda flexible (número truncado, múltiples resultados)');
+              }
+            }
+          } else {
+            // Número completo: buscar que contenga estos dígitos
+            query = query.or(`telefono.ilike.%${phoneWithoutPlus}%,telefono.ilike.%${phoneWithPlus}%`);
+            const { data: users } = await query.limit(5);
+            
+            if (users && users.length > 0) {
+              // Buscar coincidencia exacta
+              const exactMatch = users.find(u => {
+                const tel = (u.telefono || '').replace(/\s+/g, '').replace(/[^\d+]/g, '');
+                return tel === phoneWithPlus || tel === phoneWithoutPlus;
+              });
+              
+              if (exactMatch) {
+                const { data: fullUser } = await supabase
+                  .from('usuarios')
+                  .select('id, whatsapp_verificado, codigo_referido')
+                  .eq('id', exactMatch.id)
+                  .single();
+                
+                if (fullUser) {
+                  user = fullUser;
+                  userError = null;
+                  logger.debug('✅ Usuario encontrado con búsqueda flexible (coincidencia exacta)');
+                }
+              } else if (users.length === 1) {
+                // Solo un resultado: usarlo
+                const { data: fullUser } = await supabase
+                  .from('usuarios')
+                  .select('id, whatsapp_verificado, codigo_referido')
+                  .eq('id', users[0].id)
+                  .single();
+                
+                if (fullUser) {
+                  user = fullUser;
+                  userError = null;
+                  logger.debug('✅ Usuario encontrado con búsqueda flexible (único resultado)');
+                }
+              }
+            }
+          }
+        } catch (flexError: any) {
+          logger.error('❌ Excepción en búsqueda flexible:', flexError);
+        }
+      }
+
+      if (userError || !user) {
+        return handleNotFoundError('Usuario');
       }
     }
 
@@ -153,7 +260,7 @@ export async function POST(request: NextRequest) {
     if (necesitaCodigoReferido) {
       try {
         const codigoReferido = generateReferralCode().toUpperCase(); // Asegurar mayúsculas
-        console.log('🎁 Generando código de referido para primera verificación:', codigoReferido);
+        logger.debug('🎁 Generando código de referido para primera verificación');
         
         const { error: codigoError } = await supabase
           .from('usuarios')
@@ -161,13 +268,13 @@ export async function POST(request: NextRequest) {
           .eq('id', user.id);
 
         if (codigoError) {
-          console.error('⚠️ Error generando código de referido (no crítico):', codigoError);
+          logger.warn('⚠️ Error generando código de referido (no crítico)');
           // No fallar la verificación si esto falla
         } else {
-          console.log('✅ Código de referido generado exitosamente');
+          logger.debug('✅ Código de referido generado exitosamente');
         }
       } catch (refError: any) {
-        console.error('⚠️ Error en generación de código de referido (no crítico):', refError);
+        logger.warn('⚠️ Error en generación de código de referido (no crítico)');
         // No fallar la verificación si esto falla
       }
     }
@@ -179,14 +286,10 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id);
 
     if (updateUserError) {
-      console.error('❌ Error actualizando whatsapp_verificado:', updateUserError);
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Error al actualizar verificación',
-          error: updateUserError.message,
-        },
-        { status: 500 }
+      return handleError(
+        updateUserError,
+        'Error al actualizar verificación',
+        ErrorType.DATABASE
       );
     }
 
@@ -201,7 +304,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (referral && !referralError) {
-      console.log(`📋 Usuario es referido, actualizando referidos.verifico_whatsapp`);
+      logger.debug('📋 Usuario es referido, actualizando referidos.verifico_whatsapp');
       
       const { error: updateReferralError } = await supabase
         .from('referidos')
@@ -212,14 +315,14 @@ export async function POST(request: NextRequest) {
         .eq('id', referral.id);
 
       if (updateReferralError) {
-        console.error('⚠️ Error actualizando referidos (no crítico):', updateReferralError);
+        logger.warn('⚠️ Error actualizando referidos (no crítico)');
         // No fallar si esto falla, ya que la verificación principal ya se completó
       } else {
-        console.log('✅ Referido actualizado correctamente');
+        logger.debug('✅ Referido actualizado correctamente');
         
         // 8. Invocar trigger de notificación para referido verificado
         try {
-          console.log(`🔔 Invocando trigger referral-verified para referido: ${referral.id}`);
+          logger.debug('🔔 Invocando trigger referral-verified');
           const triggerResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notifications/triggers/referral-verified`, {
             method: 'POST',
             headers: {
@@ -230,32 +333,28 @@ export async function POST(request: NextRequest) {
 
           if (triggerResponse.ok) {
             const triggerData = await triggerResponse.json();
-            console.log('✅ Trigger referral-verified ejecutado:', triggerData);
+            logger.debug('✅ Trigger referral-verified ejecutado');
           } else {
-            console.warn('⚠️ Error invocando trigger referral-verified (no crítico):', await triggerResponse.text());
+            logger.warn('⚠️ Error invocando trigger referral-verified (no crítico)');
           }
         } catch (triggerError: any) {
-          console.warn('⚠️ Error invocando trigger referral-verified (no crítico):', triggerError?.message);
+          logger.warn('⚠️ Error invocando trigger referral-verified (no crítico)');
           // No fallar si el trigger falla, ya que la verificación principal ya se completó
         }
       }
     }
 
-    console.log(`✅ WhatsApp verificado exitosamente para usuario: ${user.id}`);
+    logger.debug('✅ WhatsApp verificado exitosamente');
 
     return NextResponse.json({
       success: true,
       message: 'WhatsApp verificado exitosamente',
     });
   } catch (error: any) {
-    console.error('❌ Error en verify-code:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'Error interno del servidor',
-        error: error?.message || 'Error desconocido',
-      },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error interno del servidor',
+      ErrorType.INTERNAL
     );
   }
 }

@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { handleError, handleValidationError, ErrorType } from '@/lib/errorHandler';
 
 export async function POST(request: NextRequest) {
   try {
     const { transcript } = await request.json();
 
     if (!transcript) {
-      return NextResponse.json(
-        { error: 'No transcript provided' },
-        { status: 400 }
-      );
+      return handleValidationError('No transcript provided');
     }
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'API key not configured' },
-        { status: 500 }
+      return handleError(
+        new Error('ANTHROPIC_API_KEY not configured'),
+        'Error de configuración del servidor',
+        ErrorType.INTERNAL
       );
     }
 
@@ -62,13 +61,10 @@ Si no puedes identificar algún campo, usa null. No incluyas ningún texto adici
     });
 
   } catch (error: any) {
-    console.error('Error processing expense:', error);
-    return NextResponse.json(
-      { 
-        error: 'Error al procesar el gasto', 
-        details: error.message 
-      },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error al procesar el gasto',
+      ErrorType.EXTERNAL_API
     );
   }
 }

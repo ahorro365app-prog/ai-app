@@ -10,6 +10,7 @@ import { getCategoryLabel } from '@/components/TransactionModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getPlanLimits } from '@/lib/planLimits';
 import { logger } from '@/lib/logger';
+import { extractDateInUserTimezone, getTimezoneForCountry, buildISODateFromString } from '@/lib/dateUtils';
 
 // Categorías disponibles
 const EXPENSE_CATEGORIES = [
@@ -304,16 +305,29 @@ export default function HistoryPage() {
   };
 
   // Usar transacciones de Supabase
-  const currentTransactions = supabaseTransactions.map(tx => ({
-        id: tx.id,
-        type: tx.tipo === 'gasto' ? 'expense' : 'income',
-        amount: tx.monto,
-        category: tx.categoria,
-        description: tx.descripcion || '',
-        date: tx.fecha,
-        receipt: tx.url_comprobante,
-        paymentMethod: (tx as any).metodo_pago || 'cash'
-      }));
+  const currentTransactions = supabaseTransactions.map(tx => {
+    // 🔍 VERIFICACIÓN: Formato de fecha al mapear
+    if (supabaseTransactions.indexOf(tx) === 0) {
+      logger.debug('🔍 FORMATO FECHA AL MAPEAR (primera transacción):', {
+        fecha_original: tx.fecha,
+        fecha_type: typeof tx.fecha,
+        fecha_string: String(tx.fecha),
+        fecha_newDate: new Date(tx.fecha).toISOString(),
+        fecha_newDate_local: new Date(tx.fecha).toLocaleString('es-BO', { timeZone: 'America/La_Paz' }),
+      });
+    }
+    
+    return {
+      id: tx.id,
+      type: tx.tipo === 'gasto' ? 'expense' : 'income',
+      amount: tx.monto,
+      category: tx.categoria,
+      description: tx.descripcion || '',
+      date: tx.fecha,
+      receipt: tx.url_comprobante,
+      paymentMethod: (tx as any).metodo_pago || 'cash'
+    };
+  });
 
   // Obtener todos los movimientos (transacciones + pagos de deudas + ahorros de metas)
   const allMovements = getAllMovements();
@@ -460,35 +474,9 @@ export default function HistoryPage() {
   // Agrupar movimientos por fecha (usando hora local, no UTC)
   const groupedByDate = filteredTransactions.reduce((acc, movement) => {
     // Extraer año, mes y día en la zona horaria del país del usuario
-    // Esto es crítico para evitar que transacciones después de 9 PM se muestren al día siguiente
+    // Usar función helper que normaliza formato y respeta zona horaria del país
     const userCountry = user?.pais || 'BO';
-    const timeZone = userCountry === 'BO' ? 'America/La_Paz' : 
-                     userCountry === 'AR' ? 'America/Argentina/Buenos_Aires' :
-                     userCountry === 'BR' ? 'America/Sao_Paulo' :
-                     userCountry === 'CL' ? 'America/Santiago' :
-                     userCountry === 'CO' ? 'America/Bogota' :
-                     userCountry === 'EC' ? 'America/Guayaquil' :
-                     userCountry === 'PE' ? 'America/Lima' :
-                     userCountry === 'PY' ? 'America/Asuncion' :
-                     userCountry === 'UY' ? 'America/Montevideo' :
-                     userCountry === 'VE' ? 'America/Caracas' :
-                     userCountry === 'MX' ? 'America/Mexico_City' :
-                     userCountry === 'US' ? 'America/New_York' :
-                     'America/La_Paz';
-    
-    const movementDate = new Date(movement.date);
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    
-    const parts = formatter.formatToParts(movementDate);
-    const year = parts.find(p => p.type === 'year')?.value || '';
-    const month = parts.find(p => p.type === 'month')?.value || '';
-    const day = parts.find(p => p.type === 'day')?.value || '';
-    const dateStr = `${year}-${month}-${day}`;
+    const dateStr = extractDateInUserTimezone(movement.date, userCountry);
     
     if (!acc[dateStr]) {
       acc[dateStr] = [];
@@ -504,24 +492,31 @@ export default function HistoryPage() {
   const formatDate = (dateStr: string) => {
     // Obtener país del usuario para usar su zona horaria
     const userCountry = user?.pais || 'BO';
-    const timeZone = userCountry === 'BO' ? 'America/La_Paz' : 
-                     userCountry === 'AR' ? 'America/Argentina/Buenos_Aires' :
-                     userCountry === 'BR' ? 'America/Sao_Paulo' :
-                     userCountry === 'CL' ? 'America/Santiago' :
-                     userCountry === 'CO' ? 'America/Bogota' :
-                     userCountry === 'EC' ? 'America/Guayaquil' :
-                     userCountry === 'PE' ? 'America/Lima' :
-                     userCountry === 'PY' ? 'America/Asuncion' :
-                     userCountry === 'UY' ? 'America/Montevideo' :
-                     userCountry === 'VE' ? 'America/Caracas' :
-                     userCountry === 'MX' ? 'America/Mexico_City' :
-                     userCountry === 'US' ? 'America/New_York' :
-                     'America/La_Paz';
+    const timeZone = getTimezoneForCountry(userCountry);
     
     // Parsear la fecha en formato YYYY-MM-DD
     const [year, month, day] = dateStr.split('-').map(Number);
     
-    // Crear fecha en la zona horaria del país usando Intl.DateTimeFormat
+    // 🔍 DEBUG: Verificar fecha recibida
+    logger.debug('🔍 formatDate - ENTRADA:', {
+      dateStr,
+      year,
+      month,
+      day,
+      userCountry,
+      timeZone,
+    });
+    
+    // IMPORTANTE: dateStr ya viene en formato YYYY-MM-DD extraído correctamente
+    // en la zona horaria del país (ej: '2025-11-25')
+    // Solo necesitamos formatearlo sin cambiar el día
+    
+    // Crear fecha usando buildISODateFromString que respeta la zona horaria del país
+    // Esto construye una fecha ISO con el offset correcto (ej: '2025-11-25T00:00:00-04:00')
+    const dateISO = buildISODateFromString(dateStr, userCountry);
+    const dateInCountry = new Date(dateISO);
+    
+    // Formatear usando la zona horaria del país
     const formatter = new Intl.DateTimeFormat('es-ES', {
       timeZone: timeZone,
       year: 'numeric',
@@ -529,10 +524,16 @@ export default function HistoryPage() {
       day: 'numeric',
       weekday: 'long',
     });
-    
-    // Crear una fecha que represente el día en la zona horaria del país
-    const dateInCountry = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
     const formattedDate = formatter.format(dateInCountry);
+    
+    // 🔍 DEBUG: Verificar fecha formateada
+    logger.debug('🔍 formatDate - RESULTADO:', {
+      dateStr,
+      dateInCountryUTC: dateInCountry.toUTCString(),
+      dateInCountryISO: dateInCountry.toISOString(),
+      formattedDate,
+      timeZone,
+    });
     
     // Obtener fecha de hoy en la zona horaria del país
     const now = new Date();
@@ -849,11 +850,18 @@ export default function HistoryPage() {
                               <TrendingUp size={16} className="text-green-500" />
                             )}
                             <span className="text-xs text-gray-500">
-                              {new Date(movement.date).toLocaleTimeString('es-ES', { 
-                                hour: '2-digit', 
-                                minute: '2-digit',
-                                hour12: false 
-                              })}
+                              {(() => {
+                                // Usar zona horaria del país del usuario para mostrar la hora correcta
+                                const userCountry = user?.pais || 'BO';
+                                const timeZone = getTimezoneForCountry(userCountry);
+                                const movementDate = new Date(movement.date);
+                                return movementDate.toLocaleTimeString('es-ES', { 
+                                  hour: '2-digit', 
+                                  minute: '2-digit',
+                                  hour12: false,
+                                  timeZone: timeZone // Usar zona horaria del país del usuario
+                                });
+                              })()}
                             </span>
                             <p className="font-semibold text-gray-900 capitalize text-xs">
                               {getCategoryLabel(movement.category)}

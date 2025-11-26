@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
+import { logger } from './logger'
 
-// Validar configuración de Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+// Lazy initialization para evitar errores durante build time
+let supabaseClient: ReturnType<typeof createClient> | null = null
 
 // Función para validar URL
 function isValidUrl(url: string): boolean {
@@ -14,38 +14,56 @@ function isValidUrl(url: string): boolean {
   }
 }
 
-// Validar configuración
-if (!supabaseUrl || supabaseUrl === 'your_supabase_url_here') {
-  console.error('❌ NEXT_PUBLIC_SUPABASE_URL no está configurada correctamente')
-  console.error('📝 Instrucciones:')
-  console.error('   1. Ve a https://supabase.com/dashboard/project/[tu-proyecto]/settings/api')
-  console.error('   2. Copia la "Project URL"')
-  console.error('   3. Reemplaza "your_supabase_url_here" en .env.local')
-  console.error('   4. Reinicia el servidor (npm run dev)')
-  throw new Error('NEXT_PUBLIC_SUPABASE_URL no configurada. Revisa las instrucciones en la consola.')
+function getSupabaseClient() {
+  if (!supabaseClient) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    // Durante build time en Vercel SIN variables, crear cliente dummy
+    const isBuildTimeNoVars = process.env.VERCEL === '1' && (!supabaseUrl || !supabaseAnonKey)
+    
+    if (isBuildTimeNoVars) {
+      // Retornar objeto dummy solo durante build en Vercel sin variables
+      supabaseClient = {
+        from: () => ({
+          select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+        }),
+        auth: {
+          getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+          signInWithPassword: () => Promise.resolve({ data: null, error: null }),
+          signUp: () => Promise.resolve({ data: null, error: null }),
+          onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+        },
+      } as any
+      return supabaseClient
+    }
+    
+    // Validar configuración solo si tenemos valores
+    if (!supabaseUrl || supabaseUrl === 'your_supabase_url_here') {
+      throw new Error('NEXT_PUBLIC_SUPABASE_URL no configurada. Revisa las instrucciones en la consola.')
+    }
+    
+    if (!supabaseAnonKey || supabaseAnonKey === 'your_supabase_anon_key_here') {
+      throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY no configurada. Revisa las instrucciones en la consola.')
+    }
+    
+    if (!isValidUrl(supabaseUrl)) {
+      throw new Error('NEXT_PUBLIC_SUPABASE_URL no es una URL válida. Debe ser una URL HTTP/HTTPS válida.')
+    }
+    
+    supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
+    
+    if (process.env.NODE_ENV !== 'production') {
+      logger.debug('✅ Supabase configurado correctamente')
+      logger.debug('🔗 URL:', supabaseUrl)
+    }
+  }
+  
+  return supabaseClient
 }
 
-if (!supabaseAnonKey || supabaseAnonKey === 'your_supabase_anon_key_here') {
-  console.error('❌ NEXT_PUBLIC_SUPABASE_ANON_KEY no está configurada correctamente')
-  console.error('📝 Instrucciones:')
-  console.error('   1. Ve a https://supabase.com/dashboard/project/[tu-proyecto]/settings/api')
-  console.error('   2. Copia la "anon public" key')
-  console.error('   3. Reemplaza "your_supabase_anon_key_here" en .env.local')
-  console.error('   4. Reinicia el servidor (npm run dev)')
-  throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY no configurada. Revisa las instrucciones en la consola.')
-}
-
-if (!isValidUrl(supabaseUrl)) {
-  console.error('❌ NEXT_PUBLIC_SUPABASE_URL no es una URL válida')
-  console.error('📝 La URL debe ser válida (ejemplo: https://tu-proyecto.supabase.co)')
-  console.error('📝 Valor actual:', supabaseUrl)
-  throw new Error('NEXT_PUBLIC_SUPABASE_URL no es una URL válida. Debe ser una URL HTTP/HTTPS válida.')
-}
-
-console.log('✅ Supabase configurado correctamente')
-console.log('🔗 URL:', supabaseUrl)
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Exportar directamente el cliente (no Proxy)
+export const supabase = getSupabaseClient()
 
 // Tipos para TypeScript
 export type Database = {

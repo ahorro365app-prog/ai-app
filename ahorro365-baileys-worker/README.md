@@ -96,12 +96,13 @@ curl https://baileys-worker-xxxxx.railway.app/health
 
 ## 🔧 Variables de Entorno
 
-| Variable | Descripción | Ejemplo |
-|----------|-------------|---------|
-| `WHATSAPP_NUMBER` | Número de WhatsApp Business | `+59170000000` |
-| `BACKEND_URL` | URL del backend | `https://ahorro365-backend.vercel.app` |
-| `BACKEND_API_KEY` | API key para autenticación | `secret-key-123` |
-| `PORT` | Puerto del servidor | `3000` |
+| Variable | Descripción | Ejemplo | Default |
+|----------|-------------|---------|---------|
+| `WHATSAPP_NUMBER` | Número de WhatsApp Business | `+59161600190` | - |
+| `BACKEND_URL` | URL del backend | `https://ahorro365-backend.vercel.app` | - |
+| `BACKEND_API_KEY` | API key para autenticación | `secret-key-123` | - |
+| `PORT` | Puerto del servidor | `3000` | `3003` |
+| `MESSAGE_DELAY_MS` | Delay en milisegundos antes de enviar mensajes (anti-spam) | `2000` | `2000` |
 
 ## 📝 Flujo de Mensajes
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { handleError, ErrorType } from '@/lib/errorHandler';
 
 const BASE_SELECT =
   'id, user_id, type, title, body, status, sent_at, error_message';
@@ -46,19 +47,19 @@ export async function GET(request: NextRequest) {
     }
 
     if (error) {
-      console.error('Error obteniendo notification_logs:', error);
-      return NextResponse.json(
-        { success: false, message: 'Error obteniendo historial' },
-        { status: 500 }
+      return handleError(
+        error,
+        'Error obteniendo historial',
+        ErrorType.DATABASE
       );
     }
 
     return NextResponse.json({ success: true, data: data || [] });
   } catch (error: any) {
-    console.error('Error en /api/notifications/logs:', error);
-    return NextResponse.json(
-      { success: false, message: error?.message || 'Error interno' },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error interno',
+      ErrorType.INTERNAL
     );
   }
 }

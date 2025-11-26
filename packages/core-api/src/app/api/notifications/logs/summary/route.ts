@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { handleError, ErrorType } from '@/lib/errorHandler';
+import { logger } from '@/lib/logger';
 
 type CountResult = {
   name: string;
@@ -155,7 +157,7 @@ async function countByStatus(status: string) {
     .eq('status', status);
 
   if (error) {
-    console.error(`Error contando status ${status}:`, error);
+      logger.warn(`Error contando status (no crítico)`);
     throw error;
   }
 
@@ -174,7 +176,7 @@ async function countColumnNotNull(column: string): Promise<CountResult> {
     if (/column.*does not exist/i.test(response.error.message || '')) {
       return { name: column, count: 0, available: false };
     }
-    console.error(`Error contando columna ${column}:`, response.error);
+      logger.warn(`Error contando columna (no crítico)`);
     throw response.error;
   }
 
@@ -194,7 +196,7 @@ async function countStatusWithinRange(status: string, fromIso: string) {
     .gte('sent_at', fromIso);
 
   if (error) {
-    console.error(`Error contando status ${status} en rango`, error);
+      logger.warn(`Error contando status en rango (no crítico)`);
     throw error;
   }
 
@@ -214,7 +216,7 @@ async function countColumnNotNullWithinRange(column: string, fromIso: string) {
     if (/column.*does not exist/i.test(response.error.message || '')) {
       return { count: 0, available: false };
     }
-    console.error(`Error contando columna ${column} en rango:`, response.error);
+      logger.warn(`Error contando columna en rango (no crítico)`);
     throw response.error;
   }
 
@@ -233,7 +235,7 @@ export async function GET(_request: NextRequest) {
     ]);
 
     if (totalError) {
-      console.error('Error obteniendo total de logs:', totalError);
+        logger.warn('Error obteniendo total de logs (no crítico)');
       return NextResponse.json(
         { success: false, message: 'No se pudo obtener el resumen' },
         { status: 500 }
@@ -363,7 +365,7 @@ export async function GET(_request: NextRequest) {
           failed,
         };
       } catch (error) {
-        console.error(`Error calculando métricas para ${key}:`, error);
+        logger.warn(`Error calculando métricas (no crítico)`);
         // mantener valores en cero para esa ventana
       }
     }
@@ -385,7 +387,7 @@ export async function GET(_request: NextRequest) {
       .gte('created_at', rangeMap.last30d);
 
     if (recentLogsError) {
-      console.error('Error obteniendo logs recientes para agregaciones:', recentLogsError);
+      logger.warn('Error obteniendo logs recientes (no crítico)');
     } else if (recentLogs) {
       for (const log of recentLogs as NotificationLogRow[]) {
         if (log.trigger_key) {
@@ -415,7 +417,7 @@ export async function GET(_request: NextRequest) {
         .limit(100);
 
       if (triggerLogsError) {
-        console.error('Error obteniendo últimos trigger logs:', triggerLogsError);
+        logger.warn('Error obteniendo últimos trigger logs (no crítico)');
       } else if (triggerLogs) {
         for (const log of triggerLogs as TriggerLogRow[]) {
           if (!log.trigger_key || triggerLatestRuns.has(log.trigger_key)) continue;
@@ -426,7 +428,7 @@ export async function GET(_request: NextRequest) {
         }
       }
     } catch (triggerError) {
-      console.error('Error consultando notification_trigger_logs:', triggerError);
+      logger.warn('Error consultando notification_trigger_logs (no crítico)');
     }
 
     const triggerSummary = Array.from(triggerAggregates.entries())
@@ -473,7 +475,7 @@ export async function GET(_request: NextRequest) {
         };
       }
     } catch (healthErr: any) {
-      console.error('Error obteniendo health check del cron:', healthErr);
+      logger.warn('Error obteniendo health check del cron (no crítico)');
       // No fallar el endpoint si el health check no se puede obtener
     }
 
@@ -496,16 +498,10 @@ export async function GET(_request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Error en /api/notifications/logs/summary:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: error?.message || 'Error interno',
-        details: {
-          error: error?.message,
-        },
-      },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error interno',
+      ErrorType.INTERNAL
     );
   }
 }

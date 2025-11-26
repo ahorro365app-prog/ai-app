@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
+import { logger } from '@/lib/logger';
 
 interface StatusBarContextType {
   setStatusBarConfig: (config: StatusBarConfig) => void;
@@ -16,10 +17,12 @@ interface StatusBarConfig {
 const StatusBarContext = createContext<StatusBarContextType | undefined>(undefined);
 
 export function StatusBarProvider({ children }: { children: ReactNode }) {
+  logger.debug('🚀 StatusBarProvider: Componente inicializado');
   const [currentConfig, setCurrentConfig] = useState<StatusBarConfig>({
     backgroundColor: '#ffffff', // Blanco por defecto
     style: Style.Dark
   });
+  logger.debug('📊 StatusBarProvider: Estado inicial configurado');
 
   const setStatusBarConfig = useCallback((config: StatusBarConfig) => {
     if (Capacitor.isNativePlatform()) {
@@ -29,7 +32,7 @@ export function StatusBarProvider({ children }: { children: ReactNode }) {
           await StatusBar.setStyle({ style: config.style });
           setCurrentConfig(config);
         } catch (error) {
-          console.log('Status bar not available:', error);
+          logger.debug('Status bar not available:', error);
         }
       };
 
@@ -48,14 +51,14 @@ export function StatusBarProvider({ children }: { children: ReactNode }) {
           await StatusBar.setBackgroundColor({ color: currentConfig.backgroundColor });
           await StatusBar.setStyle({ style: currentConfig.style });
         } catch (error) {
-          console.log('Status bar not available:', error);
+          logger.debug('Status bar not available:', error);
         }
       };
 
       initStatusBar();
     } else {
       // En desarrollo web, no hacer nada
-      console.log('Status bar context initialized for web development');
+      logger.debug('Status bar context initialized for web development');
     }
   }, []);
 

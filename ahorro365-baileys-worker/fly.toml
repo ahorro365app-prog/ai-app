@@ -1,4 +1,4 @@
-app = "ahorro365-baileys-worker"
+app = "ahorro365-baileys-worker-v2"
 primary_region = "dfw"
 
 [build]

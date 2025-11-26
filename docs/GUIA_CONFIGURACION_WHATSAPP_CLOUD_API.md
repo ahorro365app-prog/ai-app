@@ -16,14 +16,33 @@
 - [x] Endpoint de webhook existente: `/api/webhooks/whatsapp`
 - [x] Documentación de costos revisada
 
+### ✅ Configuración Meta Completada (20 Nov 2025)
+
+- [x] Crear cuenta de Meta Business
+- [x] Crear app en Meta Developer
+- [x] Configurar WhatsApp Business API
+- [x] Confirmar número personal (Actualizado 20 Nov 2025)
+  - **Número:** +591 60360908
+  - **App ID:** `2059355704823360`
+  - **Phone Number ID:** `840593392476984` (actualizado)
+  - **WhatsApp Business Account ID:** `1554733609063961` (actualizado)
+
+### ✅ Webhook Configurado y Verificado (20 Nov 2025)
+
+- [x] Configurar webhook en Meta
+  - **URL local (ngrok):** `https://flectionless-initially-petra.ngrok-free.dev/api/webhooks/whatsapp`
+  - **Token:** `7edf98ac6d544020a4c49b6ff9ed28893ad9464e401ba8658b5ddd860a4ab876`
+  - **Estado:** ✅ Verificado exitosamente (Status 200)
+  - **User-Agent confirmado:** `facebookplatform/1.0`
+
+- [x] Suscribirse a eventos del webhook
+  - ✅ `messages` (v24.0) - Para recibir mensajes entrantes
+  - ✅ `message_template_status_update` (v24.0) - Para estados de mensajes
+
 ### ⏳ Pendiente
 
-- [ ] Crear cuenta de Meta Business
-- [ ] Crear app en Meta Developer
-- [ ] Configurar WhatsApp Business API
-- [ ] Configurar webhook en Meta
-- [ ] Obtener tokens de acceso
-- [ ] Probar recepción de mensajes
+- [ ] Probar recepción de mensajes de WhatsApp
+- [ ] Configurar webhook en producción (Vercel)
 - [ ] Configurar envío de mensajes
 
 ---
@@ -142,12 +161,32 @@ https://ahorro365-core-api.vercel.app/api/webhooks/whatsapp
 ### 5.2. Configurar Webhook en Meta
 
 1. En el dashboard de WhatsApp, ve a **"Configuración"** → **"Webhooks"**
-2. Haz clic en **"Configurar webhooks"** o **"Editar"**
-3. Ingresa la URL:
+2. En la sección **"Webhook"**, verifica/ingresa:
+
+   **URL de devolución de llamada (Callback URL):**
    ```
    https://ahorro365-core-api.vercel.app/api/webhooks/whatsapp
    ```
-4. Haz clic en **"Verificar y guardar"**
+
+   **Token de verificación (Verify Token):**
+   ```
+   7edf98ac6d544020a4c49b6ff9ed28893ad9464e401ba8658b5ddd860a4ab876
+   ```
+   ⚠️ **IMPORTANTE:** Este token debe ser EXACTAMENTE el mismo que configuraste en Vercel como `WHATSAPP_WEBHOOK_VERIFY_TOKEN`. No debe haber espacios antes o después.
+
+3. **Desactiva el certificado de cliente:**
+   - El toggle **"Adjunta un certificado de cliente"** debe estar desactivado
+   - Si está activado (azul), haz clic para desactivarlo
+   - No es necesario para este caso de uso
+
+4. Haz clic en **"Verificar y guardar"** (botón azul)
+   - ⚠️ **NO uses "Probar"** - ese botón no envía los parámetros correctos
+   - Solo "Verificar y guardar" funciona correctamente
+
+5. **Verifica en los logs de Vercel:**
+   - Ve a Vercel → ahorro365-core-api → Logs
+   - Deberías ver: `✅ Webhook verified successfully` con status 200
+   - Si ves 400 o 403, revisa que el token sea exactamente el mismo
 
 ### 5.3. Verificar Webhook (Meta enviará un GET)
 
@@ -165,12 +204,90 @@ https://ahorro365-core-api.vercel.app/api/webhooks/whatsapp
 
 ### 5.4. Suscribirse a Eventos
 
-1. En la misma página de webhooks, selecciona los eventos:
-   - ✅ **messages** (mensajes entrantes)
-   - ✅ **message_status** (estado de mensajes enviados) - opcional
-2. Haz clic en **"Guardar"**
+**Después de verificar el webhook exitosamente:**
+
+1. En la misma página, baja hasta la sección **"Campos del webhook"**
+2. Verás una tabla con columnas: Campo, Versión, Prueba, Suscribirse
+3. Para cada campo que necesites:
+   - ✅ **messages** (mensajes entrantes) - **OBLIGATORIO**
+     - Haz clic en el botón **"Suscribirse"** en la fila de "messages"
+   - ✅ **message_status** (estado de mensajes enviados) - **OPCIONAL**
+     - Haz clic en el botón **"Suscribirse"** en la fila de "message_status"
+     - Útil para saber si los mensajes fueron entregados/leídos
+
+4. Verifica que aparezca un checkmark ✅ o "Suscrito" en la columna "Suscribirse"
 
 **⏱️ Tiempo estimado:** 5 minutos
+
+### 5.5. Agregar Números de Prueba (IMPORTANTE)
+
+**⚠️ CRÍTICO:** Si tu número de WhatsApp Business está en modo de prueba (sandbox), **SOLO puedes recibir mensajes de números que hayas agregado explícitamente como números de prueba**.
+
+**Pasos para agregar tu número de prueba:**
+
+1. Ve a **Meta Developer Console** → Tu App → **WhatsApp** → **Configuration**
+2. Haz clic en **"Phone numbers"** o **"Números de teléfono"**
+3. Busca la sección **"To"** o **"Test numbers"** o **"Números de prueba"**
+   - Si no la ves, ve a **"Getting Started"** → **"Send and receive messages"**
+4. Haz clic en **"Add test number"** o **"Agregar número de prueba"**
+5. Ingresa tu número personal con código de país:
+   - Ejemplo: `+591 71234567` (reemplaza con tu número real)
+   - ⚠️ **IMPORTANTE:** Debe incluir el código de país (+591 para Bolivia)
+6. Meta te enviará un código de verificación por WhatsApp
+7. Ingresa el código para verificar tu número
+
+**Después de agregar tu número:**
+- Espera unos segundos para que se active
+- Envía un mensaje de audio desde tu número personal
+- Deberías ver una petición POST en los logs del webhook
+- El mensaje debería procesarse correctamente
+
+**💡 Nota:** Puedes agregar hasta 5 números de prueba en modo sandbox. Para producción, necesitarás verificar tu negocio con Meta.
+
+**⏱️ Tiempo estimado:** 2-3 minutos
+
+### 5.6. Cambiar a Modo Activo (Producción) - Recomendado
+
+**💡 Ventaja:** En modo activo, puedes recibir mensajes de **CUALQUIER número** sin necesidad de agregarlos como números de prueba.
+
+**📊 Comparación:**
+
+| Característica | Modo Desarrollo | Modo Activo |
+|---------------|----------------|-------------|
+| Números permitidos | Solo 5 números de prueba | Cualquier número |
+| Verificación requerida | No | Sí (1-3 días) |
+| Costo | Gratis | Gratis (mensajes entrantes) |
+| Ideal para | Desarrollo inicial | Producción y pruebas reales |
+
+**Pasos para cambiar a modo activo:**
+
+1. **Verificar tu negocio en Meta Business:**
+   - Ve a: https://business.facebook.com
+   - Configuración → Información del negocio
+   - Completa toda la información requerida
+   - Haz clic en "Solicitar verificación"
+
+2. **Completar verificación:**
+   - Meta te pedirá verificar tu identidad (documento)
+   - Verificar tu negocio (documentos del negocio)
+   - Confirmar tu número de teléfono
+   - ⏱️ Este proceso puede tomar 1-3 días
+
+3. **Cambiar modo de la app:**
+   - Una vez verificado, ve a: Meta Developer → Tu App → Configuración
+   - Busca "Modo" o "Mode"
+   - Cambia de "Desarrollo" a "Activo" o "Producción"
+
+**⚠️ IMPORTANTE:** 
+- **Para RECIBIR mensajes:** Cambiar a modo activo NO requiere verificación completa del negocio
+- Puedes recibir mensajes de cualquier número inmediatamente después de cambiar a modo activo
+- **Para ENVIAR mensajes fuera de 24h:** SÍ se requiere verificación del negocio
+- **Para templates de marketing:** SÍ se requiere verificación del negocio
+- Los mensajes entrantes siguen siendo gratuitos en modo activo
+
+**💡 Nota:** Si cambias a modo activo y no te pide verificación, es CORRECTO. Puedes recibir mensajes de cualquier número sin agregarlos como números de prueba.
+
+**⏱️ Tiempo estimado:** Inmediato (cambio de modo) | 1-3 días (verificación solo si necesitas enviar fuera de 24h)
 
 ---
 
@@ -193,9 +310,23 @@ https://ahorro365-core-api.vercel.app/api/webhooks/whatsapp
 2. Busca **"Token de acceso del sistema"** o **"System User Token"**
 3. O crea un **"App Access Token"** con permisos permanentes
 
+**Permisos necesarios al generar el token:**
+- ✅ `whatsapp_business_management` - Gestionar cuenta de WhatsApp Business
+- ✅ `whatsapp_business_messaging` - Enviar y recibir mensajes
+
+**Pasos para generar token:**
+1. Haz clic en **"Generar token"** o **"Generate Token"**
+2. Selecciona la app (si aplica)
+3. Configura la expiración (recomendado: "Sin expiración" para producción)
+4. En **"Asignar permisos"**, selecciona:
+   - `whatsapp_business_management`
+   - `whatsapp_business_messaging`
+5. Haz clic en **"Generar token"**
+6. **⚠️ IMPORTANTE:** Copia el token inmediatamente (solo se muestra una vez)
+
 **Para producción, necesitas:**
-- Token permanente
-- Guardarlo como variable de entorno
+- Token permanente (sin expiración)
+- Guardarlo como variable de entorno en Vercel
 - No exponerlo en el código
 
 **⏱️ Tiempo estimado:** 5 minutos
@@ -230,18 +361,36 @@ Agrega estas variables en Vercel (Settings → Environment Variables):
 
 ```bash
 # WhatsApp Cloud API
-WHATSAPP_ACCESS_TOKEN=EAA...  # Token de acceso permanente
-WHATSAPP_PHONE_NUMBER_ID=123456789012345  # Phone Number ID
-WHATSAPP_BUSINESS_ACCOUNT_ID=123456789012345  # Business Account ID
-WHATSAPP_WEBHOOK_VERIFY_TOKEN=tu_token_secreto_aqui  # Token para verificar webhook
-WHATSAPP_API_VERSION=v21.0  # Versión de la API (usar la más reciente)
+WHATSAPP_ACCESS_TOKEN=EAA...  # Token de acceso permanente (obtener en Meta Developer)
+WHATSAPP_PHONE_NUMBER_ID=840593392476984  # Phone Number ID (actualizado 20 Nov 2025)
+WHATSAPP_BUSINESS_ACCOUNT_ID=1554733609063961  # Business Account ID (actualizado 20 Nov 2025)
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=7edf98ac6d544020a4c49b6ff9ed28893ad9464e401ba8658b5ddd860a4ab876  # Token generado 20 Nov 2025
+WHATSAPP_API_VERSION=v22.0  # Versión de la API (usar la más reciente, actualmente v22.0)
 ```
 
 ### 8.2. Generar Webhook Verify Token
 
-1. Genera un token aleatorio seguro (mínimo 32 caracteres)
-2. Ejemplo: `openssl rand -hex 32`
-3. Guarda este token en `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
+**✅ TOKEN GENERADO (20 Nov 2025):**
+
+```
+7edf98ac6d544020a4c49b6ff9ed28893ad9464e401ba8658b5ddd860a4ab876
+```
+
+**📋 Pasos para configurar:**
+
+1. **En Vercel:**
+   - Ve a tu proyecto `ahorro365-core-api`
+   - Settings → Environment Variables
+   - Busca `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
+   - Actualiza el valor con el token de arriba
+   - Guarda los cambios
+
+2. **En Meta Developer Console:**
+   - Ve a Webhooks → Configuración
+   - En el campo "Verify Token", pega el mismo token
+   - Haz clic en "Verificar y guardar"
+
+**⚠️ IMPORTANTE:** El token debe ser EXACTAMENTE el mismo en Vercel y Meta.
 
 **⏱️ Tiempo estimado:** 5 minutos
 
@@ -391,11 +540,11 @@ https://ahorro365-core-api.vercel.app/delete-data
 ### Tokens e IDs (Obtener de Meta Developer)
 
 ```
-WHATSAPP_ACCESS_TOKEN=EAA...
-WHATSAPP_PHONE_NUMBER_ID=123456789012345
-WHATSAPP_BUSINESS_ACCOUNT_ID=123456789012345
-WHATSAPP_WEBHOOK_VERIFY_TOKEN=tu_token_secreto
-WHATSAPP_API_VERSION=v21.0
+WHATSAPP_ACCESS_TOKEN=EAA...  # Obtener en Meta Developer → WhatsApp → API Setup
+WHATSAPP_PHONE_NUMBER_ID=840593392476984  # ✅ Actualizado 20 Nov 2025
+WHATSAPP_BUSINESS_ACCOUNT_ID=1554733609063961  # ✅ Actualizado 20 Nov 2025
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=7edf98ac6d544020a4c49b6ff9ed28893ad9464e401ba8658b5ddd860a4ab876  # ✅ Generado 20 Nov 2025
+WHATSAPP_API_VERSION=v22.0  # Usar la versión más reciente
 ```
 
 ---

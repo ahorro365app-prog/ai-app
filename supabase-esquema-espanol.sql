@@ -37,6 +37,7 @@ CREATE TABLE transacciones (
   categoria TEXT NOT NULL,
   descripcion TEXT,
   fecha TIMESTAMP WITH TIME ZONE NOT NULL,
+  fecha_eliminacion TIMESTAMP WITH TIME ZONE,
   url_comprobante TEXT,
   fecha_creacion TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -90,6 +91,7 @@ CREATE TABLE logs_whatsapp (
 
 -- Índices para transacciones
 CREATE INDEX idx_transacciones_usuario_fecha ON transacciones(usuario_id, fecha);
+CREATE INDEX idx_transacciones_usuario_fecha_eliminacion ON transacciones(usuario_id, fecha_eliminacion);
 CREATE INDEX idx_transacciones_usuario_tipo ON transacciones(usuario_id, tipo);
 CREATE INDEX idx_transacciones_fecha ON transacciones(fecha);
 

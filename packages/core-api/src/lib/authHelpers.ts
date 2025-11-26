@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getSupabaseAdmin } from './supabaseAdmin';
+import { logger } from './logger';
 
 /**
  * Obtiene el ID del usuario autenticado desde la petición
@@ -40,7 +41,7 @@ export async function getAuthenticatedUserId(
       }
     }
   } catch (error) {
-    console.warn('No se pudo obtener userId de Supabase Auth:', error);
+    logger.warn('No se pudo obtener userId de Supabase Auth:', error);
   }
 
   // 2. Intentar obtener desde header Authorization personalizado (userId directo)

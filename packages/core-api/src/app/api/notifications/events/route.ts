@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { handleError, handleValidationError, handleNotFoundError, ErrorType } from '@/lib/errorHandler';
 
 const VALID_EVENTS = ['delivered', 'opened', 'clicked', 'dismissed'] as const;
 type NotificationEvent = (typeof VALID_EVENTS)[number];
@@ -33,17 +34,11 @@ export async function POST(request: NextRequest) {
       body?.metadata && typeof body.metadata === 'object' ? body.metadata : null;
 
     if (!logId) {
-      return NextResponse.json(
-        { success: false, message: 'logId requerido' },
-        { status: 400 }
-      );
+      return handleValidationError('logId requerido');
     }
 
     if (!event) {
-      return NextResponse.json(
-        { success: false, message: 'Evento inválido' },
-        { status: 400 }
-      );
+      return handleValidationError('Evento inválido');
     }
 
     const { data: log, error } = await supabase
@@ -55,21 +50,15 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error && /column.*does not exist/i.test(error.message || '')) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            'La tabla notification_logs no tiene columnas de eventos. Ejecuta la migración 2025-11-10-004.',
-        },
-        { status: 500 }
+      return handleError(
+        error,
+        'La tabla notification_logs no tiene columnas de eventos. Ejecuta la migración 2025-11-10-004.',
+        ErrorType.DATABASE
       );
     }
 
     if (error?.code === 'PGRST116' || !log) {
-      return NextResponse.json(
-        { success: false, message: 'Registro no encontrado' },
-        { status: 404 }
-      );
+      return handleNotFoundError('Registro');
     }
 
     const now = new Date().toISOString();
@@ -139,10 +128,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (updateError) {
-      console.error('Error actualizando notification_logs:', updateError);
-      return NextResponse.json(
-        { success: false, message: 'No se pudo registrar el evento' },
-        { status: 500 }
+      return handleError(
+        updateError,
+        'No se pudo registrar el evento',
+        ErrorType.DATABASE
       );
     }
 
@@ -152,13 +141,10 @@ export async function POST(request: NextRequest) {
       data: updated,
     });
   } catch (error: any) {
-    console.error('Error en /api/notifications/events:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: error?.message || 'Error registrando evento',
-      },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error registrando evento',
+      ErrorType.INTERNAL
     );
   }
 }

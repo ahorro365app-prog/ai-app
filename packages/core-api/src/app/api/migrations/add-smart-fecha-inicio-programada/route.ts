@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { logger } from '@/lib/logger';
 
 /**
  * POST /api/migrations/add-smart-fecha-inicio-programada
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (error: any) {
       // Si hay error al verificar, asumimos que no existe
-      console.log('⚠️ No se pudo verificar campo, asumiendo que no existe:', error?.message);
+      logger.warn('⚠️ No se pudo verificar campo, asumiendo que no existe:', error?.message);
     }
 
     // SQL para agregar el campo
@@ -86,7 +87,7 @@ AND column_name = 'smart_fecha_inicio_programada';
       `.trim(),
     });
   } catch (error: any) {
-    console.error('❌ Error en migración:', error);
+    logger.error('❌ Error en migración:', error);
     return NextResponse.json(
       {
         success: false,

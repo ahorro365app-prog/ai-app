@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { ScreenOrientation } from '@capacitor/screen-orientation';
 import { Capacitor } from '@capacitor/core';
+import { logger } from '@/lib/logger';
 
 export default function OrientationLock() {
   useEffect(() => {
@@ -10,9 +11,9 @@ export default function OrientationLock() {
       if (Capacitor.isNativePlatform()) {
         try {
           await ScreenOrientation.lock({ orientation: 'portrait' });
-          console.log('✅ Orientación bloqueada en modo portrait');
+          logger.debug('✅ Orientación bloqueada en modo portrait');
         } catch (error) {
-          console.warn('⚠️ No se pudo bloquear la orientación:', error);
+          logger.warn('⚠️ No se pudo bloquear la orientación:', error);
         }
       }
     };

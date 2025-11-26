@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { UserPlus, Lock, User, Phone, Eye, EyeOff } from 'lucide-react';
+import { Lock, User, Phone, Eye, EyeOff, Gift } from 'lucide-react';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useModal } from '@/contexts/ModalContext';
 import ErrorModal from '@/components/ErrorModal';
+import { logger } from '@/lib/logger';
 
 // Mapeo de países con sus prefijos
 const countries = [
@@ -31,6 +32,7 @@ export default function SignUpPage() {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
+  const [referralCode, setReferralCode] = useState(''); // Fase 2: Código de referido opcional
   const [selectedCountry, setSelectedCountry] = useState('BO'); // Bolivia por defecto
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,6 +42,16 @@ export default function SignUpPage() {
     message: ''
   });
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Estados para validación de código de referido
+  type ValidationState = 
+    | { status: 'idle' }
+    | { status: 'validating' }
+    | { status: 'valid'; referidorNombre: string }
+    | { status: 'invalid'; message: string }
+    | { status: 'error'; message: string };
+
+  const [validationState, setValidationState] = useState<ValidationState>({ status: 'idle' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +67,8 @@ export default function SignUpPage() {
                 nombre: name,
                 telefono: fullPhone,
                 contrasena: password,
-                moneda: selectedCountry === 'BO' ? 'BOB' : 'USD' // Por defecto BOB para Bolivia
+                moneda: selectedCountry === 'BO' ? 'BOB' : 'USD', // Por defecto BOB para Bolivia
+                codigoReferidoUsado: referralCode.trim() || undefined // Fase 2: Pasar código si existe
               });
 
               if (result.success) {
@@ -77,7 +90,7 @@ export default function SignUpPage() {
           setModalOpen(true);
         }
       } catch (error) {
-        console.error('Error de registro:', error);
+        logger.error('Error de registro:', error);
         setErrorModal({
           isOpen: true,
           message: 'Error inesperado. Verifica tu conexión e intenta nuevamente.'
@@ -99,6 +112,69 @@ export default function SignUpPage() {
     return countries.find(c => c.code === selectedCountry);
   };
 
+  // Función para validar código de referido
+  const validateReferralCode = useCallback(async (code: string) => {
+    if (!code || code.length !== 8) {
+      setValidationState({ status: 'idle' });
+      return;
+    }
+
+    setValidationState({ status: 'validating' });
+
+    try {
+      const response = await fetch('/api/referrals/validate-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: code.toUpperCase() }),
+      });
+
+      const data = await response.json();
+
+      if (data.valid && data.referidorNombre) {
+        setValidationState({
+          status: 'valid',
+          referidorNombre: data.referidorNombre,
+        });
+      } else {
+        setValidationState({
+          status: 'invalid',
+          message: data.message || 'Código no encontrado',
+        });
+      }
+    } catch (error: any) {
+      logger.error('Error validando código:', error);
+      setValidationState({
+        status: 'error',
+        message: 'Error al validar código',
+      });
+    }
+  }, []);
+
+  // Debounce: validar después de 1 segundo sin escribir
+  useEffect(() => {
+    if (!referralCode || referralCode.length !== 8) {
+      setValidationState({ status: 'idle' });
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      validateReferralCode(referralCode);
+    }, 1000); // 1 segundo
+
+    return () => clearTimeout(timeoutId);
+  }, [referralCode, validateReferralCode]);
+
+  // Handler para onBlur (validar cuando sale del campo)
+  const handleReferralCodeBlur = () => {
+    if (referralCode && referralCode.length === 8) {
+      validateReferralCode(referralCode);
+    } else if (!referralCode) {
+      setValidationState({ status: 'idle' });
+    }
+  };
+
   // Cerrar dropdown al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -116,15 +192,6 @@ export default function SignUpPage() {
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-purple-600 via-pink-600 to-red-600 flex items-center justify-center p-4 overflow-hidden">
       <div className="w-full max-w-md">
-        {/* Logo/Header */}
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-white rounded-full mx-auto mb-4 flex items-center justify-center shadow-2xl">
-            <UserPlus size={40} className="text-purple-600" />
-          </div>
-          <h1 className="text-4xl font-bold text-white mb-2">Ahorro365</h1>
-          <p className="text-purple-100 text-lg">Crea tu cuenta gratis</p>
-        </div>
-
         {/* Formulario */}
         <div className="bg-white rounded-3xl p-8 shadow-2xl">
           <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Crear Cuenta</h2>
@@ -229,6 +296,113 @@ export default function SignUpPage() {
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+            </div>
+
+            {/* Código de Referido (Opcional) */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Código de referido <span className="text-gray-400 font-normal text-xs">(opcional)</span>
+              </label>
+              <div className={`flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border-2 transition-colors ${
+                validationState.status === 'validating' 
+                  ? 'border-blue-400 focus-within:border-blue-500' 
+                  : validationState.status === 'valid'
+                  ? 'border-green-500 focus-within:border-green-600'
+                  : validationState.status === 'invalid' || validationState.status === 'error'
+                  ? 'border-yellow-400 focus-within:border-yellow-500'
+                  : 'border-gray-200 focus-within:border-purple-500'
+              }`}>
+                <Gift size={20} className={
+                  validationState.status === 'valid' 
+                    ? 'text-green-600' 
+                    : validationState.status === 'invalid' || validationState.status === 'error'
+                    ? 'text-yellow-600'
+                    : 'text-gray-400'
+                } />
+                <input
+                  type="text"
+                  value={referralCode}
+                  onChange={(e) => {
+                    const newValue = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    setReferralCode(newValue);
+                    // Limpiar validación cuando empieza a escribir
+                    if (newValue.length < 8) {
+                      setValidationState({ status: 'idle' });
+                    }
+                  }}
+                  onBlur={handleReferralCodeBlur}
+                  placeholder="ABC12345"
+                  maxLength={8}
+                  className="flex-1 bg-transparent text-gray-900 focus:outline-none font-mono text-sm"
+                  suppressHydrationWarning
+                />
+                {validationState.status === 'validating' && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                )}
+                {validationState.status === 'valid' && (
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+                {(validationState.status === 'invalid' || validationState.status === 'error') && (
+                  <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                )}
+              </div>
+              
+              {/* Mensaje de feedback */}
+              {validationState.status !== 'idle' && (
+                <div className={`mt-1 text-sm flex items-center gap-1 ${
+                  validationState.status === 'validating'
+                    ? 'text-blue-600'
+                    : validationState.status === 'valid'
+                    ? 'text-green-600'
+                    : 'text-yellow-600'
+                }`}>
+                  {validationState.status === 'validating' && (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                      <span>Validando código...</span>
+                    </>
+                  )}
+                  {validationState.status === 'valid' && (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Código válido - Referido por: {validationState.referidorNombre}</span>
+                    </>
+                  )}
+                  {validationState.status === 'invalid' && (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <span>Código no encontrado. Puedes intentar de nuevo o continuar sin código</span>
+                    </>
+                  )}
+                  {validationState.status === 'error' && (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>Error al validar. Puedes continuar sin código</span>
+                    </>
+                  )}
+                </div>
+              )}
+              
+              {validationState.status === 'idle' && referralCode.length > 0 && referralCode.length < 8 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Si tienes un código de referido, ingrésalo aquí para obtener beneficios
+                </p>
+              )}
+              {validationState.status === 'idle' && referralCode.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Si tienes un código de referido, ingrésalo aquí para obtener beneficios
+                </p>
+              )}
             </div>
 
             {/* Botón Registro */}

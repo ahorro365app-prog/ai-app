@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { z } from 'zod';
+import { handleError, handleValidationError, ErrorType } from '@/lib/errorHandler';
+import { logger } from '@/lib/logger';
 
 // Schema de validación para actualizar versiones
 const updateVersionSchema = z.object({
@@ -30,15 +32,10 @@ export async function GET(request: NextRequest) {
     if (testError) {
       // Si el error es que la tabla no existe, dar un mensaje más claro
       if (testError.code === '42P01' || testError.message?.includes('does not exist')) {
-        console.error('Tabla app_versions no existe. Ejecuta el SQL de creación primero.');
-        return NextResponse.json(
-          { 
-            success: false, 
-            message: 'La tabla app_versions no existe. Por favor, ejecuta el SQL de creación primero.',
-            error: 'TABLE_NOT_FOUND',
-            hint: 'Ejecuta sql/create-app-versions-table.sql en Supabase'
-          },
-          { status: 500 }
+        return handleError(
+          testError,
+          'La tabla app_versions no existe. Por favor, ejecuta el SQL de creación primero.',
+          ErrorType.DATABASE
         );
       }
     }
@@ -51,15 +48,10 @@ export async function GET(request: NextRequest) {
       .order('platform');
 
     if (error) {
-      console.error('Error obteniendo versiones:', error);
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Error obteniendo configuraciones de versiones',
-          error: error.message || 'Error desconocido',
-          code: error.code || 'UNKNOWN'
-        },
-        { status: 500 }
+      return handleError(
+        error,
+        'Error obteniendo configuraciones de versiones',
+        ErrorType.DATABASE
       );
     }
 
@@ -75,10 +67,10 @@ export async function GET(request: NextRequest) {
       data: versionsByPlatform,
     });
   } catch (error: any) {
-    console.error('Error en GET /api/admin/app-versions:', error);
-    return NextResponse.json(
-      { success: false, message: error.message || 'Error interno del servidor' },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error interno del servidor',
+      ErrorType.INTERNAL
     );
   }
 }
@@ -90,14 +82,7 @@ export async function PUT(request: NextRequest) {
     // Validar datos
     const validation = updateVersionSchema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Datos inválidos',
-          errors: validation.error.errors 
-        },
-        { status: 400 }
-      );
+      return handleValidationError('Datos inválidos', validation.error.errors);
     }
 
     const {
@@ -125,10 +110,10 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Error verificando versión existente:', checkError);
-      return NextResponse.json(
-        { success: false, message: 'Error verificando configuración existente' },
-        { status: 500 }
+      return handleError(
+        checkError,
+        'Error verificando configuración existente',
+        ErrorType.DATABASE
       );
     }
 
@@ -141,10 +126,10 @@ export async function PUT(request: NextRequest) {
         .eq('id', existing.id);
 
       if (deactivateError) {
-        console.error('Error desactivando versión anterior:', deactivateError);
-        return NextResponse.json(
-          { success: false, message: 'Error desactivando configuración anterior' },
-          { status: 500 }
+        return handleError(
+          deactivateError,
+          'Error desactivando configuración anterior',
+          ErrorType.DATABASE
         );
       }
     }
@@ -170,10 +155,10 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error('Error creando nueva versión:', insertError);
-      return NextResponse.json(
-        { success: false, message: 'Error creando nueva configuración' },
-        { status: 500 }
+      return handleError(
+        insertError,
+        'Error creando nueva configuración',
+        ErrorType.DATABASE
       );
     }
 
@@ -183,10 +168,10 @@ export async function PUT(request: NextRequest) {
       data: newVersion,
     });
   } catch (error: any) {
-    console.error('Error en PUT /api/admin/app-versions:', error);
-    return NextResponse.json(
-      { success: false, message: error.message || 'Error interno del servidor' },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error interno del servidor',
+      ErrorType.INTERNAL
     );
   }
 }

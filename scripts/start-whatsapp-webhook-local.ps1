@@ -98,3 +98,7 @@ Write-Host "   • Para detener, cierra las ventanas de PowerShell`n" -Foregroun
 Write-Host "Presiona cualquier tecla para salir (los servicios seguirán ejecutándose)..." -ForegroundColor DarkGray
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 
+
+
+
+

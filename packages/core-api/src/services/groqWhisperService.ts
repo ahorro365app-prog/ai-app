@@ -4,6 +4,9 @@
  * Requiere: GROQ_API_KEY en variables de entorno
  */
 
+import { logger } from '@/lib/logger';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/audio/transcriptions';
 
@@ -16,7 +19,7 @@ export async function transcribeAudioWithGroq(
   }
 
   try {
-    console.log('🎤 Transcribiendo audio con Groq Whisper...');
+    logger.debug('🎤 Transcribiendo audio con Groq Whisper...');
 
     // Convertir a FormData para enviar el archivo
     const formData = new FormData();
@@ -25,28 +28,34 @@ export async function transcribeAudioWithGroq(
     formData.append('language', language);
     formData.append('response_format', 'json');
 
-    const response = await fetch(GROQ_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`
+    // Usar fetchWithTimeout para evitar que el request cuelgue indefinidamente
+    // Timeout más largo para transcripciones de audio (15 segundos)
+    const response = await fetchWithTimeout(
+      GROQ_ENDPOINT,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${GROQ_API_KEY}`
+        },
+        body: formData
       },
-      body: formData
-    });
+      15000 // 15 segundos timeout para transcripciones de audio
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Error en transcripción Groq:', errorText);
+      logger.error('❌ Error en transcripción Groq:', errorText);
       throw new Error(`Groq Whisper error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     const transcription = data.text || data.transcription || '';
     
-    console.log('✅ Transcripción completada:', transcription);
+    logger.debug('✅ Transcripción completada:', transcription);
     return transcription;
 
   } catch (error: any) {
-    console.error('❌ Error transcribiendo con Groq:', error);
+    logger.error('❌ Error transcribiendo con Groq:', error);
     throw error;
   }
 }

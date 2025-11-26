@@ -6,12 +6,13 @@ RUN apk add --no-cache git python3 make g++ openssl
 
 COPY package*.json ./
 
-RUN npm install
+# Instalar TODAS las dependencias (incluyendo devDependencies para TypeScript)
+RUN npm install --include=dev
 
 COPY src ./src
 COPY tsconfig.json ./
-COPY package.json ./
 
+# Compilar TypeScript
 RUN npm run build
 
 # Production stage

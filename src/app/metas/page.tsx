@@ -1026,17 +1026,17 @@ export default function MetasPage() {
 
       {/* Toasts de celebración y recordatorios */}
       {showCelebration && (
-        <div className="fixed top-4 left-4 right-4 z-50 animate-fade-in">
-          <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-xl shadow-lg">
-            <p className="font-medium">{celebrationMessage}</p>
+        <div className="fixed top-[60px] left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+          <div className="bg-gray-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-sm">
+            <span>{celebrationMessage}</span>
           </div>
         </div>
       )}
 
       {showReminder && (
-        <div className="fixed top-4 left-4 right-4 z-50 animate-fade-in">
-          <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-4 rounded-xl shadow-lg">
-            <p className="font-medium">{reminderMessage}</p>
+        <div className="fixed top-[60px] left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+          <div className="bg-gray-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-sm">
+            <span>{reminderMessage}</span>
           </div>
         </div>
       )}

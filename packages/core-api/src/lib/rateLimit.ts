@@ -1,5 +1,6 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { logger } from './logger';
 
 /**
  * Cliente Redis de Upstash
@@ -95,6 +96,17 @@ export async function checkRateLimit(
   rateLimiter: Ratelimit,
   identifier: string
 ): Promise<{ success: boolean; limit: number; remaining: number; reset: number } | null> {
+  // Si Redis no está configurado, permitir el request (modo desarrollo)
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    logger.debug('⚠️ Rate limiting deshabilitado: Redis no configurado');
+    return {
+      success: true,
+      limit: 1000,
+      remaining: 999,
+      reset: Date.now() + 900000, // 15 minutos
+    };
+  }
+  
   try {
     const { success, limit, remaining, reset } = await rateLimiter.limit(identifier);
     
@@ -105,9 +117,20 @@ export async function checkRateLimit(
       reset,
     };
   } catch (error) {
-    console.error('Error checking rate limit:', error);
-    // En caso de error, permitir la request (fail open)
-    // En producción podrías querer fail closed
+    logger.error('Error checking rate limit:', error);
+    // En producción: rechazar si Redis falla (fail closed)
+    // Esto previene ataques DDoS si Redis está caído
+    if (process.env.NODE_ENV === 'production') {
+      logger.warn('⚠️ Redis falló en producción, rechazando request por seguridad (fail-closed)');
+      return {
+        success: false, // ❌ Rechazar si Redis falla
+        limit: 0,
+        remaining: 0,
+        reset: 0,
+      };
+    }
+    // En desarrollo: permitir (fail open) para facilitar desarrollo
+    logger.debug('⚠️ Redis falló en desarrollo, permitiendo request (fail-open)');
     return {
       success: true,
       limit: 0,

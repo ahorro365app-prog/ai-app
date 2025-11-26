@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 import { useSupabase } from "@/contexts/SupabaseContext";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import VoiceTransactionModal from "./VoiceTransactionModal";
+import AudioDurationLimitModal from "./AudioDurationLimitModal";
+import DailyTransactionLimitModal from "./DailyTransactionLimitModal";
 
 interface NavbarProps {
   onOpenTransaction: () => void;
@@ -45,7 +47,14 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
     transcriptionText,
     transcriptionError,
     transcriptionComplete,
-    clearTranscription
+    clearTranscription,
+    // Estados del modal de límite de duración
+    showDurationLimitModal,
+    setShowDurationLimitModal,
+    // Estados del modal de límite diario de transacciones
+    showDailyLimitModal,
+    setShowDailyLimitModal,
+    dailyLimitInfo
   } = useVoiceRecording();
 
   // Cargar configuración de menús habilitados
@@ -145,10 +154,25 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
                   </>
                 )}
                 
+                {/* Mensaje de cancelación - dentro del li para posicionamiento correcto */}
+                {isSwipeDetected && (
+                  <div className="absolute -top-24 left-1/2 -translate-x-1/2 bg-orange-500 text-white px-4 py-1.5 rounded-full text-sm font-medium animate-pulse z-50 whitespace-nowrap shadow-lg">
+                    🚫 Grabación Cancelada
+                  </div>
+                )}
+                
+                {/* Mensaje de error de transcripción - diferente de cancelación */}
+                {hasError && !isSwipeDetected && (
+                  <div className="absolute -top-24 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-1.5 rounded-full text-sm font-medium animate-pulse z-50 whitespace-nowrap shadow-lg max-w-xs text-center">
+                    ⚠️ No se pudo entender el audio
+                  </div>
+                )}
+                
                 <button
                   onClick={handleMicClick}
                   onMouseDown={handleMouseDown}
                   onMouseUp={handleMouseUp}
+                  onMouseMove={handleMouseMove}
                   onMouseLeave={handleMouseLeave}
                   onTouchStart={handleTouchStart}
                   onTouchEnd={handleTouchEnd}
@@ -157,17 +181,19 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
                   disabled={isProcessing}
                   className={`absolute -top-12 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-200 ${
                     isProcessing
-                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500 animate-spin cursor-not-allowed'
-                      : isRecording 
-                        ? 'bg-gradient-to-r from-red-500 to-red-600 animate-pulse cursor-pointer' 
+                      ? 'bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 animate-spin cursor-not-allowed shadow-lg shadow-cyan-500/50'
+                      : isSwipeDetected
+                        ? 'bg-orange-500 animate-pulse cursor-pointer'
                         : hasError
-                          ? 'bg-gradient-to-r from-red-600 to-red-700 cursor-pointer'
-                          : isPressed
-                            ? 'bg-gradient-to-r from-blue-700 to-purple-700 scale-95 cursor-pointer'
-                            : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:scale-110 active:scale-95 cursor-pointer'
+                          ? 'bg-red-500 animate-pulse cursor-pointer'
+                          : isRecording 
+                            ? 'bg-gradient-to-r from-red-500 to-red-600 animate-pulse cursor-pointer' 
+                            : isPressed
+                              ? 'bg-gradient-to-r from-blue-700 to-purple-700 scale-95 cursor-pointer'
+                              : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:scale-110 active:scale-95 cursor-pointer'
                   }`}
                   aria-label={
-                    isProcessing ? "Procesando..." : 
+                    isProcessing ? "Procesando con IA..." : 
                     isRecording ? "Mantén presionado para grabar" : 
                     hasError ? "Error - Reintentar" :
                     "Mantén presionado para grabar"
@@ -206,36 +232,42 @@ export default function Navbar({ onOpenTransaction }: NavbarProps) {
       
       {/* Indicadores de estado */}
       {isRecording && (
-        <div className="absolute -top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse">
+        <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse">
           🎤 Grabando... {duration}s
         </div>
       )}
       
       {isRecording && (
-        <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-3 py-1 rounded-full text-xs font-medium">
+        <div className="absolute -top-44 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-3 py-1 rounded-full text-xs font-medium">
           📱 Desliza para cancelar
         </div>
       )}
       
-      {isProcessing && (
-        <div className="absolute -top-20 left-1/2 -translate-x-1/2 bg-yellow-500 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse">
-          ⚡ Procesando...
-        </div>
-      )}
-      
-      {hasError && (
-        <div className="absolute -top-20 left-1/2 -translate-x-1/2 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-          ❌ Error de micrófono
-        </div>
-      )}
-      
-      {isSwipeDetected && (
-        <div className="absolute -top-20 left-1/2 -translate-x-1/2 bg-orange-500 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse">
-          🚫 Grabación cancelada
+      {/* Mensaje de procesamiento */}
+      {isProcessing && !isSwipeDetected && !hasError && (
+        <div className="absolute -top-20 left-1/2 -translate-x-1/2 bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 text-white px-4 py-1.5 rounded-full text-sm font-medium animate-pulse shadow-lg shadow-cyan-500/50">
+          🤖 Procesando con IA...
         </div>
       )}
       
       {/* Modal de transacción de voz eliminado - El dashboard lo maneja */}
+      
+      {/* Modal de límite de duración de audio */}
+      <AudioDurationLimitModal
+        isOpen={showDurationLimitModal}
+        onClose={() => setShowDurationLimitModal(false)}
+        maxDuration={15}
+      />
+      
+      {/* Modal de límite diario de transacciones */}
+      {dailyLimitInfo && (
+        <DailyTransactionLimitModal
+          isOpen={showDailyLimitModal}
+          onClose={() => setShowDailyLimitModal(false)}
+          currentCount={dailyLimitInfo.currentCount}
+          maxDailyTransactions={dailyLimitInfo.maxCount}
+        />
+      )}
     </div>
   );
 }

@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Mic, Edit3, Save, Trash2, CheckCircle, AlertCircle, ChevronDown, TrendingUp, TrendingDown, CreditCard, GraduationCap, ShoppingCart, Car, Heart, Gamepad2, Wrench, Shirt, Home, DollarSign, Type } from 'lucide-react';
+import { Mic, Edit3, Save, Trash2, CheckCircle, AlertCircle, ChevronDown, TrendingUp, TrendingDown, CreditCard, GraduationCap, ShoppingCart, Car, Heart, Gamepad2, Wrench, Shirt, Home, DollarSign, Type, X } from 'lucide-react';
 import { debtSearchService, DebtSearchResult } from '@/services/debtSearchService';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useModal } from '@/contexts/ModalContext';
+import { logger } from '@/lib/logger';
+import { buildISODateForCountry, getTodayForCountry, getTimezoneForCountry, validateTransactionDate } from '@/lib/dateUtils';
+import { useCurrency } from '@/hooks/useCurrency';
 import React from 'react';
 
 // Mapeo de monedas con gramática específica
@@ -151,6 +154,7 @@ export default function VoiceTransactionModal({
 }: VoiceTransactionModalProps) {
   const { debts, addTransaction, user } = useSupabase();
   const { setModalOpen } = useModal();
+  const { country } = useCurrency();
 
   // Obtener la moneda del usuario con gramática correcta
   const getUserCurrency = () => {
@@ -182,6 +186,7 @@ export default function VoiceTransactionModal({
   const [selectedDebt, setSelectedDebt] = useState<DebtSearchResult | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   
   // Estados para swipe gesture
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -207,7 +212,7 @@ export default function VoiceTransactionModal({
       setSaveSuccess(false); // Resetear estado de éxito
       // Inicializar el valor del input de monto
       setAmountInputValue(transactionsWithDefaultPayment[0]?.monto?.toString() || '');
-      console.log('🔄 Modal inicializado en modo de solo lectura');
+      logger.debug('🔄 Modal inicializado en modo de solo lectura');
     }
   }, [groqData]);
 
@@ -245,10 +250,10 @@ export default function VoiceTransactionModal({
     searchDebts();
   }, [editingData, currentTransactionIndex, debts]);
 
-  console.log('🎭 VoiceTransactionModal - isOpen:', isOpen, 'groqData:', groqData);
+  logger.debug('🎭 VoiceTransactionModal - isOpen:', isOpen, 'groqData:', groqData);
 
   if (!isOpen) {
-    console.log('🚫 VoiceTransactionModal - No está abierto');
+    logger.debug('🚫 VoiceTransactionModal - No está abierto');
     return null;
   }
 
@@ -256,7 +261,7 @@ export default function VoiceTransactionModal({
 
   // No mostrar el modal si no hay datos
   if (!groqData || !groqData.transacciones.length || !currentTransaction) {
-    console.log('🚫 VoiceTransactionModal - No hay datos:', { 
+    logger.debug('🚫 VoiceTransactionModal - No hay datos:', { 
       hasGroqData: !!groqData, 
       hasTransactions: groqData?.transacciones?.length,
       currentTransaction: !!currentTransaction 
@@ -316,65 +321,107 @@ export default function VoiceTransactionModal({
   };
 
   const handleSave = async () => {
-    console.log('🚀 handleSave iniciado');
-    console.log('📊 editingData:', editingData);
-    console.log('📊 editingData.length:', editingData.length);
+    logger.debug('🚀 handleSave iniciado');
+    logger.debug('📊 editingData:', editingData);
+    logger.debug('📊 editingData.length:', editingData.length);
     
     if (editingData.length > 0) {
-      console.log('✅ Hay datos para guardar, iniciando proceso...');
+      logger.debug('✅ Hay datos para guardar, iniciando proceso...');
       setIsSaving(true);
+      setSaveError(null); // Limpiar error anterior
       
       try {
-        console.log('🔄 Guardando transacciones sin agrupar...');
+        logger.debug('🔄 Guardando transacciones sin agrupar...');
         
         const updatedGroqData = {
           ...groqData!,
           transacciones: editingData
         };
         
-        console.log('📤 Datos preparados para guardar:', updatedGroqData);
+        logger.debug('📤 Datos preparados para guardar:', updatedGroqData);
         
         // Guardar directamente en Supabase usando la misma lógica del dashboard
-        console.log('💾 Guardando directamente en Supabase...');
+        logger.debug('💾 Guardando directamente en Supabase...');
         
         if (!user) {
           throw new Error('Usuario no autenticado');
         }
         
-        for (const transaction of editingData) {
-          // Usar la misma lógica del dashboard para la fecha
-          const transactionDate = transaction.fecha || new Date().toISOString().split('T')[0];
+        for (let i = 0; i < editingData.length; i++) {
+          const transaction = editingData[i];
+          logger.debug(`🔄 Procesando transacción ${i + 1} de ${editingData.length}...`);
+          
+          // SOLUCIÓN: Usar la fecha de la transacción o getTodayForCountry() (fecha correcta del país)
+          const countryCode = country || 'BO'; // Default a Bolivia si no hay país
+          const transactionDate = transaction.fecha || getTodayForCountry(countryCode);
+          
+          // VALIDACIÓN: Verificar que la fecha sea solo ayer o hoy
+          const validation = validateTransactionDate(transactionDate, countryCode);
+          if (!validation.valid) {
+            logger.error(`❌ Validación de fecha fallida para transacción ${i + 1}:`, validation.message);
+            throw new Error(validation.message || 'La fecha debe ser ayer o hoy');
+          }
+          
           const now = new Date();
           const [year, month, day] = transactionDate.split('-').map(Number);
-          const fullTransactionDate = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
+          
+          // Obtener hora, minuto y segundo en la zona horaria del país del usuario
+          const timeZone = getTimezoneForCountry(countryCode);
+          
+          // Obtener la hora actual en la zona horaria del país
+          const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: timeZone,
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          });
+          
+          const timeParts = formatter.formatToParts(now);
+          const hour = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0', 10);
+          const minute = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0', 10);
+          const second = parseInt(timeParts.find(p => p.type === 'second')?.value || '0', 10);
+          
+          // Construir la fecha ISO respetando la zona horaria del país
+          const dateISO = buildISODateForCountry(year, month, day, hour, minute, second, countryCode);
           
           const transactionData = {
             tipo: (transaction.tipo === 'gasto' ? 'gasto' : 'ingreso') as 'gasto' | 'ingreso',
             monto: parseFloat(transaction.monto?.toString() || '0'),
             categoria: transaction.categoria || 'otros',
             descripcion: transaction.descripcion || '',
-            fecha: fullTransactionDate.toISOString(),
+            fecha: dateISO,
             url_comprobante: undefined
           };
           
-          console.log('💾 Guardando transacción individual:', transactionData);
-          console.log('📅 Fecha procesada:', {
+          logger.debug('💾 Guardando transacción individual:', transactionData);
+          logger.debug('📅 Fecha procesada:', {
             fechaOriginal: transaction.fecha,
-            fechaConHora: fullTransactionDate.toISOString(),
-            horaActual: now.toISOString()
+            fechaConHora: dateISO,
+            horaActual: now.toISOString(),
+            zonaHoraria: timeZone,
+            pais: countryCode
           });
-          console.log('👤 Usuario ID:', user.id);
-          console.log('📊 Datos completos que se enviarán:', {
+          logger.debug('👤 Usuario ID:', user.id);
+          logger.debug('📊 Datos completos que se enviarán:', {
             ...transactionData,
             usuario_id: user.id
           });
           
-          const result = await addTransaction(transactionData);
-          console.log('✅ addTransaction resultado:', result);
-          console.log('✅ Transacción guardada exitosamente');
+          try {
+            const result = await addTransaction(transactionData);
+            logger.debug('✅ addTransaction resultado:', result);
+            logger.debug(`✅ Transacción ${i + 1} guardada exitosamente`);
+          } catch (transactionError) {
+            logger.error(`❌ Error al guardar transacción ${i + 1}:`, transactionError);
+            logger.error('❌ Mensaje de error:', (transactionError as Error).message);
+            logger.error('❌ Error code:', (transactionError as any).errorCode);
+            // Re-lanzar el error para que se capture en el catch externo
+            throw transactionError;
+          }
         }
         
-        console.log('✅ Todas las transacciones guardadas exitosamente');
+        logger.debug('✅ Todas las transacciones guardadas exitosamente');
         
         // Mostrar estado de éxito brevemente
         setSaveSuccess(true);
@@ -392,12 +439,16 @@ export default function VoiceTransactionModal({
         }, 1500);
         
       } catch (error) {
-        console.error('❌ Error guardando transacciones:', error);
-        console.error('❌ Tipo de error:', typeof error);
-        console.error('❌ Mensaje de error:', (error as Error).message);
-        console.error('❌ Stack trace:', (error as Error).stack);
+        logger.error('❌ Error guardando transacciones:', error);
+        logger.error('❌ Tipo de error:', typeof error);
+        logger.error('❌ Mensaje de error:', (error as Error).message);
+        logger.error('❌ Stack trace:', (error as Error).stack);
         setIsSaving(false); // Solo resetear si hay error
         setSaveSuccess(false);
+        
+        // Mostrar el mensaje de error al usuario
+        const errorMessage = (error as Error).message || 'Error al guardar la transacción. Por favor, intenta de nuevo.';
+        setSaveError(errorMessage);
       }
     }
   };
@@ -405,6 +456,7 @@ export default function VoiceTransactionModal({
   const handleCancel = () => {
     setIsSaving(false);
     setSaveSuccess(false);
+    setSaveError(null); // Limpiar error al cancelar
     onCancel();
     onClose();
   };
@@ -423,7 +475,7 @@ export default function VoiceTransactionModal({
       setEditingData(transactionsWithDefaultPayment);
       // Restaurar el valor del input de monto para la transacción actual
       setAmountInputValue(transactionsWithDefaultPayment[currentTransactionIndex]?.monto?.toString() || '');
-      console.log('🔄 Edición cancelada - Datos restaurados');
+      logger.debug('🔄 Edición cancelada - Datos restaurados');
     }
     setIsEditing(false);
     setIsSaving(false);
@@ -663,7 +715,7 @@ export default function VoiceTransactionModal({
 
                 {/* Fecha - Solo mostrar si Groq detectó una fecha pasada específica */}
                 {(() => {
-                  console.log('📅 Modal - currentTransaction.fecha:', currentTransaction.fecha);
+                  logger.debug('📅 Modal - currentTransaction.fecha:', currentTransaction.fecha);
                   return null;
                 })()}
                 {currentTransaction.fecha && (
@@ -886,6 +938,24 @@ export default function VoiceTransactionModal({
                   <p className="font-medium text-red-900 text-sm">Error en procesamiento</p>
                   <p className="text-xs text-red-600">No se pudieron extraer los datos de la transcripción</p>
                 </div>
+              </div>
+            )}
+            
+            {/* Error al guardar */}
+            {saveError && (
+              <div className="flex items-start gap-3 p-4 bg-red-50 rounded-xl border-2 border-red-200 mb-4">
+                <AlertCircle size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-medium text-red-900 text-sm mb-1">Error al guardar</p>
+                  <p className="text-xs text-red-700">{saveError}</p>
+                </div>
+                <button
+                  onClick={() => setSaveError(null)}
+                  className="text-red-500 hover:text-red-700 flex-shrink-0"
+                  aria-label="Cerrar error"
+                >
+                  <X size={16} />
+                </button>
               </div>
             )}
           </div>

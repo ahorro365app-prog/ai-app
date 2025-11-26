@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { SegmentFilters, NotificationCategory } from '@/lib/notificationSegments';
+import { handleError, handleValidationError, ErrorType } from '@/lib/errorHandler';
 
 const ALLOWED_STATUSES = new Set(['draft', 'scheduled', 'sending', 'sent', 'cancelled', 'failed']);
 const ALLOWED_TYPES: NotificationCategory[] = [
@@ -44,13 +45,10 @@ export async function GET(request: NextRequest) {
       data: data || [],
     });
   } catch (error: any) {
-    console.error('Error listando campaigns:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: error?.message || 'Error listando campañas',
-      },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error listando campañas',
+      ErrorType.DATABASE
     );
   }
 }
@@ -65,24 +63,15 @@ export async function POST(request: NextRequest) {
     const content = typeof body?.body === 'string' ? body.body.trim() : '';
 
     if (!name || name.length < 3) {
-      return NextResponse.json(
-        { success: false, message: 'El nombre es obligatorio y debe tener al menos 3 caracteres.' },
-        { status: 400 }
-      );
+      return handleValidationError('El nombre es obligatorio y debe tener al menos 3 caracteres.');
     }
 
     if (!title) {
-      return NextResponse.json(
-        { success: false, message: 'El título es obligatorio.' },
-        { status: 400 }
-      );
+      return handleValidationError('El título es obligatorio.');
     }
 
     if (!content) {
-      return NextResponse.json(
-        { success: false, message: 'El cuerpo es obligatorio.' },
-        { status: 400 }
-      );
+      return handleValidationError('El cuerpo es obligatorio.');
     }
 
     const campaignType: NotificationCategory = ALLOWED_TYPES.includes(body?.campaignType)
@@ -145,13 +134,10 @@ export async function POST(request: NextRequest) {
       data: insertData,
     });
   } catch (error: any) {
-    console.error('Error creando campaign:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: error?.message || 'Error creando campaña',
-      },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error creando campaña',
+      ErrorType.DATABASE
     );
   }
 }

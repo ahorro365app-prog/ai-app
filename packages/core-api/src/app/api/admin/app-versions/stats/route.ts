@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { handleError, ErrorType } from '@/lib/errorHandler';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,10 +17,10 @@ export async function GET(request: NextRequest) {
       .order('checked_at', { ascending: false });
 
     if (logsError) {
-      console.error('Error obteniendo logs de versiones:', logsError);
-      return NextResponse.json(
-        { success: false, message: 'Error obteniendo estadísticas' },
-        { status: 500 }
+      return handleError(
+        logsError,
+        'Error obteniendo estadísticas',
+        ErrorType.DATABASE
       );
     }
 
@@ -69,10 +70,10 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Error en GET /api/admin/app-versions/stats:', error);
-    return NextResponse.json(
-      { success: false, message: error.message || 'Error interno del servidor' },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error interno del servidor',
+      ErrorType.INTERNAL
     );
   }
 }

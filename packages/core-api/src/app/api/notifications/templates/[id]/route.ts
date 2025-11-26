@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { handleError, handleNotFoundError, handleValidationError, ErrorType } from '@/lib/errorHandler';
 
 const TEMPLATE_TYPES = [
   'system',
@@ -63,15 +64,15 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
     }
 
     if (!data) {
-      return NextResponse.json({ success: false, message: 'Template no encontrado' }, { status: 404 });
+      return handleNotFoundError('Template');
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error('Error obteniendo template:', error);
-    return NextResponse.json(
-      { success: false, message: error?.message || 'Error obteniendo template' },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error obteniendo template',
+      ErrorType.DATABASE
     );
   }
 }
@@ -98,7 +99,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const errors = validatePayload(payload);
     if (errors.length > 0) {
-      return NextResponse.json({ success: false, message: errors.join(' ') }, { status: 400 });
+      return handleValidationError(errors.join(' '));
     }
 
     const updates: Record<string, any> = {
@@ -126,10 +127,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error('Error actualizando template:', error);
-    return NextResponse.json(
-      { success: false, message: error?.message || 'Error actualizando template' },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error actualizando template',
+      ErrorType.DATABASE
     );
   }
 }
@@ -147,10 +148,10 @@ export async function DELETE(_: NextRequest, { params }: { params: { id: string 
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Error eliminando template:', error);
-    return NextResponse.json(
-      { success: false, message: error?.message || 'Error eliminando template' },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error eliminando template',
+      ErrorType.DATABASE
     );
   }
 }

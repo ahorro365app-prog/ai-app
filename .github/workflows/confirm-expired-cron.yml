@@ -1,0 +1,41 @@
+name: Confirm Expired Transactions Cron
+
+on:
+  schedule:
+    # Ejecuta cada 1 minuto
+    # Con pocos usuarios actuales, el tiempo real es muy bajo (~90-180 min/mes)
+    # Cuando lleguemos a 1,000 usuarios, migraremos a Vercel Pro (ilimitado)
+    - cron: '* * * * *'
+  workflow_dispatch: # Permite ejecución manual
+
+jobs:
+  run-cron:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Invoke confirm-expired endpoint
+        env:
+          CRON_URL: ${{ secrets.CRON_URL || 'https://tu-app.vercel.app/api/cron/confirm-expired' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          echo "🕐 Ejecutando cron de confirmaciones expiradas..."
+          
+          response=$(curl -sS -w "\nHTTPSTATUS:%{http_code}" \
+            -X GET "${CRON_URL}" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json")
+          
+          http_status=$(echo "$response" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          body=$(echo "$response" | sed -e 's/HTTPSTATUS\:.*//g')
+          
+          echo "📊 Respuesta HTTP: ${http_status}"
+          echo "📝 Contenido:"
+          echo "$body"
+          
+          if [ "$http_status" -ge 400 ]; then
+            echo "❌ El cron falló con código ${http_status}" >&2
+            exit 1
+          fi
+          
+          echo "✅ Cron ejecutado exitosamente"

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { handleError, ErrorType } from '@/lib/errorHandler';
 
 type AllowedStatus = 'sent' | 'delivered' | 'opened' | 'clicked' | 'dismissed' | 'failed';
 type AllowedType = 'transaction' | 'marketing' | 'system' | 'reminder' | 'referral' | 'payment' | 'unknown';
@@ -91,10 +92,10 @@ export async function GET(request: NextRequest) {
       .limit(MAX_ROWS);
 
     if (error) {
-      console.error('Error obteniendo tendencia de notification_logs:', error);
-      return NextResponse.json(
-        { success: false, message: 'No se pudo obtener la tendencia' },
-        { status: 500 }
+      return handleError(
+        error,
+        'No se pudo obtener la tendencia',
+        ErrorType.DATABASE
       );
     }
 
@@ -175,10 +176,10 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Error en /api/notifications/logs/trend:', error);
-    return NextResponse.json(
-      { success: false, message: error?.message || 'Error obteniendo tendencia' },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error obteniendo tendencia',
+      ErrorType.INTERNAL
     );
   }
 }

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './logger';
 
 // Lazy initialization para evitar errores durante build time
 let supabase: ReturnType<typeof createClient> | null = null;
@@ -43,13 +44,13 @@ export async function getConfigCompleta(countryCode: string): Promise<ConfigComp
       });
 
     if (error) {
-      console.error('Error obteniendo config completa:', error);
+      logger.error('Error obteniendo config completa:', error);
       throw error;
     }
 
     return data as ConfigCompleta;
   } catch (error) {
-    console.error('Error en getConfigCompleta:', error);
+    logger.error('Error en getConfigCompleta:', error);
     // Fallback a Bolivia
     return getConfigCompleta('BOL');
   }
@@ -67,9 +68,9 @@ export async function registrarAprendizaje(
     // Extraer aprendizaje del feedback
     await getSupabase().rpc('extraer_aprendizaje_de_feedback');
 
-    console.log('✅ Aprendizaje registrado');
+    logger.debug('✅ Aprendizaje registrado');
   } catch (error) {
-    console.error('❌ Error registrando aprendizaje:', error);
+    logger.error('❌ Error registrando aprendizaje:', error);
   }
 }
 
@@ -90,10 +91,10 @@ export async function aplicarMejora(
 
     if (error) throw error;
 
-    console.log('✅ Mejora aplicada:', palabraNueva);
+    logger.debug('✅ Mejora aplicada:', palabraNueva);
     return data as boolean;
   } catch (error) {
-    console.error('❌ Error aplicando mejora:', error);
+    logger.error('❌ Error aplicando mejora:', error);
     return false;
   }
 }
@@ -111,7 +112,7 @@ export async function getStatsAprendizaje() {
 
     return data;
   } catch (error) {
-    console.error('❌ Error obteniendo stats:', error);
+    logger.error('❌ Error obteniendo stats:', error);
     return [];
   }
 }
@@ -135,7 +136,7 @@ export async function getConfigMatriz(tipo?: 'categoria' | 'moneda' | 'metodo_pa
 
     return data;
   } catch (error) {
-    console.error('❌ Error obteniendo config matriz:', error);
+    logger.error('❌ Error obteniendo config matriz:', error);
     return [];
   }
 }

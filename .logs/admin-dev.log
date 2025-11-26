@@ -1,0 +1,317 @@
+
+> admin-dashboard@0.1.0 dev
+> next dev -p 3001
+
+  ▲ Next.js 14.2.5
+  - Local:        http://localhost:3001
+  - Environments: .env.local
+
+ ✓ Starting...
+
+   We detected TypeScript in your project and reconfigured your tsconfig.json file for you. Strict-mode is set to false by default.
+   The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+   	- include was updated to add '.next-dev/types/**/*.ts'
+
+ ✓ Ready in 3.7s
+ ○ Compiling /src/middleware ...
+ ✓ Compiled /src/middleware in 775ms (119 modules)
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 9.9s (1678 modules)
+ GET /dashboard 200 in 10473ms
+ ✓ Compiled in 1250ms (818 modules)
+ ○ Compiling /api/stats/users ...
+ ✓ Compiled /api/stats/users in 4.1s (977 modules)
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 8246ms
+ ✓ Compiled /api/analytics/charts in 154ms (979 modules)
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1573ms
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 7923ms
+ ✓ Compiled /api/analytics/activities in 132ms (981 modules)
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1771ms
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 1762ms
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 6244ms
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 1342ms
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 5750ms
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 952ms
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1078ms
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 5042ms
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 829ms
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1516ms
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 5124ms
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 948ms
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 2014ms
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 5761ms
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 1051ms
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1828ms
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1248ms
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 5311ms
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 965ms
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1214ms
+ GET /dashboard 200 in 160ms
+ GET /api/analytics/charts 200 in 1567ms
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+ GET /dashboard 200 in 68ms
+ GET /api/stats/users 200 in 1179ms
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1160ms
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1179ms
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 5019ms
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 1203ms
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 4971ms
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 970ms
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1330ms
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1167ms
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 5276ms
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 1115ms
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 5423ms
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 1399ms
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1598ms
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 5397ms
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 1190ms
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1488ms
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 5380ms
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 942ms
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1401ms
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 5241ms
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 1068ms
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1595ms
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 5462ms
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 964ms
+🔍 [DEBUG] 📊 Fetching user stats using Prisma...
+🔍 [DEBUG] 📅 Filtrando transacciones de hoy: 2025-11-10
+🔍 [DEBUG] 📅 Filtrando transacciones de: {
+  today: '2025-11-10',
+  startOfDay: '2025-11-10T00:00:00',
+  endOfDay: '2025-11-10T23:59:59',
+  found: 10
+}
+✅ [SUCCESS] 📊 Stats calculated with Prisma: { totalUsers: 4, premiumUsers: 0, todayTransactions: 10, referrals: 0 }
+ GET /api/stats/users 200 in 1460ms
+🔍 [DEBUG] 📊 Fetching chart data...
+🔍 [DEBUG] 📊 Chart data generated: { transactions7Days: 7, users6Months: 6, subscriptionData: 2 }
+ GET /api/analytics/charts 200 in 5053ms
+🔍 [DEBUG] 📋 Fetching recent activities...
+🔍 [DEBUG] 📋 Recent activities generated: 14
+ GET /api/analytics/activities 200 in 1034ms

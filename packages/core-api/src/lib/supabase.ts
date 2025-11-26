@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { logger } from './logger'
 
 // Lazy initialization para evitar errores durante build time
 let supabaseClient: ReturnType<typeof createClient> | null = null
@@ -53,8 +54,8 @@ function getSupabaseClient() {
     supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
     
     if (process.env.NODE_ENV !== 'production') {
-      console.log('✅ Supabase configurado correctamente')
-      console.log('🔗 URL:', supabaseUrl)
+      logger.debug('✅ Supabase configurado correctamente')
+      logger.debug('🔗 URL:', supabaseUrl)
     }
   }
   

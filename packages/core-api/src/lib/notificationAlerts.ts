@@ -3,6 +3,8 @@
  * Envía alertas a webhooks (Discord/Slack) cuando detecta problemas en el cron
  */
 
+import { logger } from './logger';
+
 export type AlertSeverity = 'info' | 'warning' | 'error' | 'critical';
 
 export interface AlertPayload {
@@ -69,7 +71,7 @@ export async function sendAlertToWebhook(
 
     return { success: true };
   } catch (error: any) {
-    console.error('Error enviando alerta a webhook:', error);
+    logger.error('Error enviando alerta a webhook:', error);
     return {
       success: false,
       error: error?.message || 'Error desconocido enviando alerta',
@@ -107,7 +109,7 @@ export async function checkCronHealthAndAlert(
   const webhookUrl = process.env.NOTIFICATIONS_ALERT_WEBHOOK_URL;
 
   if (!webhookUrl) {
-    console.log('⚠️ NOTIFICATIONS_ALERT_WEBHOOK_URL no configurado. Alertas deshabilitadas.');
+    logger.warn('⚠️ NOTIFICATIONS_ALERT_WEBHOOK_URL no configurado. Alertas deshabilitadas.');
     return { alertsSent: 0, errors: [] };
   }
 
@@ -232,7 +234,7 @@ export async function getLastCronHealth(
       timestamp: data.sent_at,
     };
   } catch (error: any) {
-    console.error('Error obteniendo último health check:', error);
+    logger.error('Error obteniendo último health check:', error);
     return null;
   }
 }
@@ -261,7 +263,7 @@ export async function getRecentCronHealths(
       timestamp: item.sent_at,
     }));
   } catch (error: any) {
-    console.error('Error obteniendo health checks recientes:', error);
+    logger.error('Error obteniendo health checks recientes:', error);
     return [];
   }
 }

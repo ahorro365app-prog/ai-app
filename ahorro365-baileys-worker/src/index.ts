@@ -91,6 +91,8 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
         // Convertir buffer a base64 para audio
         const audioBuffer = (message as any).audioBuffer;
         payload.audioBase64 = audioBuffer ? audioBuffer.toString('base64') : null;
+        // Incluir duración del audio si está disponible (para validación en backend)
+        payload.audioDurationSeconds = (message as any).audioDurationSeconds || null;
       } else if (message.type === 'text') {
         // Enviar texto directamente
         payload.text = message.message || '';
@@ -111,22 +113,37 @@ whatsapp.onMessage(async (message: IWhatsAppMessage) => {
       console.log('✅ Backend procesó mensaje:', response.data);
 
       // Manejar respuesta según el caso
-      if (!response.data.success && response.data.error === 'user_not_registered') {
-        // Usuario no registrado - verificar si debe enviar mensaje (rate limiting)
-        const shouldSendInvitation = response.data.should_send_invitation !== false; // Default true si no viene el flag
-        
-        if (shouldSendInvitation) {
-          // Enviar mensaje de registro solo si el rate limit lo permite
-          console.log('👤 Usuario no registrado, enviando mensaje de invitación...');
-        await whatsapp.sendMessage(
-          message.from,
-            '¡Hola! 👋 Parece que aún no tienes una cuenta en Ahorro365.\n\n¿Quieres que te enviemos la app y poder registrarte? 😊'
-          );
-          console.log('✅ Mensaje de registro enviado al usuario');
+      if (!response.data.success) {
+        // Manejar diferentes tipos de errores
+        if (response.data.error === 'user_not_registered') {
+          // Usuario no registrado - verificar si debe enviar mensaje (rate limiting)
+          const shouldSendInvitation = response.data.should_send_invitation !== false; // Default true si no viene el flag
+          
+          if (shouldSendInvitation) {
+            // Enviar mensaje de registro solo si el rate limit lo permite
+            console.log('👤 Usuario no registrado, enviando mensaje de invitación...');
+            await whatsapp.sendMessage(
+              message.from,
+              '¡Hola! 👋 Parece que aún no tienes una cuenta en Ahorro365.\n\n¿Quieres que te enviemos la app y poder registrarte? 😊'
+            );
+            console.log('✅ Mensaje de registro enviado al usuario');
+          } else {
+            // Rate limit: Ya se envió mensaje recientemente, no enviar de nuevo
+            console.log('⏸️ Rate limit activo: Ya se envió mensaje de invitación recientemente (últimas 24h)');
+            console.log('💡 Ignorando para evitar spam');
+          }
+        } else if (response.data.error === 'AUDIO_DURATION_EXCEEDED' || response.data.error === 'TEXT_LENGTH_EXCEEDED') {
+          // Error de validación: enviar mensaje de error al usuario
+          const errorMessage = response.data.message || 'El mensaje excede los límites permitidos.';
+          console.log(`⚠️ Validación fallida (${response.data.error}):`, errorMessage);
+          await whatsapp.sendMessage(message.from, `❌ ${errorMessage}`);
+          console.log('✅ Mensaje de error enviado al usuario');
         } else {
-          // Rate limit: Ya se envió mensaje recientemente, no enviar de nuevo
-          console.log('⏸️ Rate limit activo: Ya se envió mensaje de invitación recientemente (últimas 24h)');
-          console.log('💡 Ignorando para evitar spam');
+          // Otro tipo de error: enviar mensaje genérico
+          const errorMessage = response.data.message || 'Hubo un error procesando tu mensaje. Por favor intenta más tarde.';
+          console.log(`❌ Error del backend (${response.data.error}):`, errorMessage);
+          await whatsapp.sendMessage(message.from, `❌ ${errorMessage}`);
+          console.log('✅ Mensaje de error enviado al usuario');
         }
       } else if (response.data.success) {
         // Usuario registrado y mensaje procesado correctamente

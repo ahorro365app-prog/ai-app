@@ -1,5 +1,11 @@
 "use client";
 
+// IMPORTANTE: Este componente NO debe usar lazy loading
+// Next.js intentará usar React.lazy automáticamente, pero con output: 'export'
+// esto puede causar problemas. Forzamos carga eager.
+
+// Forzar carga inmediata del módulo (no lazy loading)
+// Esto asegura que el módulo se cargue tan pronto como se importe
 import { useState, useEffect } from 'react';
 import { TrendingDown, TrendingUp, Calendar, Type } from 'lucide-react';
 import { useSupabase } from '@/contexts/SupabaseContext';
@@ -8,7 +14,19 @@ import { useVoice } from '@/contexts/VoiceContext';
 import { getCategoryLabel } from '@/components/TransactionModal';
 import TextTransactionModal from '@/components/TextTransactionModal';
 import VoiceTransactionModal from '@/components/VoiceTransactionModal';
+import AudioDurationLimitModal from '@/components/AudioDurationLimitModal';
+import DailyTransactionLimitModal from '@/components/DailyTransactionLimitModal';
+import OnboardingTutorial from '@/components/OnboardingTutorial';
+import LoadingScreen from '@/components/LoadingScreen';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
+import { logger } from '@/lib/logger';
+import { getTodayForCountry, buildISODateFromString, getTimezoneForCountry } from '@/lib/dateUtils';
+
+// Forzar la ejecución del código del módulo inmediatamente
+if (typeof window !== 'undefined') {
+  // Este código se ejecuta tan pronto como el módulo se importa
+  logger.debug('📦 DashboardPage: MÓDULO IMPORTADO - Código del módulo ejecutándose');
+}
 
 // Función auxiliar para comparar fechas de manera robusta
 const isToday = (transactionDate: string): boolean => {
@@ -22,20 +40,48 @@ const isToday = (transactionDate: string): boolean => {
   return todayLocal.getTime() === txDateLocal.getTime();
 };
 
+// Log GLOBAL antes de la definición del componente para verificar que el módulo se carga
+// Este log se ejecuta cuando el módulo se importa/carga
+if (typeof window !== 'undefined') {
+  logger.debug('📦 DashboardPage: MÓDULO CARGADO - El archivo se está ejecutando (window disponible)');
+} else {
+  logger.debug('📦 DashboardPage: MÓDULO CARGADO - El archivo se está ejecutando (SSR)');
+}
+
+// Forzar la carga del módulo inmediatamente si estamos en el cliente
+if (typeof window !== 'undefined') {
+  // Registrar que el módulo se cargó
+  (window as any).__DASHBOARD_MODULE_LOADED__ = true;
+  logger.debug('📦 DashboardPage: Módulo registrado en window.__DASHBOARD_MODULE_LOADED__');
+}
+
+// Función del componente - EXPORTADA COMO DEFAULT
 export default function DashboardPage() {
-  const { user, supabaseTransactions, addTransaction, getTodayMovements } = useSupabase();
-  const { formatAmount, currency, updateCurrencyFromSupabase } = useCurrency();
+  // Log INMEDIATO al inicio del componente, antes de cualquier hook
+  // Este log DEBE aparecer cuando React ejecuta el componente
+  logger.debug('📱 DashboardPage: Componente INICIADO (antes de hooks)');
+  logger.debug('📱 DashboardPage: Stack trace:', new Error().stack);
+  
+  // Forzar un log adicional para verificar que el componente se está ejecutando
+  if (typeof window !== 'undefined') {
+    (window as any).__DASHBOARD_COMPONENT_EXECUTED__ = true;
+    (window as any).__DASHBOARD_COMPONENT_EXECUTED_TIME__ = Date.now();
+    logger.debug('📱 DashboardPage: Componente marcado como ejecutado en window');
+  }
+  
+  const { user, supabaseTransactions, addTransaction, getTodayMovements, getTodayDeletedCount, getTodayActiveCount, getTodayYesterdayCount, updateUser, loading } = useSupabase();
+  // IMPORTANTE: Llamar a TODOS los hooks ANTES de cualquier return condicional
+  const { country, formatAmount, currency, updateCurrencyFromSupabase } = useCurrency();
   const { voiceData, setVoiceData } = useVoice();
   
-  // Sincronizar moneda con Supabase cuando el usuario cambie
-  useEffect(() => {
-    if (user?.moneda) {
-      updateCurrencyFromSupabase(user.moneda);
-    }
-  }, [user?.moneda, updateCurrencyFromSupabase]);
+  // Estados locales - TODOS los hooks deben estar aquí
   const [dailyBudget, setDailyBudget] = useState(0);
   const [userName, setUserName] = useState('');
   const [showTextModal, setShowTextModal] = useState(false);
+  const [deletedCount, setDeletedCount] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
+  const [yesterdayCount, setYesterdayCount] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   
   // Voice recording hook
   const {
@@ -50,16 +96,83 @@ export default function DashboardPage() {
     handleModalCancel: handleVoiceModalCancel,
     showDateErrorModal,
     dateError,
-    handleDateErrorModalClose
+    handleDateErrorModalClose,
+    // Estados del modal de límite de duración
+    showDurationLimitModal,
+    setShowDurationLimitModal,
+    // Estados del modal de límite diario de transacciones
+    showDailyLimitModal,
+    setShowDailyLimitModal,
+    dailyLimitInfo
   } = useVoiceRecording();
+
+  // Sincronizar moneda con Supabase cuando el usuario cambie
+  useEffect(() => {
+    if (user?.moneda) {
+      updateCurrencyFromSupabase(user.moneda);
+    }
+  }, [user?.moneda, updateCurrencyFromSupabase]);
 
   // Cargar presupuesto diario y nombre del usuario
   useEffect(() => {
     if (user) {
       setUserName(user.nombre.split(' ')[0]);
       setDailyBudget(user.presupuesto_diario || 0);
+      
+      // Verificar si debe mostrar el tutorial de onboarding desde Supabase
+      // IMPORTANTE: Solo mostrar si explícitamente es false
+      // Si es undefined o true, NO mostrar (asumir que ya lo vio o no aplica)
+      // Esto evita que se muestre el tutorial cada vez que se reinstala la app
+      if (user.has_seen_onboarding === false) {
+        logger.debug('Mostrando tutorial de onboarding: has_seen_onboarding = false');
+        setShowOnboarding(true);
+      } else {
+        logger.debug('No mostrando tutorial:', {
+          has_seen_onboarding: user.has_seen_onboarding,
+        });
+        setShowOnboarding(false);
+      }
     }
   }, [user]);
+
+  // Cargar contadores de transacciones HOY
+  useEffect(() => {
+    const loadCounts = async () => {
+      if (user) {
+        const [deleted, active, yesterday] = await Promise.all([
+          getTodayDeletedCount(),
+          getTodayActiveCount(),
+          getTodayYesterdayCount()
+        ]);
+        setDeletedCount(deleted);
+        setActiveCount(active);
+        setYesterdayCount(yesterday);
+      }
+    };
+    loadCounts();
+  }, [user, getTodayDeletedCount, getTodayActiveCount, getTodayYesterdayCount, supabaseTransactions]); // Recargar cuando cambien las transacciones
+  
+  logger.debug('📱 DashboardPage: Componente renderizado DESPUÉS de hooks');
+  logger.debug('📊 DashboardPage: Estado del contexto:', {
+    hasUser: !!user,
+    loading,
+    transactionsCount: supabaseTransactions?.length || 0,
+    shouldRender: !loading && !!user
+  });
+  
+  // Si todavía está cargando, mostrar loading
+  if (loading) {
+    logger.debug('⏳ DashboardPage: Aún cargando, esperando...');
+    return null; // No renderizar nada mientras carga
+  }
+  
+  // Si no hay usuario después de cargar, podría ser un problema
+  if (!user) {
+    logger.warn('⚠️ DashboardPage: No hay usuario después de cargar');
+    return null;
+  }
+  
+  logger.debug('✅ DashboardPage: Renderizando contenido del dashboard');
 
   // Obtener todos los movimientos de hoy (transacciones + pagos de deudas + ahorros de metas)
   const todayMovements = getTodayMovements();
@@ -81,7 +194,7 @@ export default function DashboardPage() {
 
   // Función para manejar el procesamiento de texto
   const handleTextProcess = (groqData: any) => {
-    console.log('📝 Datos procesados del texto:', groqData);
+    logger.debug('📝 Datos procesados del texto:', groqData);
     // Usar el contexto de voz para texto
     setVoiceData({
       transcriptionText: 'Texto procesado',
@@ -89,6 +202,11 @@ export default function DashboardPage() {
       source: 'text'
     });
   };
+
+  // Mostrar loading screen si está cargando o si no hay usuario
+  if (loading || !user) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="pt-[40px] px-4 pb-24">
@@ -98,11 +216,27 @@ export default function DashboardPage() {
           Hola {userName ? `${userName} 👋` : '👋'}
         </h1>
         <p className="text-gray-600">
-          {new Date().toLocaleDateString('es-ES', { 
-            weekday: 'long', 
-            day: 'numeric', 
-            month: 'long' 
-          })}
+          {(() => {
+            // Obtener fecha de hoy en la zona horaria del país del usuario
+            const userCountry = country || 'BO';
+            const todayString = getTodayForCountry(userCountry);
+            const [year, month, day] = todayString.split('-').map(Number);
+            
+            // Obtener zona horaria del país usando función helper
+            const timeZone = getTimezoneForCountry(userCountry);
+            
+            // Crear fecha en la zona horaria del país usando Intl.DateTimeFormat
+            const formatter = new Intl.DateTimeFormat('es-ES', {
+              timeZone: timeZone,
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+            });
+            
+            // Crear una fecha que represente el día de hoy en la zona horaria del país
+            const now = new Date();
+            return formatter.format(now);
+          })()}
         </p>
       </div>
 
@@ -157,9 +291,20 @@ export default function DashboardPage() {
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
               <Calendar size={20} className="text-blue-600" />
             </div>
-            <div>
-              <p className="text-lg font-bold text-gray-900">{todayMovements.length}</p>
-              <p className="text-xs text-gray-600">Movimientos</p>
+            <div className="flex-1">
+              <p className="text-lg font-bold text-gray-900">
+                <strong>{activeCount}</strong> <span className="text-xs font-normal text-gray-600">Transacciones</span>
+              </p>
+              {deletedCount > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {deletedCount === 1 ? '1 Eliminado' : `${deletedCount} Eliminados`}
+                </p>
+              )}
+              {yesterdayCount > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {yesterdayCount === 1 ? '1 Ayer' : `${yesterdayCount} Ayer`}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -168,7 +313,7 @@ export default function DashboardPage() {
       {/* Lista de transacciones de hoy */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900">Movimientos HOY</h2>
+          <h2 className="text-lg font-bold text-gray-900">Transacciones HOY</h2>
         </div>
 
         {todayMovements.length === 0 ? (
@@ -176,7 +321,7 @@ export default function DashboardPage() {
             <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-3 flex items-center justify-center">
               <TrendingUp size={32} className="text-gray-400" />
             </div>
-            <p className="text-gray-600 mb-1">No hay movimientos hoy</p>
+            <p className="text-gray-600 mb-1">No hay transacciones hoy</p>
             <p className="text-xs text-gray-500">Usa el botón de voz para registrar</p>
           </div>
         ) : (
@@ -308,6 +453,52 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
+      )}
+      
+      {/* Modal de límite de duración de audio */}
+      <AudioDurationLimitModal
+        isOpen={showDurationLimitModal}
+        onClose={() => setShowDurationLimitModal(false)}
+        maxDuration={15}
+      />
+      
+      {/* Modal de límite diario de transacciones */}
+      {dailyLimitInfo && (
+        <DailyTransactionLimitModal
+          isOpen={showDailyLimitModal}
+          onClose={() => setShowDailyLimitModal(false)}
+          currentCount={dailyLimitInfo.currentCount}
+          maxDailyTransactions={dailyLimitInfo.maxCount}
+        />
+      )}
+      
+      {/* Tutorial de onboarding */}
+      {user && (
+        <OnboardingTutorial
+          isOpen={showOnboarding}
+          onClose={async () => {
+            setShowOnboarding(false);
+            if (user) {
+              try {
+                // Guardar en Supabase que ya vio el tutorial
+                await updateUser({ has_seen_onboarding: true });
+              } catch (error) {
+                logger.error('Error guardando estado de onboarding:', error);
+              }
+            }
+          }}
+          onComplete={async () => {
+            setShowOnboarding(false);
+            if (user) {
+              try {
+                // Guardar en Supabase que ya vio el tutorial
+                await updateUser({ has_seen_onboarding: true });
+              } catch (error) {
+                logger.error('Error guardando estado de onboarding:', error);
+              }
+            }
+          }}
+        />
       )}
     </div>
   );

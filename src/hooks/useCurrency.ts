@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { logger } from '@/lib/logger';
 
 interface CurrencyConfig {
   code: string;
@@ -101,7 +102,7 @@ export function useCurrency() {
         detectFromBrowser();
       }
     } catch (error) {
-      console.error('Error detecting country:', error);
+      logger.error('Error detecting country:', error);
       detectFromBrowser();
     } finally {
       setIsLoading(false);
@@ -123,7 +124,7 @@ export function useCurrency() {
         localStorage.setItem('userCountry', langCountry);
       }
     } catch (error) {
-      console.error('Error detecting from browser:', error);
+      logger.error('Error detecting from browser:', error);
     }
   };
 
@@ -189,7 +190,7 @@ export function useCurrency() {
           .eq('id', user.id);
       }
     } catch (error) {
-      console.error('Error updating country in Supabase:', error);
+      logger.error('Error updating country in Supabase:', error);
     }
   }, []);
 

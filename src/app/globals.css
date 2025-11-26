@@ -81,6 +81,22 @@ html, body, main {
   animation: fadeIn 0.6s ease-out forwards;
 }
 
+/* Animación de scale-in */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.4s ease-out forwards;
+}
+
 /* Efecto glow en hover */
 .glow-primary:hover {
   box-shadow: var(--shadow-glow-primary);

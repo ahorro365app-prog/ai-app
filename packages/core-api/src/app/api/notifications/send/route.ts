@@ -9,6 +9,7 @@ import {
   TokenWithUser,
   isWithinQuietHours,
 } from '@/lib/notificationSegments';
+import { handleError, ErrorType } from '@/lib/errorHandler';
 
 type SubscriptionPlan = 'free' | 'smart' | 'pro' | 'caducado';
 
@@ -187,10 +188,10 @@ export async function POST(request: NextRequest) {
         .eq('is_active', true);
 
       if (error) {
-        console.error('Error obteniendo tokens de usuario:', error);
-        return NextResponse.json(
-          { success: false, message: 'No se pudieron obtener los tokens del usuario' },
-          { status: 500 }
+        return handleError(
+          error,
+          'No se pudieron obtener los tokens del usuario',
+          ErrorType.DATABASE
         );
       }
 
@@ -213,10 +214,10 @@ export async function POST(request: NextRequest) {
           .maybeSingle();
 
         if (prefError && prefError.code !== 'PGRST116') {
-          console.error('Error obteniendo preferencias de notificación del usuario:', prefError);
-          return NextResponse.json(
-            { success: false, message: 'No se pudieron obtener las preferencias del usuario' },
-            { status: 500 }
+          return handleError(
+            prefError,
+            'No se pudieron obtener las preferencias del usuario',
+            ErrorType.DATABASE
           );
         }
 
@@ -314,13 +315,10 @@ export async function POST(request: NextRequest) {
           });
         }
       } catch (segmentError: any) {
-        console.error('Error resolviendo segmento de notificaciones:', segmentError);
-        return NextResponse.json(
-          {
-            success: false,
-            message: 'No se pudieron obtener destinatarios para el segmento.',
-          },
-          { status: 500 }
+        return handleError(
+          segmentError,
+          'No se pudieron obtener destinatarios para el segmento.',
+          ErrorType.DATABASE
         );
       }
     }
@@ -427,10 +425,10 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Error en /api/notifications/send:', error);
-    return NextResponse.json(
-      { success: false, message: error?.message || 'Error interno enviando notificación' },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error interno enviando notificación',
+      ErrorType.INTERNAL
     );
   }
 }

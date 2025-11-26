@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Mic, Loader2, CheckCircle, XCircle, Copy, Send } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface TranscriptionDisplayProps {
   isTranscribing: boolean;
@@ -31,7 +32,7 @@ export default function TranscriptionDisplay({
       setShowCopied(true);
       setTimeout(() => setShowCopied(false), 2000);
     } catch (error) {
-      console.error('Error al copiar:', error);
+      logger.error('Error al copiar:', error);
     }
   };
 
@@ -41,7 +42,7 @@ export default function TranscriptionDisplay({
   }
 
   return (
-    <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 max-w-sm w-full mx-4 ${className}`}>
+    <div className={`fixed top-[60px] left-1/2 -translate-x-1/2 z-50 max-w-sm w-full mx-4 ${className}`}>
       <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
         
         {/* Header */}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 // Hook para manejar la conexión con Supabase
 export const useSupabase = () => {
@@ -46,7 +47,7 @@ export const useTransactions = () => {
       if (error) throw error
       setTransactions(data || [])
     } catch (error) {
-      console.error('Error fetching transactions:', error)
+      logger.error('Error fetching transactions:', error)
     } finally {
       setLoading(false)
     }
@@ -63,7 +64,7 @@ export const useTransactions = () => {
       setTransactions(prev => [data[0], ...prev])
       return data[0]
     } catch (error) {
-      console.error('Error adding transaction:', error)
+      logger.error('Error adding transaction:', error)
       throw error
     }
   }
@@ -82,7 +83,7 @@ export const useTransactions = () => {
       )
       return data[0]
     } catch (error) {
-      console.error('Error updating transaction:', error)
+      logger.error('Error updating transaction:', error)
       throw error
     }
   }
@@ -97,7 +98,7 @@ export const useTransactions = () => {
       if (error) throw error
       setTransactions(prev => prev.filter(t => t.id !== id))
     } catch (error) {
-      console.error('Error deleting transaction:', error)
+      logger.error('Error deleting transaction:', error)
       throw error
     }
   }
@@ -128,7 +129,7 @@ export const useDebts = () => {
       if (error) throw error
       setDebts(data || [])
     } catch (error) {
-      console.error('Error fetching debts:', error)
+      logger.error('Error fetching debts:', error)
     } finally {
       setLoading(false)
     }
@@ -145,7 +146,7 @@ export const useDebts = () => {
       setDebts(prev => [data[0], ...prev])
       return data[0]
     } catch (error) {
-      console.error('Error adding debt:', error)
+      logger.error('Error adding debt:', error)
       throw error
     }
   }
@@ -164,7 +165,7 @@ export const useDebts = () => {
       )
       return data[0]
     } catch (error) {
-      console.error('Error updating debt:', error)
+      logger.error('Error updating debt:', error)
       throw error
     }
   }
@@ -179,7 +180,7 @@ export const useDebts = () => {
       if (error) throw error
       setDebts(prev => prev.filter(d => d.id !== id))
     } catch (error) {
-      console.error('Error deleting debt:', error)
+      logger.error('Error deleting debt:', error)
       throw error
     }
   }
@@ -210,7 +211,7 @@ export const useGoals = () => {
       if (error) throw error
       setGoals(data || [])
     } catch (error) {
-      console.error('Error fetching goals:', error)
+      logger.error('Error fetching goals:', error)
     } finally {
       setLoading(false)
     }
@@ -227,7 +228,7 @@ export const useGoals = () => {
       setGoals(prev => [data[0], ...prev])
       return data[0]
     } catch (error) {
-      console.error('Error adding goal:', error)
+      logger.error('Error adding goal:', error)
       throw error
     }
   }
@@ -246,7 +247,7 @@ export const useGoals = () => {
       )
       return data[0]
     } catch (error) {
-      console.error('Error updating goal:', error)
+      logger.error('Error updating goal:', error)
       throw error
     }
   }
@@ -261,7 +262,7 @@ export const useGoals = () => {
       if (error) throw error
       setGoals(prev => prev.filter(g => g.id !== id))
     } catch (error) {
-      console.error('Error deleting goal:', error)
+      logger.error('Error deleting goal:', error)
       throw error
     }
   }
@@ -292,7 +293,7 @@ export const useUsers = () => {
       if (error) throw error
       setUser(data)
     } catch (error) {
-      console.error('Error fetching user:', error)
+      logger.error('Error fetching user:', error)
     } finally {
       setLoading(false)
     }
@@ -310,7 +311,7 @@ export const useUsers = () => {
       setUser(data[0])
       return data[0]
     } catch (error) {
-      console.error('Error updating user:', error)
+      logger.error('Error updating user:', error)
       throw error
     }
   }
@@ -326,7 +327,7 @@ export const useUsers = () => {
       setUser(data[0])
       return data[0]
     } catch (error) {
-      console.error('Error creating user:', error)
+      logger.error('Error creating user:', error)
       throw error
     }
   }

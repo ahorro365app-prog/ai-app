@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './logger';
 
 // Cache para el cliente (evita crear múltiples instancias)
 let supabaseAdminClient: ReturnType<typeof createClient> | null = null;
@@ -22,7 +23,7 @@ function validateEnvironmentVariables(): void {
    3. Agrega a .env.local: NEXT_PUBLIC_SUPABASE_URL=tu_url_aqui
    4. Reinicia el servidor (npm run dev)
     `;
-    console.error(errorMessage);
+    logger.error(errorMessage);
     throw new Error('NEXT_PUBLIC_SUPABASE_URL no configurada. Revisa la consola para instrucciones.');
   }
 
@@ -48,7 +49,7 @@ function validateEnvironmentVariables(): void {
    4. ⚠️ IMPORTANTE: Esta key tiene permisos admin, manténla segura
    5. Reinicia el servidor (npm run dev)
     `;
-    console.error(errorMessage);
+    logger.error(errorMessage);
     throw new Error('SUPABASE_SERVICE_ROLE_KEY no configurada. Revisa la consola para instrucciones.');
   }
 
@@ -114,7 +115,7 @@ export function getSupabaseAdmin() {
     });
     
     if (process.env.NODE_ENV !== 'production') {
-      console.log('✅ Cliente Supabase Admin creado correctamente');
+      logger.debug('✅ Cliente Supabase Admin creado correctamente');
     }
   }
   

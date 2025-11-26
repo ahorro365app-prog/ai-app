@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { CheckCircle, AlertTriangle, Database, Trash2, Download } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface LocalData {
   user: any;
@@ -125,7 +126,7 @@ export default function MigrateLocalDataPage() {
     } catch (error: any) {
       setErrorMessage(error.message || 'Error durante la migración');
       setMigrationStatus('error');
-      console.error('Error en migración:', error);
+      logger.error('Error en migración:', error);
     }
   };
 

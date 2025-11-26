@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { AlertCircle, CheckCircle, ExternalLink, Copy } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface ConfigStepProps {
   title: string;
@@ -63,7 +64,7 @@ export default function SupabaseConfigGuide() {
 
   const handleSaveConfig = () => {
     // En una implementación real, esto guardaría en localStorage o enviaría a un API
-    console.log('Guardando configuración:', { supabaseUrl, supabaseKey });
+    logger.debug('Guardando configuración:', { supabaseUrl, supabaseKey });
     alert('Configuración guardada. Reinicia el servidor para aplicar los cambios.');
   };
 

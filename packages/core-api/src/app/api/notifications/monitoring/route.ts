@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getRecentCronHealths, getLastCronHealth } from '@/lib/notificationAlerts';
+import { handleError, ErrorType } from '@/lib/errorHandler';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,14 +89,10 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Error obteniendo información de monitoreo:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'Error obteniendo información de monitoreo',
-        error: error?.message || 'Error desconocido',
-      },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error obteniendo información de monitoreo',
+      ErrorType.INTERNAL
     );
   }
 }

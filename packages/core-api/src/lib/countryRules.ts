@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './logger';
 
 // Lazy initialization para evitar errores durante build time
 let supabase: ReturnType<typeof createClient> | null = null;
@@ -40,7 +41,7 @@ export interface CountryRules {
  */
 export async function getCountryRules(countryCode: string): Promise<CountryRules> {
   try {
-    console.log(`🌍 Fetching rules for country: ${countryCode}`);
+    logger.debug(`🌍 Fetching rules for country: ${countryCode}`);
     
     const { data, error } = await getSupabase()
       .from('reglas_pais')
@@ -48,12 +49,12 @@ export async function getCountryRules(countryCode: string): Promise<CountryRules
       .eq('country_code', countryCode);
 
     if (error) {
-      console.error('❌ Error fetching country rules:', error);
+      logger.error('❌ Error fetching country rules:', error);
       return getBoliviaFallback();
     }
 
     if (!data || data.length === 0) {
-      console.warn(`⚠️ No rules found for ${countryCode}, using Bolivia fallback`);
+      logger.warn(`⚠️ No rules found for ${countryCode}, using Bolivia fallback`);
       return getBoliviaFallback();
     }
 
@@ -64,7 +65,7 @@ export async function getCountryRules(countryCode: string): Promise<CountryRules
       slang: regla.slang,
     }));
 
-    console.log(`✅ Rules loaded for ${countryCode}`);
+    logger.debug(`✅ Rules loaded for ${countryCode}`);
 
     // Retornar formato consolidado
     return {
@@ -80,8 +81,8 @@ export async function getCountryRules(countryCode: string): Promise<CountryRules
     };
     
   } catch (error) {
-    console.error('❌ Error in getCountryRules:', error);
-    console.log('🔄 Using Bolivia fallback');
+    logger.error('❌ Error in getCountryRules:', error);
+    logger.debug('🔄 Using Bolivia fallback');
     return getBoliviaFallback();
   }
 }
@@ -119,12 +120,12 @@ function getCountryCurrency(code: string): string {
 /**
  * Obtiene símbolo de moneda
  */
-function getCountrySymbol(code: string): string {
+export function getCountrySymbol(code: string): string {
   const symbols: Record<string, string> = {
     'BOL': 'Bs',
     'ARG': '$',
     'MEX': '$',
-    'PER': 'S/',
+    'PER': 'S/.',
     'COL': '$',
     'CHL': '$',
   };

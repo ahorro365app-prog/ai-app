@@ -5,6 +5,8 @@
  * - Permite debugging detallado durante desarrollo sin afectar producción
  */
 
+import { sanitizeForLog, sanitizeWebhookData } from './sanitizeForLog';
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -35,50 +37,60 @@ export const logger = {
   /**
    * Debug: Solo en desarrollo
    * Para logs detallados de debugging
+   * Sanitiza automáticamente datos sensibles
    */
   debug: (...args: any[]) => {
     if (shouldLog('debug')) {
-      console.log('🔍 [DEBUG]', ...args);
+      const sanitized = args.map(arg => sanitizeForLog(arg));
+      console.log('🔍 [DEBUG]', ...sanitized);
     }
   },
 
   /**
    * Info: Solo en desarrollo
    * Para información general del flujo
+   * Sanitiza automáticamente datos sensibles
    */
   info: (...args: any[]) => {
     if (shouldLog('info')) {
-      console.log('ℹ️ [INFO]', ...args);
+      const sanitized = args.map(arg => sanitizeForLog(arg));
+      console.log('ℹ️ [INFO]', ...sanitized);
     }
   },
 
   /**
    * Warning: Siempre visible
    * Para advertencias importantes que deberían verse en producción
+   * Sanitiza automáticamente datos sensibles
    */
   warn: (...args: any[]) => {
     if (shouldLog('warn')) {
-      console.warn('⚠️ [WARN]', ...args);
+      const sanitized = args.map(arg => sanitizeForLog(arg));
+      console.warn('⚠️ [WARN]', ...sanitized);
     }
   },
 
   /**
    * Error: Siempre visible
    * Para errores críticos que siempre deben registrarse
+   * Sanitiza automáticamente datos sensibles
    */
   error: (...args: any[]) => {
     if (shouldLog('error')) {
-      console.error('❌ [ERROR]', ...args);
+      const sanitized = args.map(arg => sanitizeForLog(arg));
+      console.error('❌ [ERROR]', ...sanitized);
     }
   },
 
   /**
    * Log de éxito: Solo en desarrollo
    * Para logs de operaciones exitosas
+   * Sanitiza automáticamente datos sensibles
    */
   success: (...args: any[]) => {
     if (shouldLog('info')) {
-      console.log('✅ [SUCCESS]', ...args);
+      const sanitized = args.map(arg => sanitizeForLog(arg));
+      console.log('✅ [SUCCESS]', ...sanitized);
     }
   },
 };
@@ -102,20 +114,24 @@ export function logWithContext(context: string, level: LogLevel = 'info') {
 
 /**
  * Helper para logs de webhooks (solo desarrollo)
+ * Sanitiza automáticamente datos sensibles de webhooks
  */
 export const webhookLogger = {
   received: (data: any) => {
     if (isDevelopment) {
-      logger.debug('📱 Webhook recibido:', JSON.stringify(data, null, 2));
+      const sanitized = sanitizeWebhookData(data);
+      logger.debug('📱 Webhook recibido:', JSON.stringify(sanitized, null, 2));
     }
   },
   success: (message: string, data?: any) => {
     if (isDevelopment) {
-      logger.success(message, data ? JSON.stringify(data, null, 2) : '');
+      const sanitized = data ? sanitizeForLog(data) : undefined;
+      logger.success(message, sanitized ? JSON.stringify(sanitized, null, 2) : '');
     }
   },
   error: (message: string, error?: any) => {
-    logger.error(message, error);
+    const sanitized = error ? sanitizeForLog(error) : undefined;
+    logger.error(message, sanitized);
   },
 };
 

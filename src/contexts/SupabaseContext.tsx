@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
-import { getTodayForCountry, buildISODateForCountry } from '@/lib/dateUtils';
+import { getTodayForCountry, buildISODateForCountry, extractDateInUserTimezone, getTimezoneForCountry } from '@/lib/dateUtils';
 
 interface User {
   id: string;
@@ -83,6 +83,8 @@ interface SupabaseContextType {
   getAllMovements: () => any[];
   getTodayMovements: () => any[];
   getTodayDeletedCount: () => Promise<number>;
+  getTodayActiveCount: () => Promise<number>;
+  getTodayYesterdayCount: () => Promise<number>;
   
   // Debt methods
   addDebt: (debt: Omit<Debt, 'id'>) => Promise<void>;
@@ -108,7 +110,15 @@ interface SupabaseContextType {
   
   // Phone change methods
   checkCanChangePhone: () => Promise<{ canChange: boolean; reason?: string; daysRemaining?: number }>;
-  initiatePhoneChange: (newPhone: string) => Promise<{ success: boolean; error?: string }>;
+  initiatePhoneChange: (newPhone: string) => Promise<{ 
+    success: boolean; 
+    error?: string;
+    hasActiveCode?: boolean;
+    expiresIn?: number;
+    expiresAt?: string;
+    whatsappSent?: boolean;
+    whatsappError?: string;
+  }>;
   verifyPhoneChange: (code: string) => Promise<{ success: boolean; error?: string }>;
   cancelPhoneChange: () => Promise<{ success: boolean; error?: string }>;
 }
@@ -470,7 +480,9 @@ export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
                 if (nuevoReferido?.id) {
                   try {
                     logger.debug(`🔔 Invocando trigger referral-invited para referido: ${nuevoReferido.id}`);
-                    const triggerResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notifications/triggers/referral-invited`, {
+                    // ⚠️ SEGURIDAD: No usar localhost en producción
+                    const appUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+                    const triggerResponse = await fetch(`${appUrl}/api/notifications/triggers/referral-invited`, {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
@@ -722,6 +734,14 @@ export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
     
     // Obtener fecha de hoy en formato YYYY-MM-DD en la zona horaria del país
     const todayString = getTodayForCountry(userCountry);
+    
+    // 🔍 DEBUG: Verificar fecha de hoy
+    logger.debug('🔍 getTodayMovements - FECHA DE HOY:', {
+      userCountry,
+      todayString,
+      fecha_ahora_navegador: new Date().toLocaleString('es-BO', { timeZone: 'America/La_Paz' }),
+    });
+    
     const [todayYear, todayMonth, todayDay] = todayString.split('-').map(Number);
     
     // Crear fechas de inicio y fin del día en UTC, pero interpretadas en la zona horaria del país
@@ -746,33 +766,61 @@ export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
     
     // getAllMovements ya excluye eliminadas porque transactions solo tiene activas
     const filtered = getAllMovements().filter(movement => {
-      const movementDate = new Date(movement.fecha);
-      const isInRange = movementDate >= todayStart && movementDate < todayEnd;
+      // Extraer fecha en zona horaria del país para comparar correctamente
+      const movementDateStr = extractDateInUserTimezone(movement.fecha, userCountry);
+      const movementDate = new Date(movementDateStr + 'T12:00:00'); // Usar mediodía para evitar problemas de zona horaria
+      const todayDate = new Date(todayString + 'T12:00:00');
+      const isInRange = movementDateStr === todayString;
       
-      if (isInRange) {
-        logger.debug('✅ Movimiento de hoy:', {
+      // Solo loggear si no es de hoy (para reducir logs)
+      if (!isInRange && movementDateStr === getTodayForCountry(userCountry)) {
+        // Si la fecha extraída es de hoy pero no coincide, hay un problema
+        logger.warn('⚠️ Movimiento debería ser de hoy pero no coincide:', {
           id: movement.id,
-          fecha: movement.fecha,
-          fechaLocal: movementDate.toLocaleString(),
-          tipo: movement.tipo_movimiento
-        });
-      } else {
-        logger.debug('❌ Movimiento NO es de hoy:', {
-          id: movement.id,
-          fecha: movement.fecha,
-          fechaLocal: movementDate.toLocaleString(),
-          tipo: movement.tipo_movimiento,
-          esMenor: movementDate < todayStart,
-          esMayor: movementDate >= todayEnd
+          fecha_original: movement.fecha,
+          fecha_extraida: movementDateStr,
+          fecha_hoy: todayString,
         });
       }
       
-      // Verificar que la fecha del movimiento esté entre 00:00:00 y 23:59:59 de hoy
+      // Verificar que la fecha extraída coincida con la fecha de hoy
       return isInRange;
     });
     
     logger.debug('📊 Total movimientos de hoy:', filtered.length);
     return filtered;
+  };
+
+  // Función para contar transacciones activas creadas HOY (fecha_creacion de hoy)
+  const getTodayActiveCount = async (): Promise<number> => {
+    if (!user) return 0;
+
+    try {
+      const today = new Date();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+      // Contar transacciones que:
+      // 1. Fueron creadas HOY (fecha_creacion está en el rango de hoy)
+      // 2. NO están eliminadas (fecha_eliminacion es null)
+      const { count, error } = await supabase
+        .from('transacciones')
+        .select('*', { count: 'exact', head: true })
+        .eq('usuario_id', user.id)
+        .is('fecha_eliminacion', null) // No eliminadas
+        .gte('fecha_creacion', todayStart.toISOString()) // Creadas HOY
+        .lt('fecha_creacion', todayEnd.toISOString());
+
+      if (error) {
+        logger.error('Error contando transacciones activas de hoy:', error);
+        return 0;
+      }
+
+      return count || 0;
+    } catch (err: any) {
+      logger.error('Error en getTodayActiveCount:', err);
+      return 0;
+    }
   };
 
   // Función para contar transacciones eliminadas HOY
@@ -786,15 +834,15 @@ export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
       const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
 
       // Contar transacciones que:
-      // 1. Fueron creadas HOY (fecha está en el rango de hoy)
+      // 1. Fueron creadas HOY (fecha_creacion está en el rango de hoy)
       // 2. Fueron eliminadas HOY (fecha_eliminacion está en el rango de hoy)
       const { count, error } = await supabase
         .from('transacciones')
         .select('*', { count: 'exact', head: true })
         .eq('usuario_id', user.id)
         .not('fecha_eliminacion', 'is', null) // Tiene fecha_eliminacion (fue eliminada)
-        .gte('fecha', todayStart.toISOString()) // Creada HOY
-        .lt('fecha', todayEnd.toISOString())
+        .gte('fecha_creacion', todayStart.toISOString()) // Creada HOY
+        .lt('fecha_creacion', todayEnd.toISOString())
         .gte('fecha_eliminacion', todayStart.toISOString()) // Eliminada HOY
         .lt('fecha_eliminacion', todayEnd.toISOString());
 
@@ -806,6 +854,44 @@ export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
       return count || 0;
     } catch (err: any) {
       logger.error('Error en getTodayDeletedCount:', err);
+      return 0;
+    }
+  };
+
+  // Función para contar transacciones creadas HOY pero con fecha de AYER
+  const getTodayYesterdayCount = async (): Promise<number> => {
+    if (!user) return 0;
+
+    try {
+      const today = new Date();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+      
+      const yesterdayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+      const yesterdayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+      // Contar transacciones que:
+      // 1. Fueron creadas HOY (fecha_creacion está en el rango de hoy)
+      // 2. Tienen fecha de AYER (fecha está en el rango de ayer)
+      // 3. NO están eliminadas (fecha_eliminacion es null)
+      const { count, error } = await supabase
+        .from('transacciones')
+        .select('*', { count: 'exact', head: true })
+        .eq('usuario_id', user.id)
+        .is('fecha_eliminacion', null) // No eliminadas
+        .gte('fecha_creacion', todayStart.toISOString()) // Creadas HOY
+        .lt('fecha_creacion', todayEnd.toISOString())
+        .gte('fecha', yesterdayStart.toISOString()) // Fecha de AYER
+        .lt('fecha', yesterdayEnd.toISOString());
+
+      if (error) {
+        logger.error('Error contando transacciones de ayer creadas hoy:', error);
+        return 0;
+      }
+
+      return count || 0;
+    } catch (err: any) {
+      logger.error('Error en getTodayYesterdayCount:', err);
       return 0;
     }
   };
@@ -855,94 +941,21 @@ export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
       
       logger.debug('✅ Validación exitosa, procediendo a insertar transacción');
       
-      // Asegurar que la fecha esté en formato correcto con offset de zona horaria explícito
-      // Esto es crítico para evitar problemas cuando la hora local es tarde (ej: después de 9 PM en Bolivia)
-      // Si la fecha ya viene con offset (de buildISODateForCountry), usarla directamente
-      // Si no, agregar el offset explícito
+      // La fecha ya viene en formato UTC desde TransactionModal
+      // Solo verificar que sea válida
       let fechaFormateada = transaction.fecha;
-      const userCountry = user.pais || 'BO'; // Default a Bolivia si no hay país
       
       if (transaction.fecha) {
-        // Si la fecha ya tiene offset explícito (contiene + o - antes de los últimos 6 caracteres)
-        // Ejemplo: 2025-11-18T23:01:00-04:00 o 2025-11-18T23:01:00+03:00
-        const hasOffset = /[+-]\d{2}:\d{2}$/.test(transaction.fecha);
+        // Verificar que la fecha sea válida
+        const fechaDate = new Date(transaction.fecha);
+        if (isNaN(fechaDate.getTime())) {
+          logger.error('❌ Error: Fecha inválida:', transaction.fecha);
+          throw new Error('Fecha inválida');
+        }
         
-        if (!hasOffset) {
-          // La fecha no tiene offset, necesitamos agregarlo
-          const timeZone = userCountry === 'BO' ? 'America/La_Paz' : 
-                           userCountry === 'AR' ? 'America/Argentina/Buenos_Aires' :
-                           userCountry === 'BR' ? 'America/Sao_Paulo' :
-                           userCountry === 'CL' ? 'America/Santiago' :
-                           userCountry === 'CO' ? 'America/Bogota' :
-                           userCountry === 'EC' ? 'America/Guayaquil' :
-                           userCountry === 'PE' ? 'America/Lima' :
-                           userCountry === 'PY' ? 'America/Asuncion' :
-                           userCountry === 'UY' ? 'America/Montevideo' :
-                           userCountry === 'VE' ? 'America/Caracas' :
-                           userCountry === 'MX' ? 'America/Mexico_City' :
-                           userCountry === 'US' ? 'America/New_York' :
-                           'America/La_Paz';
-          
-          // Parsear la fecha
-          const fechaDate = new Date(transaction.fecha);
-          
-          // Obtener las partes de la fecha en la zona horaria del país
-          const formatter = new Intl.DateTimeFormat('en-US', {
-            timeZone: timeZone,
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false,
-          });
-          
-          const parts = formatter.formatToParts(fechaDate);
-          const year = parts.find(p => p.type === 'year')?.value || '';
-          const month = parts.find(p => p.type === 'month')?.value || '';
-          const day = parts.find(p => p.type === 'day')?.value || '';
-          const hour = parts.find(p => p.type === 'hour')?.value || '';
-          const minute = parts.find(p => p.type === 'minute')?.value || '';
-          const second = parts.find(p => p.type === 'second')?.value || '00';
-          
-          // Calcular offset usando una fecha de referencia
-          const referenceDate = new Date('2025-01-01T12:00:00Z');
-          const utcFormatter = new Intl.DateTimeFormat('en-US', {
-            timeZone: 'UTC',
-            hour: '2-digit',
-            hour12: false,
-          });
-          const tzFormatter = new Intl.DateTimeFormat('en-US', {
-            timeZone: timeZone,
-            hour: '2-digit',
-            hour12: false,
-          });
-          
-          const utcHour = parseInt(utcFormatter.formatToParts(referenceDate).find(p => p.type === 'hour')?.value || '12', 10);
-          const tzHour = parseInt(tzFormatter.formatToParts(referenceDate).find(p => p.type === 'hour')?.value || '12', 10);
-          
-          let offsetHours = tzHour - utcHour;
-          if (offsetHours > 12) offsetHours -= 24;
-          if (offsetHours < -12) offsetHours += 24;
-          
-          // Formatear offset
-          const offsetSign = offsetHours >= 0 ? '+' : '-';
-          const offsetStr = `${offsetSign}${String(Math.abs(offsetHours)).padStart(2, '0')}:00`;
-          
-          // Construir fecha ISO con offset explícito
-          fechaFormateada = `${year}-${month}-${day}T${hour}:${minute}:${second}${offsetStr}`;
-          
-          logger.debug('🕐 Fecha formateada con offset de zona horaria:', {
-            fechaOriginal: transaction.fecha,
-            fechaFormateada: fechaFormateada,
-            pais: userCountry,
-            zonaHoraria: timeZone,
-            offset: offsetStr
-          });
-        } else {
-          // La fecha ya tiene offset, usarla directamente
-          logger.debug('✅ Fecha ya tiene offset explícito, usando directamente:', fechaFormateada);
+        // Asegurar formato UTC (si no lo está ya)
+        if (!transaction.fecha.endsWith('Z') && !transaction.fecha.includes('+00:00')) {
+          fechaFormateada = fechaDate.toISOString();
         }
       }
       
@@ -955,6 +968,17 @@ export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
         url_comprobante: transaction.url_comprobante,
         usuario_id: user.id 
       };
+      
+      // 🔍 DEBUG: Verificar fecha antes de insertar
+      const testDateInsert = new Date(fechaFormateada);
+      logger.debug('🔍 FECHA ANTES DE INSERTAR (SupabaseContext):', {
+        fecha_original: transaction.fecha,
+        fecha_formateada: fechaFormateada,
+        testDateISO: testDateInsert.toISOString(),
+        testDateUTC: testDateInsert.toUTCString(),
+        testDateLocal: testDateInsert.toLocaleString('es-BO', { timeZone: 'America/La_Paz' }),
+        insertData,
+      });
       
       logger.debug('📤 Datos que se insertarán:', insertData);
       
@@ -1489,11 +1513,40 @@ export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
   };
 
   // WhatsApp verification methods
-  const sendWhatsAppVerificationCode = async (phone: string): Promise<{ success: boolean; error?: string }> => {
+  const sendWhatsAppVerificationCode = async (phone: string): Promise<{ 
+    success: boolean; 
+    error?: string; 
+    hasActiveCode?: boolean;
+    expiresIn?: number;
+    expiresAt?: string;
+    codeSaved?: boolean;
+    whatsappSent?: boolean;
+    whatsappError?: string;
+    isTokenExpired?: boolean;
+  }> => {
     try {
       logger.debug('📱 sendWhatsAppVerificationCode: Enviando código a:', phone);
       
-      const response = await fetch('/api/whatsapp/send-verification-code', {
+      // Construir URL correcta: siempre usar HTTP en localhost
+      // El navegador puede estar forzando HTTPS, así que forzamos HTTP explícitamente
+      let apiUrl: string;
+      if (typeof window !== 'undefined') {
+        const host = window.location.host;
+        // Si es localhost, SIEMPRE usar HTTP (nunca HTTPS)
+        if (host.includes('localhost') || host.includes('127.0.0.1')) {
+          apiUrl = `http://${host}/api/whatsapp/send-verification-code`;
+        } else {
+          // En producción, usar el protocolo actual
+          apiUrl = `${window.location.protocol}//${host}/api/whatsapp/send-verification-code`;
+        }
+      } else {
+        // Server-side: usar ruta relativa
+        apiUrl = '/api/whatsapp/send-verification-code';
+      }
+      
+      logger.debug('🔗 URL de API:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1505,17 +1558,68 @@ export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
 
       if (!response.ok || !data.success) {
         const errorMessage = data.message || data.error || 'Error al enviar código de verificación';
-        logger.error('❌ Error enviando código:', errorMessage);
+        const errorDetails = data.error || data.details || {};
+        
+        logger.error('❌ Error enviando código:', {
+          message: errorMessage,
+          details: errorDetails,
+          codeSaved: data.codeSaved
+        });
+        
+        // Si el código está guardado pero WhatsApp falló, dar mensaje más claro
+        if (data.codeSaved) {
+          // Si es un error de token expirado, dar mensaje más específico
+          if (data.isTokenExpired) {
+            return {
+              success: false,
+              error: 'El token de WhatsApp ha expirado. Por favor, contacta al soporte técnico. El código está guardado y se enviará cuando el token sea renovado.',
+              codeSaved: true,
+              isTokenExpired: true,
+              whatsappError: errorMessage
+            };
+          }
+          
+          return {
+            success: false,
+            error: `No se pudo enviar el código por WhatsApp: ${errorMessage}. El código está guardado, puedes intentar de nuevo.`,
+            codeSaved: true,
+            whatsappError: errorMessage
+          };
+        }
+        
         return {
           success: false,
           error: errorMessage,
+          details: errorDetails
         };
       }
 
-      logger.debug('✅ sendWhatsAppVerificationCode: Código enviado exitosamente');
-      return {
-        success: true,
-      };
+      // Verificar si WhatsApp realmente envió el mensaje
+      if (data.whatsappSent) {
+        logger.debug('✅ sendWhatsAppVerificationCode: Código enviado exitosamente por WhatsApp');
+        return {
+          success: true,
+          hasActiveCode: data.hasActiveCode || false,
+          expiresIn: data.expiresIn,
+          expiresAt: data.expiresAt,
+          codeSaved: data.codeSaved,
+          whatsappSent: data.whatsappSent,
+        };
+      } else {
+        // El código se guardó pero WhatsApp no lo envió
+        const errorMessage = data.whatsappError || data.message || 'El código se generó pero no se pudo enviar por WhatsApp. Verifica la configuración del servidor.';
+        logger.warn('⚠️ sendWhatsAppVerificationCode: Código guardado pero WhatsApp no lo envió:', {
+          whatsappError: data.whatsappError,
+          message: data.message,
+          whatsappSent: data.whatsappSent,
+          fullData: data
+        });
+        return {
+          success: false,
+          error: errorMessage,
+          codeSaved: true
+        };
+      }
     } catch (error: any) {
       logger.error('❌ Error en sendWhatsAppVerificationCode:', error);
       return {
@@ -1529,7 +1633,26 @@ export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
     try {
       logger.debug('🔐 verifyWhatsAppCode: Verificando código para:', phone);
       
-      const response = await fetch('/api/whatsapp/verify-code', {
+      // Construir URL correcta: siempre usar HTTP en localhost
+      // El navegador puede estar forzando HTTPS, así que forzamos HTTP explícitamente
+      let apiUrl: string;
+      if (typeof window !== 'undefined') {
+        const host = window.location.host;
+        // Si es localhost, SIEMPRE usar HTTP (nunca HTTPS)
+        if (host.includes('localhost') || host.includes('127.0.0.1')) {
+          apiUrl = `http://${host}/api/whatsapp/verify-code`;
+        } else {
+          // En producción, usar el protocolo actual
+          apiUrl = `${window.location.protocol}//${host}/api/whatsapp/verify-code`;
+        }
+      } else {
+        // Server-side: usar ruta relativa
+        apiUrl = '/api/whatsapp/verify-code';
+      }
+      
+      logger.debug('🔗 URL de API:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1646,7 +1769,15 @@ export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
     }
   };
 
-  const initiatePhoneChange = async (newPhone: string): Promise<{ success: boolean; error?: string }> => {
+  const initiatePhoneChange = async (newPhone: string): Promise<{ 
+    success: boolean; 
+    error?: string;
+    hasActiveCode?: boolean;
+    expiresIn?: number;
+    expiresAt?: string;
+    whatsappSent?: boolean;
+    whatsappError?: string;
+  }> => {
     if (!user) {
       logger.warn('⚠️ initiatePhoneChange: No hay usuario autenticado');
       return {
@@ -1657,7 +1788,9 @@ export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
 
     try {
       logger.debug('📱 initiatePhoneChange: Iniciando cambio de teléfono para usuario:', user.id);
-      logger.debug('📱 Nuevo teléfono:', newPhone);
+      // Sanitizar teléfono para logs (mostrar solo primeros y últimos dígitos)
+      const sanitizedPhone = newPhone ? `${newPhone.substring(0, 3)}***${newPhone.substring(newPhone.length - 2)}` : 'null';
+      logger.debug('📱 Nuevo teléfono:', sanitizedPhone);
 
       // 1. Guardar telefono_pendiente y fecha_inicio_cambio_telefono
       const { error: updateError } = await supabase
@@ -1705,6 +1838,11 @@ export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
         } else {
           codeResult = {
             success: true,
+            hasActiveCode: data.hasActiveCode || false,
+            expiresIn: data.expiresIn,
+            expiresAt: data.expiresAt,
+            whatsappSent: data.whatsappSent,
+            whatsappError: data.whatsappError,
           };
         }
       } catch (error: any) {
@@ -1732,9 +1870,18 @@ export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
         };
       }
 
-      logger.debug('✅ initiatePhoneChange: Código enviado exitosamente');
+      logger.debug('✅ initiatePhoneChange: Código enviado exitosamente', {
+        hasActiveCode: codeResult.hasActiveCode,
+        expiresIn: codeResult.expiresIn,
+        whatsappSent: codeResult.whatsappSent,
+      });
       return {
         success: true,
+        hasActiveCode: codeResult.hasActiveCode,
+        expiresIn: codeResult.expiresIn,
+        expiresAt: codeResult.expiresAt,
+        whatsappSent: codeResult.whatsappSent,
+        whatsappError: codeResult.whatsappError,
       };
     } catch (error: any) {
       logger.error('❌ Error en initiatePhoneChange:', error);
@@ -1938,6 +2085,8 @@ export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
     getAllMovements,
     getTodayMovements,
     getTodayDeletedCount,
+    getTodayActiveCount,
+    getTodayYesterdayCount,
     addDebt,
     updateDebt,
     deleteDebt,

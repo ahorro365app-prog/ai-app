@@ -83,190 +83,43 @@ function processRelativeDate(dateText: string, userCountryCode: string = 'BO'): 
   
   let targetDate: Date;
   
-  // Mapeo de fechas relativas (máximo 7 días atrás)
-  if (normalizedText.includes('ayer') || normalizedText.includes('el día de ayer')) {
+  // NUEVA REGLA: Solo permitir "ayer" o fechas futuras (que se rechazarán después)
+  // Si detecta "ayer" o similar → fecha ayer
+  // Si no detecta nada → retornar null (se usará fecha de hoy por defecto)
+  if (normalizedText.includes('ayer') || normalizedText.includes('el día de ayer') || normalizedText.includes('hace 1 día') || normalizedText.includes('hace un día')) {
     logger.debug('📅 Detectado: ayer');
     // Crear fecha de ayer en zona horaria del país
     targetDate = new Date(year, month, day - 1);
     logger.debug('📅 Fecha de ayer creada:', targetDate.toLocaleDateString('es-ES'));
     logger.debug('📅 Día de la semana de ayer:', targetDate.toLocaleDateString('es-ES', { weekday: 'long' }));
-  } else if (normalizedText.includes('hace 1 día') || normalizedText.includes('hace un día')) {
-    targetDate = new Date(year, month, day - 1);
-  } else if (normalizedText.includes('hace 2 días') || normalizedText.includes('hace dos días')) {
-    targetDate = new Date(year, month, day - 2);
-  } else if (normalizedText.includes('hace 3 días') || normalizedText.includes('hace tres días')) {
-    targetDate = new Date(year, month, day - 3);
-  } else if (normalizedText.includes('hace 4 días') || normalizedText.includes('hace cuatro días')) {
-    targetDate = new Date(year, month, day - 4);
-  } else if (normalizedText.includes('hace 5 días') || normalizedText.includes('hace cinco días')) {
-    targetDate = new Date(year, month, day - 5);
-  } else if (normalizedText.includes('hace 6 días') || normalizedText.includes('hace seis días')) {
-    targetDate = new Date(year, month, day - 6);
-  } else if (normalizedText.includes('hace una semana') || normalizedText.includes('hace 1 semana') || normalizedText.includes('hace 7 días')) {
-    targetDate = new Date(year, month, day - 7);
-  } else if (normalizedText.includes('hace 8 días')) {
-    targetDate = new Date(year, month, day - 8);
-  } else if (normalizedText.includes('hace 9 días')) {
-    targetDate = new Date(year, month, day - 9);
-  } else if (normalizedText.includes('hace 10 días')) {
-    targetDate = new Date(year, month, day - 10);
-  } else if (normalizedText.includes('hace 15 días')) {
-    targetDate = new Date(year, month, day - 15);
-  } else if (normalizedText.includes('hace 20 días')) {
-    targetDate = new Date(year, month, day - 20);
-  } else if (normalizedText.includes('hace 30 días')) {
-    targetDate = new Date(year, month, day - 30);
-  } else if (normalizedText.includes('hace 50 días')) {
-    targetDate = new Date(year, month, day - 50);
-  } else if (normalizedText.includes('hace 60 días')) {
-    targetDate = new Date(year, month, day - 60);
-  } else if (normalizedText.includes('hace 90 días')) {
-    targetDate = new Date(year, month, day - 90);
-  } else if (normalizedText.includes('hace 100 días')) {
-    targetDate = new Date(year, month, day - 100);
-  } else if (normalizedText.includes('hace ocho días')) {
-    logger.debug('📅 Detectado: hace ocho días');
-    targetDate = new Date(year, month, day - 8);
-  } else if (normalizedText.includes('hace nueve días')) {
-    logger.debug('📅 Detectado: hace nueve días');
-    targetDate = new Date(year, month, day - 9);
-  } else if (normalizedText.includes('hace diez días')) {
-    logger.debug('📅 Detectado: hace diez días');
-    targetDate = new Date(year, month, day - 10);
-  } else if (normalizedText.includes('hace once días')) {
-    logger.debug('📅 Detectado: hace once días');
-    targetDate = new Date(year, month, day - 11);
-  } else if (normalizedText.includes('hace doce días')) {
-    logger.debug('📅 Detectado: hace doce días');
-    targetDate = new Date(year, month, day - 12);
-  } else if (normalizedText.includes('hace trece días')) {
-    logger.debug('📅 Detectado: hace trece días');
-    targetDate = new Date(year, month, day - 13);
-  } else if (normalizedText.includes('hace catorce días')) {
-    logger.debug('📅 Detectado: hace catorce días');
-    targetDate = new Date(year, month, day - 14);
-  } else if (normalizedText.includes('hace quince días')) {
-    logger.debug('📅 Detectado: hace quince días');
-    targetDate = new Date(year, month, day - 15);
-  } else if (normalizedText.includes('hace veinte días')) {
-    logger.debug('📅 Detectado: hace veinte días');
-    targetDate = new Date(year, month, day - 20);
-  } else if (normalizedText.includes('hace treinta días')) {
-    logger.debug('📅 Detectado: hace treinta días');
-    targetDate = new Date(year, month, day - 30);
-  } else if (normalizedText.includes('hace cuarenta días')) {
-    logger.debug('📅 Detectado: hace cuarenta días');
-    targetDate = new Date(year, month, day - 40);
-  } else if (normalizedText.includes('hace cincuenta días')) {
-    logger.debug('📅 Detectado: hace cincuenta días');
-    targetDate = new Date(year, month, day - 50);
-  } else if (normalizedText.includes('hace sesenta días')) {
-    logger.debug('📅 Detectado: hace sesenta días');
-    targetDate = new Date(year, month, day - 60);
-  } else if (normalizedText.includes('hace setenta días')) {
-    logger.debug('📅 Detectado: hace setenta días');
-    targetDate = new Date(year, month, day - 70);
-  } else if (normalizedText.includes('hace ochenta días')) {
-    logger.debug('📅 Detectado: hace ochenta días');
-    targetDate = new Date(year, month, day - 80);
-  } else if (normalizedText.includes('hace noventa días')) {
-    logger.debug('📅 Detectado: hace noventa días');
-    targetDate = new Date(year, month, day - 90);
-  } else if (normalizedText.includes('martes 14 de octubre')) {
-    logger.debug('📅 Detectado: martes 14 de octubre');
-    targetDate = new Date(2025, 9, 14); // Octubre es mes 9 (0-indexado)
-    logger.debug('📅 Fecha específica creada:', targetDate.toLocaleDateString('es-ES'));
-  } else if (normalizedText.includes('lunes 15 de octubre')) {
-    logger.debug('📅 Detectado: lunes 15 de octubre');
-    targetDate = new Date(2025, 9, 15);
-  } else if (normalizedText.includes('viernes 18 de octubre')) {
-    logger.debug('📅 Detectado: viernes 18 de octubre');
-    targetDate = new Date(2025, 9, 18);
-  } else if (normalizedText.includes('el día martes')) {
-    logger.debug('📅 Detectado: el día martes');
-    // Buscar el martes más reciente
-    const today = new Date(year, month, day);
-    const dayOfWeek = today.getDay(); // 0=domingo, 1=lunes, 2=martes, etc.
-    const daysToTuesday = dayOfWeek >= 2 ? dayOfWeek - 2 : dayOfWeek + 5; // Martes es día 2
-    targetDate = new Date(year, month, day - daysToTuesday);
-  } else if (normalizedText.includes('el lunes pasado')) {
-    logger.debug('📅 Detectado: el lunes pasado');
-    // Buscar el lunes más reciente
-    const today = new Date(year, month, day);
-    const dayOfWeek = today.getDay(); // 0=domingo, 1=lunes, 2=martes, etc.
-    const daysToMonday = dayOfWeek >= 1 ? dayOfWeek - 1 : dayOfWeek + 6; // Lunes es día 1
-    targetDate = new Date(year, month, day - daysToMonday);
-  } else if (normalizedText.includes('miércoles 15')) {
-    logger.debug('📅 Detectado: miércoles 15');
-    // Asumir octubre 2025 (mes actual)
-    targetDate = new Date(2025, 9, 15); // Octubre es mes 9 (0-indexado)
-    logger.debug('📅 Fecha específica creada:', targetDate.toLocaleDateString('es-ES'));
-  } else if (normalizedText.includes('martes 14')) {
-    logger.debug('📅 Detectado: martes 14');
-    targetDate = new Date(2025, 9, 14);
-  } else if (normalizedText.includes('lunes 15')) {
-    logger.debug('📅 Detectado: lunes 15');
-    targetDate = new Date(2025, 9, 15);
-  } else if (normalizedText.includes('viernes 18')) {
-    logger.debug('📅 Detectado: viernes 18');
-    targetDate = new Date(2025, 9, 18);
-  } else if (normalizedText.includes('jueves 16')) {
-    logger.debug('📅 Detectado: jueves 16');
-    targetDate = new Date(2025, 9, 16);
-  } else if (normalizedText.includes('sábado 19')) {
-    logger.debug('📅 Detectado: sábado 19');
-    targetDate = new Date(2025, 9, 19);
-  } else if (normalizedText.includes('domingo 20')) {
-    logger.debug('📅 Detectado: domingo 20');
-    targetDate = new Date(2025, 9, 20);
-  } else if (normalizedText.includes('sábado 11')) {
-    logger.debug('📅 Detectado: sábado 11');
-    targetDate = new Date(2025, 9, 11);
-  } else if (normalizedText.includes('viernes 10')) {
-    logger.debug('📅 Detectado: viernes 10');
-    targetDate = new Date(2025, 9, 10);
-  } else if (normalizedText.includes('jueves 9')) {
-    logger.debug('📅 Detectado: jueves 9');
-    targetDate = new Date(2025, 9, 9);
-  } else if (normalizedText.includes('miércoles 8')) {
-    logger.debug('📅 Detectado: miércoles 8');
-    targetDate = new Date(2025, 9, 8);
-  } else if (normalizedText.includes('martes 7')) {
-    logger.debug('📅 Detectado: martes 7');
-    targetDate = new Date(2025, 9, 7);
-  } else if (normalizedText.includes('lunes 6')) {
-    logger.debug('📅 Detectado: lunes 6');
-    targetDate = new Date(2025, 9, 6);
-  } else if (normalizedText.includes('domingo 5')) {
-    logger.debug('📅 Detectado: domingo 5');
-    targetDate = new Date(2025, 9, 5);
-  } else if (normalizedText.includes('12 de octubre')) {
-    logger.debug('📅 Detectado: 12 de octubre');
-    targetDate = new Date(2025, 9, 12);
-  } else if (normalizedText.includes('13 de octubre')) {
-    logger.debug('📅 Detectado: 13 de octubre');
-    targetDate = new Date(2025, 9, 13);
-  } else if (normalizedText.includes('11 de octubre')) {
-    logger.debug('📅 Detectado: 11 de octubre');
-    targetDate = new Date(2025, 9, 11);
   } else {
-    // Si no se puede procesar o es más de 7 días, retornar null
-    logger.debug('📅 No se pudo procesar la fecha:', dateText);
-    return null;
+    // Si detecta cualquier otra fecha (hace 2 días, hace 3 días, etc.) → rechazar
+    // Retornar error indicando que solo se permite ayer
+    logger.warn('⚠️ Fecha detectada que no es "ayer":', dateText);
+    logger.warn('⚠️ Solo se permiten transacciones para ayer o hoy');
+    return { 
+      error: 'DATE_NOT_ALLOWED', 
+      message: 'Solo se pueden crear transacciones para ayer o hoy. Si no mencionas una fecha, se usará la fecha de hoy.', 
+      daysDiff: 0 
+    };
   }
   
-  // Verificar que la fecha calculada no sea más de 7 días atrás
+  // Verificar que la fecha calculada sea solo ayer (1 día atrás)
   const todayCountry = new Date(year, month, day);
   const daysDiff = Math.floor((todayCountry.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24));
   logger.debug('📅 Diferencia en días:', daysDiff);
   
-  if (daysDiff > 7) {
-    logger.error('❌ Fecha más de 7 días atrás, no válida');
+  // Solo permitir ayer (1 día atrás) o hoy (0 días)
+  if (daysDiff > 1) {
+    logger.error('❌ Fecha más antigua que ayer, no válida');
     logger.error('❌ Fecha solicitada:', targetDate.toLocaleDateString('es-ES'));
     logger.error('❌ Fecha actual:', todayCountry.toLocaleDateString('es-ES'));
     logger.error('❌ Días de diferencia:', daysDiff);
-    // Retornar un objeto especial para indicar error de fecha
-    return { error: 'DATE_TOO_OLD', message: 'No puedes agregar transacciones con más de 7 días de antigüedad', daysDiff };
+    return { 
+      error: 'DATE_TOO_OLD', 
+      message: 'Solo se pueden crear transacciones para ayer o hoy', 
+      daysDiff 
+    };
   }
   
   // Formatear como YYYY-MM-DD en zona horaria del país
@@ -413,30 +266,38 @@ Ejemplos SIN fechas (NO incluir fechaTexto):
 
 Devuelve solo JSON válido:`;
 
-    const response = await fetch(GROQ_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        temperature: 0.2,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ]
-      })
-    });
+    // Timeout de 8 segundos para prevenir requests colgados
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 segundos
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Groq API error: ${response.status} - ${errorText}`);
-    }
+    try {
+      const response = await fetch(GROQ_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          temperature: 0.2,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ]
+        }),
+        signal: controller.signal // Agregar signal para timeout
+      });
 
-    const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content?.trim();
-    if (!content) return { raw: data } as GroqExtraction;
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Groq API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      const content = data?.choices?.[0]?.message?.content?.trim();
+      if (!content) return { raw: data } as GroqExtraction;
 
     // Intentar parsear JSON
     try {
@@ -485,6 +346,14 @@ Devuelve solo JSON válido:`;
         }
       }
       return { raw: data } as GroqExtraction;
+    }
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        logger.error('❌ Request timeout (8s) al procesar texto con Groq');
+        throw new Error('Request timeout después de 8s');
+      }
+      throw fetchError;
     }
   } catch (err) {
     logger.error('❌ Error procesando texto con Groq:', err);
@@ -657,34 +526,42 @@ Ejemplos SIN fechas (NO incluir fechaTexto):
 
 Devuelve solo JSON válido:`;
 
-    const response = await fetch(GROQ_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ]
-      })
-    });
+    // Timeout de 8 segundos para prevenir requests colgados
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 segundos
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Groq API error: ${response.status} - ${errorText}`);
-    }
+    try {
+      const response = await fetch(GROQ_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ]
+        }),
+        signal: controller.signal // Agregar signal para timeout
+      });
 
-    const data = await response.json();
-    logger.debug('🤖 Groq API response recibida:', data);
-    const content = data?.choices?.[0]?.message?.content?.trim();
-    logger.debug('🤖 Groq content extraído:', content);
-    if (!content) {
-      logger.error('❌ No hay contenido en la respuesta de Groq');
-      return null;
-    }
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Groq API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      logger.debug('🤖 Groq API response recibida:', data);
+      const content = data?.choices?.[0]?.message?.content?.trim();
+      logger.debug('🤖 Groq content extraído:', content);
+      if (!content) {
+        logger.error('❌ No hay contenido en la respuesta de Groq');
+        return null;
+      }
 
     // Intentar parsear JSON
     try {
@@ -751,6 +628,14 @@ Devuelve solo JSON válido:`;
         }
       }
       return null;
+    }
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        logger.error('❌ Request timeout (8s) al procesar múltiples transacciones con Groq');
+        throw new Error('Request timeout después de 8s');
+      }
+      throw fetchError;
     }
   } catch (err) {
     logger.error('❌ Error procesando texto con Groq:', err);

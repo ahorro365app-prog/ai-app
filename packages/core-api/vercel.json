@@ -8,6 +8,12 @@
     "src/app/api/**/*.ts": {
       "maxDuration": 10
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/confirm-expired",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }
 

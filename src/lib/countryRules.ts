@@ -1,9 +1,27 @@
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './logger';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization para evitar errores durante build time
+let supabase: ReturnType<typeof createClient> | null = null;
+
+function getSupabase() {
+  if (!supabase) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    // Durante build time, retornar objeto dummy
+    if (!url || !key || (process.env.VERCEL === '1' && !url)) {
+      return {
+        from: () => ({
+          select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+        }),
+      } as any;
+    }
+    
+    supabase = createClient(url, key);
+  }
+  return supabase;
+}
 
 export interface CountryRules {
   country_code: string;
@@ -23,20 +41,20 @@ export interface CountryRules {
  */
 export async function getCountryRules(countryCode: string): Promise<CountryRules> {
   try {
-    console.log(`🌍 Fetching rules for country: ${countryCode}`);
+    logger.debug(`🌍 Fetching rules for country: ${countryCode}`);
     
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('reglas_pais')
       .select('*')
       .eq('country_code', countryCode);
 
     if (error) {
-      console.error('❌ Error fetching country rules:', error);
+      logger.error('❌ Error fetching country rules:', error);
       return getBoliviaFallback();
     }
 
     if (!data || data.length === 0) {
-      console.warn(`⚠️ No rules found for ${countryCode}, using Bolivia fallback`);
+      logger.warn(`⚠️ No rules found for ${countryCode}, using Bolivia fallback`);
       return getBoliviaFallback();
     }
 
@@ -47,7 +65,7 @@ export async function getCountryRules(countryCode: string): Promise<CountryRules
       slang: regla.slang,
     }));
 
-    console.log(`✅ Rules loaded for ${countryCode}`);
+    logger.debug(`✅ Rules loaded for ${countryCode}`);
 
     // Retornar formato consolidado
     return {
@@ -63,8 +81,8 @@ export async function getCountryRules(countryCode: string): Promise<CountryRules
     };
     
   } catch (error) {
-    console.error('❌ Error in getCountryRules:', error);
-    console.log('🔄 Using Bolivia fallback');
+    logger.error('❌ Error in getCountryRules:', error);
+    logger.debug('🔄 Using Bolivia fallback');
     return getBoliviaFallback();
   }
 }

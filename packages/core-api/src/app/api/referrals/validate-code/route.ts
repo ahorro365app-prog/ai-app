@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { z } from 'zod';
+import { handleError, handleValidationError, ErrorType } from '@/lib/errorHandler';
+import { logger } from '@/lib/logger';
 
 const validateCodeSchema = z.object({
   code: z.string().length(8, 'El código debe tener 8 caracteres'),
@@ -20,19 +22,13 @@ export async function POST(request: NextRequest) {
     const validation = validateCodeSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
-        {
-          valid: false,
-          message: 'El código debe tener 8 caracteres',
-        },
-        { status: 400 }
-      );
+      return handleValidationError('El código debe tener 8 caracteres');
     }
 
     const { code } = validation.data;
     const supabase = getSupabaseAdmin();
 
-    console.log(`🔍 Validando código de referido: ${code}`);
+    logger.debug('🔍 Validando código de referido');
 
     // Buscar usuario con ese código de referido
     const { data: referidor, error: referidorError } = await supabase
@@ -42,7 +38,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (referidorError || !referidor) {
-      console.log(`❌ Código no encontrado: ${code}`);
+      logger.debug('❌ Código no encontrado');
       return NextResponse.json({
         valid: false,
         message: 'Código no encontrado',
@@ -52,21 +48,17 @@ export async function POST(request: NextRequest) {
     // Extraer primer nombre (split por espacio, tomar primer elemento)
     const primerNombre = referidor.nombre?.split(' ')[0] || 'Usuario';
 
-    console.log(`✅ Código válido - Referidor: ${primerNombre}`);
+    logger.debug('✅ Código válido');
 
     return NextResponse.json({
       valid: true,
       referidorNombre: primerNombre,
     });
   } catch (error: any) {
-    console.error('❌ Error validando código:', error);
-    return NextResponse.json(
-      {
-        valid: false,
-        message: 'Error al validar código',
-        error: error?.message || 'Error desconocido',
-      },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error al validar código',
+      ErrorType.DATABASE
     );
   }
 }

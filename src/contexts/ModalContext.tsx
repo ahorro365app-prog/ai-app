@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { logger } from '@/lib/logger';
 
 interface ModalContextType {
   isAnyModalOpen: boolean;
@@ -10,16 +11,18 @@ interface ModalContextType {
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
 
 export function ModalProvider({ children }: { children: ReactNode }) {
+  logger.debug('🚀 ModalProvider: Componente inicializado');
   const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
+  logger.debug('📊 ModalProvider: Estado inicial configurado');
 
   const setModalOpen = useCallback((isOpen: boolean) => {
-    console.log('ModalContext: setModalOpen called with:', isOpen);
+    logger.debug('ModalContext: setModalOpen called with:', isOpen);
     setIsAnyModalOpen(isOpen);
-    console.log('ModalContext: isAnyModalOpen state updated to:', isOpen);
+    logger.debug('ModalContext: isAnyModalOpen state updated to:', isOpen);
   }, []);
 
   useEffect(() => {
-    console.log('ModalContext: isAnyModalOpen changed to:', isAnyModalOpen);
+    logger.debug('ModalContext: isAnyModalOpen changed to:', isAnyModalOpen);
   }, [isAnyModalOpen]);
 
   return (

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './logger';
 
 // Cache para el cliente (evita crear múltiples instancias)
 let supabaseAdminClient: ReturnType<typeof createClient> | null = null;
@@ -22,7 +23,7 @@ function validateEnvironmentVariables(): void {
    3. Agrega a .env.local: NEXT_PUBLIC_SUPABASE_URL=tu_url_aqui
    4. Reinicia el servidor (npm run dev)
     `;
-    console.error(errorMessage);
+    logger.error(errorMessage);
     throw new Error('NEXT_PUBLIC_SUPABASE_URL no configurada. Revisa la consola para instrucciones.');
   }
 
@@ -48,7 +49,7 @@ function validateEnvironmentVariables(): void {
    4. ⚠️ IMPORTANTE: Esta key tiene permisos admin, manténla segura
    5. Reinicia el servidor (npm run dev)
     `;
-    console.error(errorMessage);
+    logger.error(errorMessage);
     throw new Error('SUPABASE_SERVICE_ROLE_KEY no configurada. Revisa la consola para instrucciones.');
   }
 
@@ -65,23 +66,72 @@ function validateEnvironmentVariables(): void {
  * @returns Cliente de Supabase configurado
  * @throws Error si las variables de entorno no están configuradas
  */
+// Detectar si estamos en build time
+const isBuildTime = typeof window === 'undefined' && 
+  (process.env.NEXT_PHASE === 'phase-production-build' || 
+   process.env.VERCEL === '1' && !process.env.NEXT_PUBLIC_SUPABASE_URL);
+
 export function getSupabaseAdmin() {
+  // Durante build time, retornar un objeto dummy que no cause errores
+  if (isBuildTime) {
+    // Retornar un objeto que tenga la misma estructura pero no haga nada
+    return {
+      from: () => ({
+        select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+        insert: () => Promise.resolve({ data: null, error: null }),
+        update: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }),
+      }),
+      rpc: () => Promise.resolve({ data: null, error: null }),
+    } as any;
+  }
+  
   // Validar variables de entorno (solo la primera vez)
   if (!supabaseAdminClient) {
-    validateEnvironmentVariables();
+    // Usar validación centralizada si está disponible (en producción)
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        const { enforceEnvironmentValidation } = require('./envValidation');
+        enforceEnvironmentValidation();
+      } catch (error) {
+        // Si falla, usar validación básica como fallback
+        validateEnvironmentVariables();
+      }
+    } else {
+      // En desarrollo, usar validación básica
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      
+      // Validar que existan
+      if (!url || !key) {
+        validateEnvironmentVariables();
+      }
+    }
     
-    // Crear cliente solo si la validación pasa
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    // Obtener variables de entorno
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     
-    supabaseAdminClient = createClient(url, key, {
+    // Validar formato de URL
+    try {
+      const urlObj = new URL(url!);
+      if (!urlObj.protocol.startsWith('http')) {
+        throw new Error('URL debe usar http:// o https://');
+      }
+    } catch {
+      throw new Error(`NEXT_PUBLIC_SUPABASE_URL no es una URL válida: ${url}`);
+    }
+    
+    // Crear cliente
+    supabaseAdminClient = createClient(url!, key!, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
       }
     });
     
-    console.log('✅ Cliente Supabase Admin creado correctamente');
+    if (process.env.NODE_ENV !== 'production') {
+      logger.debug('✅ Cliente Supabase Admin creado correctamente');
+    }
   }
   
   return supabaseAdminClient as any;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { handleError, handleValidationError, ErrorType } from '@/lib/errorHandler';
 
 const TEMPLATE_TYPES = [
   'system',
@@ -76,24 +77,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: data || [] });
   } catch (error: any) {
-    console.error('Error obteniendo templates:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: error?.message || 'Error obteniendo templates',
-        ...(process.env.NODE_ENV !== 'production'
-          ? {
-              details: {
-                code: error?.code,
-                hint: error?.hint,
-                details: error?.details,
-                message: error?.message,
-                stack: error?.stack,
-              },
-            }
-          : {}),
-      },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error obteniendo templates',
+      ErrorType.DATABASE
     );
   }
 }
@@ -119,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     const errors = validatePayload(payload);
     if (errors.length > 0) {
-      return NextResponse.json({ success: false, message: errors.join(' ') }, { status: 400 });
+      return handleValidationError(errors.join(' '));
     }
 
     const { data, error } = await supabase
@@ -144,24 +131,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error('Error creando template:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: error?.message || 'Error creando template',
-        ...(process.env.NODE_ENV !== 'production'
-          ? {
-              details: {
-                code: error?.code,
-                hint: error?.hint,
-                details: error?.details,
-                message: error?.message,
-                stack: error?.stack,
-              },
-            }
-          : {}),
-      },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error creando template',
+      ErrorType.DATABASE
     );
   }
 }

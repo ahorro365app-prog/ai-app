@@ -2,6 +2,7 @@
 
 import React, { Component, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Settings } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface Props {
   children: ReactNode;
@@ -15,6 +16,7 @@ interface State {
 export default class SupabaseErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
+    logger.debug('🚀 SupabaseErrorBoundary: Componente inicializado');
     this.state = { hasError: false, error: null };
   }
 
@@ -33,7 +35,7 @@ export default class SupabaseErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error capturado por SupabaseErrorBoundary:', error, errorInfo);
+    logger.error('Error capturado por SupabaseErrorBoundary:', error, errorInfo);
   }
 
   handleRetry = () => {
@@ -48,7 +50,9 @@ export default class SupabaseErrorBoundary extends Component<Props, State> {
   };
 
   render() {
+    logger.debug('🔄 SupabaseErrorBoundary: render() llamado, hasError:', this.state.hasError);
     if (this.state.hasError) {
+      logger.error('❌ SupabaseErrorBoundary: Mostrando UI de error');
       // Si es un error de Supabase, mostrar interfaz de configuración
       if (this.state.error && this.state.error.message.includes('supabaseUrl')) {
         return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 
 interface SpeechRecognitionOptions {
   lang?: string;
@@ -92,7 +93,7 @@ export function useSpeechRecognition(
       try {
         recognition.start();
       } catch (e) {
-        console.error('Error starting recognition:', e);
+        logger.error('Error starting recognition:', e);
       }
     }
   }, [recognition, isListening]);

@@ -2,6 +2,8 @@
  * Validaciones de límites según el plan de suscripción
  */
 
+import { logger } from './logger';
+
 export type SubscriptionPlan = 'free' | 'smart' | 'pro' | 'caducado';
 
 export interface PlanLimits {
@@ -157,7 +159,7 @@ export function validateTextLength(
   if (text && text.length > limits.maxTextLength) {
     return {
       valid: false,
-      message: `El texto no puede exceder ${limits.maxTextLength} caracteres. Por favor, envía un mensaje más corto. (${text.length}/${limits.maxTextLength} caracteres)`,
+      message: `📝 El texto no puede exceder *${limits.maxTextLength} caracteres.* Por favor, envía un mensaje más corto. (${text.length}/${limits.maxTextLength} caracteres)`,
       errorCode: 'TEXT_LENGTH_EXCEEDED',
     };
   }
@@ -182,7 +184,7 @@ export async function validateCanCreateTransaction(
     if (audioDurationSeconds > limits.maxAudioDurationSeconds) {
       return {
         valid: false,
-        message: `El audio no puede exceder ${limits.maxAudioDurationSeconds} segundos. Por favor, envía un audio más corto.`,
+        message: `🔇 El audio no puede exceder *${limits.maxAudioDurationSeconds} segundos.* Por favor, envía un audio más corto.`,
         errorCode: 'AUDIO_DURATION_EXCEEDED',
       };
     }
@@ -203,7 +205,7 @@ export async function validateCanCreateTransaction(
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    console.log('🔍 Validando límite diario:', {
+    logger.debug('🔍 Validando límite diario:', {
       plan,
       maxDailyTransactions: limits.maxDailyTransactions,
       userId,
@@ -211,36 +213,151 @@ export async function validateCanCreateTransaction(
       tomorrow: tomorrow.toISOString()
     });
     
-    // Contar TODAS las transacciones del día (activas + eliminadas)
+    // Contar TODAS las transacciones creadas HOY (por fecha_creacion, no por fecha)
+    // Esto incluye: activas + eliminadas + de ayer creadas hoy
     // Esto previene que los usuarios eliminen y vuelvan a crear para sortear el límite
     const { count, error } = await supabase
       .from('transacciones')
       .select('*', { count: 'exact', head: true })
       .eq('usuario_id', userId)
-      .gte('fecha', today.toISOString())
-      .lt('fecha', tomorrow.toISOString());
+      .gte('fecha_creacion', today.toISOString())
+      .lt('fecha_creacion', tomorrow.toISOString());
     
-    console.log('📊 Resultado del conteo (todas las transacciones del día):', { count, error });
+    logger.debug('📊 Resultado del conteo (todas las transacciones del día):', { count, error });
     
     if (error) {
-      console.error('❌ Error checking transaction limit:', error);
+      logger.error('❌ Error checking transaction limit:', error);
       // En caso de error, permitir la creación para no bloquear al usuario
       return { valid: true };
     }
     
     if (count !== null && count >= limits.maxDailyTransactions) {
-      console.warn(`⚠️ Límite diario excedido: ${count}/${limits.maxDailyTransactions}`);
+      logger.warn(`⚠️ Límite diario excedido: ${count}/${limits.maxDailyTransactions}`);
       return {
         valid: false,
-        message: `Has alcanzado el límite de ${limits.maxDailyTransactions} transacciones diarias. Puedes crear más transacciones mañana o actualizar a un plan superior.`,
+        message: `🚨 Has alcanzado el límite de *${limits.maxDailyTransactions} transacciones diarias.* Puedes crear más transacciones mañana o actualizar a un plan superior. 💜`,
         errorCode: 'DAILY_TRANSACTION_LIMIT_EXCEEDED',
       };
     }
     
-    console.log(`✅ Límite diario OK: ${count}/${limits.maxDailyTransactions}`);
+    logger.debug(`✅ Límite diario OK: ${count}/${limits.maxDailyTransactions}`);
   }
   
   return { valid: true };
+}
+
+/**
+ * Valida límite de transacciones para múltiples transacciones
+ * Retorna información detallada para mensajes personalizados
+ */
+export async function validateTransactionLimitForMultiple(
+  plan: SubscriptionPlan,
+  userId: string,
+  requestedCount: number,
+  supabase: any
+): Promise<{
+  canProcessAll: boolean;
+  currentCount: number;
+  maxAllowed: number;
+  requestedCount: number;
+  canProcessCount: number;
+  remainingSlots: number;
+  message?: string;
+}> {
+  const limits = getPlanLimits(plan);
+  
+  // Si no hay límite, permitir todas
+  if (limits.maxDailyTransactions === null) {
+    return {
+      canProcessAll: true,
+      currentCount: 0,
+      maxAllowed: Infinity,
+      requestedCount,
+      canProcessCount: requestedCount,
+      remainingSlots: Infinity
+    };
+  }
+  
+  // Contar transacciones creadas HOY (por fecha_creacion, no por fecha)
+  // Esto incluye: activas + eliminadas + de ayer creadas hoy
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  const { count, error } = await supabase
+    .from('transacciones')
+    .select('*', { count: 'exact', head: true })
+    .eq('usuario_id', userId)
+    .gte('fecha_creacion', today.toISOString())
+    .lt('fecha_creacion', tomorrow.toISOString());
+  
+  if (error) {
+    logger.error('❌ Error checking transaction limit for multiple:', error);
+    // En caso de error, permitir para no bloquear
+    return {
+      canProcessAll: true,
+      currentCount: 0,
+      maxAllowed: limits.maxDailyTransactions,
+      requestedCount,
+      canProcessCount: requestedCount,
+      remainingSlots: limits.maxDailyTransactions
+    };
+  }
+  
+  const currentCount = count || 0;
+  const maxAllowed = limits.maxDailyTransactions;
+  const remainingSlots = Math.max(0, maxAllowed - currentCount);
+  const canProcessCount = Math.min(requestedCount, remainingSlots);
+  const canProcessAll = requestedCount <= remainingSlots;
+  
+  logger.debug('🔍 Validación límite múltiple:', {
+    plan,
+    currentCount,
+    maxAllowed,
+    requestedCount,
+    canProcessCount,
+    remainingSlots,
+    canProcessAll
+  });
+  
+  // Si puede procesar todas, no necesita mensaje
+  if (canProcessAll) {
+    return {
+      canProcessAll: true,
+      currentCount,
+      maxAllowed,
+      requestedCount,
+      canProcessCount,
+      remainingSlots
+    };
+  }
+  
+  // Si no puede procesar todas, generar mensaje
+  let message: string;
+  if (remainingSlots === 0) {
+    // Límite completamente alcanzado
+    message = `🚨 Has alcanzado el límite de *${maxAllowed} transacciones diarias.* Puedes crear más transacciones mañana o actualizar a un plan superior. 💜`;
+  } else {
+    // Límite parcial
+    const ejemplo = remainingSlots === 1 
+      ? "Ejemplo: 'Gasté 50 en taxi'"
+      : remainingSlots === 2
+      ? "Ejemplo: 'Gasté 50 en taxi y 30 en comida'"
+      : `Ejemplo: 'Gasté X en...' (máximo ${remainingSlots} transacciones)`;
+    
+    message = `⚠️ *Límite parcial*\nYa has realizado ${currentCount} transacciones hoy. Solo puedes guardar ${remainingSlots} más.\nPor favor, envía un nuevo mensaje con solo ${remainingSlots} transacción${remainingSlots > 1 ? 'es' : ''} (o menos).\n${ejemplo}`;
+  }
+  
+  return {
+    canProcessAll: false,
+    currentCount,
+    maxAllowed,
+    requestedCount,
+    canProcessCount: 0, // No procesar ninguna si no puede todas
+    remainingSlots,
+    message
+  };
 }
 
 /**
@@ -269,7 +386,7 @@ export async function validateCanCreateDebt(
     .is('fecha_eliminacion', null);
   
   if (countError) {
-    console.error('Error checking active debts:', countError);
+    logger.error('Error checking active debts:', countError);
     return { valid: true }; // En caso de error, permitir
   }
   
@@ -293,7 +410,7 @@ export async function validateCanCreateDebt(
     .limit(1);
   
   if (deletedError) {
-    console.error('Error checking deleted debts:', deletedError);
+    logger.error('Error checking deleted debts:', deletedError);
     // Continuar con la validación si hay error
   } else if (deletedDebts && deletedDebts.length > 0) {
     const lastDeletedDate = new Date(deletedDebts[0].fecha_eliminacion);
@@ -339,7 +456,7 @@ export async function validateCanCreateGoal(
     .is('fecha_eliminacion', null);
   
   if (countError) {
-    console.error('Error checking active goals:', countError);
+    logger.error('Error checking active goals:', countError);
     return { valid: true }; // En caso de error, permitir
   }
   
@@ -363,7 +480,7 @@ export async function validateCanCreateGoal(
     .limit(1);
   
   if (deletedError) {
-    console.error('Error checking deleted goals:', deletedError);
+    logger.error('Error checking deleted goals:', deletedError);
     // Continuar con la validación si hay error
   } else if (deletedGoals && deletedGoals.length > 0) {
     const lastDeletedDate = new Date(deletedGoals[0].fecha_eliminacion);

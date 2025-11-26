@@ -2,6 +2,9 @@
    Requiere: NEXT_PUBLIC_GROQ_API_KEY en .env.local
 */
 
+import { logger } from '../lib/logger';
+import { fetchWithTimeout } from '../lib/fetchWithTimeout';
+
 type GroqExtraction = {
   monto?: number | null;
   categoria?: string | null;
@@ -22,12 +25,12 @@ export type GroqTransaction = {
   fechaTexto?: string | null; // Texto de fecha relativa (ej: "ayer", "hace 2 días")
 };
 
-type GroqMultipleResponse = {
+export type GroqMultipleResponse = {
   transacciones: GroqTransaction[];
   esMultiple: boolean;
 };
 
-const GROQ_API_KEY = process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
+const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.1-8b-instant';
 
@@ -62,12 +65,12 @@ function processRelativeDate(dateText: string, userCountryCode: string = 'BO'): 
   const countryTime = getCountryDate(userCountryCode);
   const timezone = countryTimezones[userCountryCode] || countryTimezones['BO'];
   
-  console.log('📅 processRelativeDate llamado con:', dateText);
-  console.log('📅 País del usuario:', userCountryCode);
-  console.log('📅 Zona horaria:', timezone);
-  console.log('📅 Fecha actual UTC:', today.toISOString());
-  console.log('📅 Fecha actual país:', countryTime.toLocaleDateString('es-ES'));
-  console.log('📅 Día de la semana actual:', countryTime.toLocaleDateString('es-ES', { weekday: 'long' }));
+  logger.debug('📅 processRelativeDate llamado con:', dateText);
+  logger.debug('📅 País del usuario:', userCountryCode);
+  logger.debug('📅 Zona horaria:', timezone);
+  logger.debug('📅 Fecha actual UTC:', today.toISOString());
+  logger.debug('📅 Fecha actual país:', countryTime.toLocaleDateString('es-ES'));
+  logger.debug('📅 Día de la semana actual:', countryTime.toLocaleDateString('es-ES', { weekday: 'long' }));
   
   // Normalizar el texto
   const normalizedText = dateText.toLowerCase().trim();
@@ -77,17 +80,17 @@ function processRelativeDate(dateText: string, userCountryCode: string = 'BO'): 
   const month = countryTime.getMonth();
   const day = countryTime.getDate();
   
-  console.log('📅 Componentes de fecha actual:', { year, month, day });
+  logger.debug('📅 Componentes de fecha actual:', { year, month, day });
   
   let targetDate: Date;
   
   // Mapeo de fechas relativas (máximo 7 días atrás)
   if (normalizedText.includes('ayer') || normalizedText.includes('el día de ayer')) {
-    console.log('📅 Detectado: ayer');
+    logger.debug('📅 Detectado: ayer');
     // Crear fecha de ayer en zona horaria del país
     targetDate = new Date(year, month, day - 1);
-    console.log('📅 Fecha de ayer creada:', targetDate.toLocaleDateString('es-ES'));
-    console.log('📅 Día de la semana de ayer:', targetDate.toLocaleDateString('es-ES', { weekday: 'long' }));
+    logger.debug('📅 Fecha de ayer creada:', targetDate.toLocaleDateString('es-ES'));
+    logger.debug('📅 Día de la semana de ayer:', targetDate.toLocaleDateString('es-ES', { weekday: 'long' }));
   } else if (normalizedText.includes('hace 1 día') || normalizedText.includes('hace un día')) {
     targetDate = new Date(year, month, day - 1);
   } else if (normalizedText.includes('hace 2 días') || normalizedText.includes('hace dos días')) {
@@ -123,162 +126,162 @@ function processRelativeDate(dateText: string, userCountryCode: string = 'BO'): 
   } else if (normalizedText.includes('hace 100 días')) {
     targetDate = new Date(year, month, day - 100);
   } else if (normalizedText.includes('hace ocho días')) {
-    console.log('📅 Detectado: hace ocho días');
+    logger.debug('📅 Detectado: hace ocho días');
     targetDate = new Date(year, month, day - 8);
   } else if (normalizedText.includes('hace nueve días')) {
-    console.log('📅 Detectado: hace nueve días');
+    logger.debug('📅 Detectado: hace nueve días');
     targetDate = new Date(year, month, day - 9);
   } else if (normalizedText.includes('hace diez días')) {
-    console.log('📅 Detectado: hace diez días');
+    logger.debug('📅 Detectado: hace diez días');
     targetDate = new Date(year, month, day - 10);
   } else if (normalizedText.includes('hace once días')) {
-    console.log('📅 Detectado: hace once días');
+    logger.debug('📅 Detectado: hace once días');
     targetDate = new Date(year, month, day - 11);
   } else if (normalizedText.includes('hace doce días')) {
-    console.log('📅 Detectado: hace doce días');
+    logger.debug('📅 Detectado: hace doce días');
     targetDate = new Date(year, month, day - 12);
   } else if (normalizedText.includes('hace trece días')) {
-    console.log('📅 Detectado: hace trece días');
+    logger.debug('📅 Detectado: hace trece días');
     targetDate = new Date(year, month, day - 13);
   } else if (normalizedText.includes('hace catorce días')) {
-    console.log('📅 Detectado: hace catorce días');
+    logger.debug('📅 Detectado: hace catorce días');
     targetDate = new Date(year, month, day - 14);
   } else if (normalizedText.includes('hace quince días')) {
-    console.log('📅 Detectado: hace quince días');
+    logger.debug('📅 Detectado: hace quince días');
     targetDate = new Date(year, month, day - 15);
   } else if (normalizedText.includes('hace veinte días')) {
-    console.log('📅 Detectado: hace veinte días');
+    logger.debug('📅 Detectado: hace veinte días');
     targetDate = new Date(year, month, day - 20);
   } else if (normalizedText.includes('hace treinta días')) {
-    console.log('📅 Detectado: hace treinta días');
+    logger.debug('📅 Detectado: hace treinta días');
     targetDate = new Date(year, month, day - 30);
   } else if (normalizedText.includes('hace cuarenta días')) {
-    console.log('📅 Detectado: hace cuarenta días');
+    logger.debug('📅 Detectado: hace cuarenta días');
     targetDate = new Date(year, month, day - 40);
   } else if (normalizedText.includes('hace cincuenta días')) {
-    console.log('📅 Detectado: hace cincuenta días');
+    logger.debug('📅 Detectado: hace cincuenta días');
     targetDate = new Date(year, month, day - 50);
   } else if (normalizedText.includes('hace sesenta días')) {
-    console.log('📅 Detectado: hace sesenta días');
+    logger.debug('📅 Detectado: hace sesenta días');
     targetDate = new Date(year, month, day - 60);
   } else if (normalizedText.includes('hace setenta días')) {
-    console.log('📅 Detectado: hace setenta días');
+    logger.debug('📅 Detectado: hace setenta días');
     targetDate = new Date(year, month, day - 70);
   } else if (normalizedText.includes('hace ochenta días')) {
-    console.log('📅 Detectado: hace ochenta días');
+    logger.debug('📅 Detectado: hace ochenta días');
     targetDate = new Date(year, month, day - 80);
   } else if (normalizedText.includes('hace noventa días')) {
-    console.log('📅 Detectado: hace noventa días');
+    logger.debug('📅 Detectado: hace noventa días');
     targetDate = new Date(year, month, day - 90);
   } else if (normalizedText.includes('martes 14 de octubre')) {
-    console.log('📅 Detectado: martes 14 de octubre');
+    logger.debug('📅 Detectado: martes 14 de octubre');
     targetDate = new Date(2025, 9, 14); // Octubre es mes 9 (0-indexado)
-    console.log('📅 Fecha específica creada:', targetDate.toLocaleDateString('es-ES'));
+    logger.debug('📅 Fecha específica creada:', targetDate.toLocaleDateString('es-ES'));
   } else if (normalizedText.includes('lunes 15 de octubre')) {
-    console.log('📅 Detectado: lunes 15 de octubre');
+    logger.debug('📅 Detectado: lunes 15 de octubre');
     targetDate = new Date(2025, 9, 15);
   } else if (normalizedText.includes('viernes 18 de octubre')) {
-    console.log('📅 Detectado: viernes 18 de octubre');
+    logger.debug('📅 Detectado: viernes 18 de octubre');
     targetDate = new Date(2025, 9, 18);
   } else if (normalizedText.includes('el día martes')) {
-    console.log('📅 Detectado: el día martes');
+    logger.debug('📅 Detectado: el día martes');
     // Buscar el martes más reciente
     const today = new Date(year, month, day);
     const dayOfWeek = today.getDay(); // 0=domingo, 1=lunes, 2=martes, etc.
     const daysToTuesday = dayOfWeek >= 2 ? dayOfWeek - 2 : dayOfWeek + 5; // Martes es día 2
     targetDate = new Date(year, month, day - daysToTuesday);
   } else if (normalizedText.includes('el lunes pasado')) {
-    console.log('📅 Detectado: el lunes pasado');
+    logger.debug('📅 Detectado: el lunes pasado');
     // Buscar el lunes más reciente
     const today = new Date(year, month, day);
     const dayOfWeek = today.getDay(); // 0=domingo, 1=lunes, 2=martes, etc.
     const daysToMonday = dayOfWeek >= 1 ? dayOfWeek - 1 : dayOfWeek + 6; // Lunes es día 1
     targetDate = new Date(year, month, day - daysToMonday);
   } else if (normalizedText.includes('miércoles 15')) {
-    console.log('📅 Detectado: miércoles 15');
+    logger.debug('📅 Detectado: miércoles 15');
     // Asumir octubre 2025 (mes actual)
     targetDate = new Date(2025, 9, 15); // Octubre es mes 9 (0-indexado)
-    console.log('📅 Fecha específica creada:', targetDate.toLocaleDateString('es-ES'));
+    logger.debug('📅 Fecha específica creada:', targetDate.toLocaleDateString('es-ES'));
   } else if (normalizedText.includes('martes 14')) {
-    console.log('📅 Detectado: martes 14');
+    logger.debug('📅 Detectado: martes 14');
     targetDate = new Date(2025, 9, 14);
   } else if (normalizedText.includes('lunes 15')) {
-    console.log('📅 Detectado: lunes 15');
+    logger.debug('📅 Detectado: lunes 15');
     targetDate = new Date(2025, 9, 15);
   } else if (normalizedText.includes('viernes 18')) {
-    console.log('📅 Detectado: viernes 18');
+    logger.debug('📅 Detectado: viernes 18');
     targetDate = new Date(2025, 9, 18);
   } else if (normalizedText.includes('jueves 16')) {
-    console.log('📅 Detectado: jueves 16');
+    logger.debug('📅 Detectado: jueves 16');
     targetDate = new Date(2025, 9, 16);
   } else if (normalizedText.includes('sábado 19')) {
-    console.log('📅 Detectado: sábado 19');
+    logger.debug('📅 Detectado: sábado 19');
     targetDate = new Date(2025, 9, 19);
   } else if (normalizedText.includes('domingo 20')) {
-    console.log('📅 Detectado: domingo 20');
+    logger.debug('📅 Detectado: domingo 20');
     targetDate = new Date(2025, 9, 20);
   } else if (normalizedText.includes('sábado 11')) {
-    console.log('📅 Detectado: sábado 11');
+    logger.debug('📅 Detectado: sábado 11');
     targetDate = new Date(2025, 9, 11);
   } else if (normalizedText.includes('viernes 10')) {
-    console.log('📅 Detectado: viernes 10');
+    logger.debug('📅 Detectado: viernes 10');
     targetDate = new Date(2025, 9, 10);
   } else if (normalizedText.includes('jueves 9')) {
-    console.log('📅 Detectado: jueves 9');
+    logger.debug('📅 Detectado: jueves 9');
     targetDate = new Date(2025, 9, 9);
   } else if (normalizedText.includes('miércoles 8')) {
-    console.log('📅 Detectado: miércoles 8');
+    logger.debug('📅 Detectado: miércoles 8');
     targetDate = new Date(2025, 9, 8);
   } else if (normalizedText.includes('martes 7')) {
-    console.log('📅 Detectado: martes 7');
+    logger.debug('📅 Detectado: martes 7');
     targetDate = new Date(2025, 9, 7);
   } else if (normalizedText.includes('lunes 6')) {
-    console.log('📅 Detectado: lunes 6');
+    logger.debug('📅 Detectado: lunes 6');
     targetDate = new Date(2025, 9, 6);
   } else if (normalizedText.includes('domingo 5')) {
-    console.log('📅 Detectado: domingo 5');
+    logger.debug('📅 Detectado: domingo 5');
     targetDate = new Date(2025, 9, 5);
   } else if (normalizedText.includes('12 de octubre')) {
-    console.log('📅 Detectado: 12 de octubre');
+    logger.debug('📅 Detectado: 12 de octubre');
     targetDate = new Date(2025, 9, 12);
   } else if (normalizedText.includes('13 de octubre')) {
-    console.log('📅 Detectado: 13 de octubre');
+    logger.debug('📅 Detectado: 13 de octubre');
     targetDate = new Date(2025, 9, 13);
   } else if (normalizedText.includes('11 de octubre')) {
-    console.log('📅 Detectado: 11 de octubre');
+    logger.debug('📅 Detectado: 11 de octubre');
     targetDate = new Date(2025, 9, 11);
   } else {
     // Si no se puede procesar o es más de 7 días, retornar null
-    console.log('📅 No se pudo procesar la fecha:', dateText);
+    logger.debug('📅 No se pudo procesar la fecha:', dateText);
     return null;
   }
   
   // Verificar que la fecha calculada no sea más de 7 días atrás
   const todayCountry = new Date(year, month, day);
   const daysDiff = Math.floor((todayCountry.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24));
-  console.log('📅 Diferencia en días:', daysDiff);
+  logger.debug('📅 Diferencia en días:', daysDiff);
   
   if (daysDiff > 7) {
-    console.log('❌ Fecha más de 7 días atrás, no válida');
-    console.log('❌ Fecha solicitada:', targetDate.toLocaleDateString('es-ES'));
-    console.log('❌ Fecha actual:', todayCountry.toLocaleDateString('es-ES'));
-    console.log('❌ Días de diferencia:', daysDiff);
+    logger.debug('❌ Fecha más de 7 días atrás, no válida');
+    logger.debug('❌ Fecha solicitada:', targetDate.toLocaleDateString('es-ES'));
+    logger.debug('❌ Fecha actual:', todayCountry.toLocaleDateString('es-ES'));
+    logger.debug('❌ Días de diferencia:', daysDiff);
     // Retornar un objeto especial para indicar error de fecha
     return { error: 'DATE_TOO_OLD', message: 'No puedes agregar transacciones con más de 7 días de antigüedad', daysDiff };
   }
   
   // Formatear como YYYY-MM-DD en zona horaria del país
   const result = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
-  console.log('✅ Fecha calculada:', result);
-  console.log('✅ Fecha calculada país:', targetDate.toLocaleDateString('es-ES'));
-  console.log('✅ Día de la semana calculado:', targetDate.toLocaleDateString('es-ES', { weekday: 'long' }));
+  logger.debug('✅ Fecha calculada:', result);
+  logger.debug('✅ Fecha calculada país:', targetDate.toLocaleDateString('es-ES'));
+  logger.debug('✅ Día de la semana calculado:', targetDate.toLocaleDateString('es-ES', { weekday: 'long' }));
   return result;
 }
 
 export async function processTextWithGroq(text: string, userCountryCode: string = 'BO'): Promise<GroqExtraction | null> {
   if (!text || !text.trim()) return null;
   if (!GROQ_API_KEY) {
-    console.warn('⚠️ GROQ_API_KEY no configurada. Saltando procesamiento Groq.');
+    logger.warn('⚠️ GROQ_API_KEY no configurada. Saltando procesamiento Groq.');
     return null;
   }
 
@@ -411,21 +414,26 @@ Ejemplos SIN fechas (NO incluir fechaTexto):
 
 Devuelve solo JSON válido:`;
 
-    const response = await fetch(GROQ_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
+    // Usar fetchWithTimeout para evitar que el request cuelgue indefinidamente
+    const response = await fetchWithTimeout(
+      GROQ_ENDPOINT,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          temperature: 0.2,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ]
+        })
       },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        temperature: 0.2,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ]
-      })
-    });
+      8000 // 8 segundos timeout
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -439,7 +447,7 @@ Devuelve solo JSON válido:`;
     // Intentar parsear JSON
     try {
       const parsed: GroqMultipleResponse = JSON.parse(content);
-      console.log('🤖 Groq result:', parsed);
+      logger.debug('🤖 Groq result:', parsed);
       
       // Procesar fechas relativas usando nuestra función local
       if (parsed.transacciones.length > 0) {
@@ -457,7 +465,7 @@ Devuelve solo JSON válido:`;
       // Si es múltiple, devolver la primera transacción para compatibilidad
       // TODO: Actualizar el modal para manejar múltiples transacciones
       if (parsed.esMultiple && parsed.transacciones.length > 0) {
-        console.log('🔄 Detectadas múltiples transacciones:', parsed.transacciones.length);
+        logger.debug('🔄 Detectadas múltiples transacciones:', parsed.transacciones.length);
         return { ...parsed.transacciones[0], raw: data } as GroqExtraction; // Temporal: devolver solo la primera
       } else if (parsed.transacciones.length > 0) {
         return { ...parsed.transacciones[0], raw: data } as GroqExtraction;
@@ -469,10 +477,10 @@ Devuelve solo JSON válido:`;
       if (match) {
         try {
           const parsed: GroqMultipleResponse = JSON.parse(match[0]);
-          console.log('🤖 Groq result (extracted):', parsed);
+          logger.debug('🤖 Groq result (extracted):', parsed);
           
           if (parsed.esMultiple && parsed.transacciones.length > 0) {
-            console.log('🔄 Detectadas múltiples transacciones (extracted):', parsed.transacciones.length);
+            logger.debug('🔄 Detectadas múltiples transacciones (extracted):', parsed.transacciones.length);
             return { ...parsed.transacciones[0], raw: data } as GroqExtraction;
           } else if (parsed.transacciones.length > 0) {
             return { ...parsed.transacciones[0], raw: data } as GroqExtraction;
@@ -485,7 +493,7 @@ Devuelve solo JSON válido:`;
       return { raw: data } as GroqExtraction;
     }
   } catch (err) {
-    console.error('❌ Error procesando texto con Groq:', err);
+    logger.error('❌ Error procesando texto con Groq:', err);
     return null;
   }
 }
@@ -493,7 +501,7 @@ Devuelve solo JSON válido:`;
 // Nueva función para obtener todas las transacciones
 async function processTranscriptionMultiple(text: string, userCountryCode: string = 'BO'): Promise<GroqMultipleResponse | null> {
   if (!GROQ_API_KEY) {
-    console.warn('⚠️ GROQ_API_KEY no configurada. Saltando procesamiento Groq.');
+    logger.warn('⚠️ GROQ_API_KEY no configurada. Saltando procesamiento Groq.');
     return null;
   }
 
@@ -557,9 +565,19 @@ CATEGORÍAS DISPONIBLES (usa estas como referencia, pero puedes crear otras más
 - hogar: muebles, electrodomesticos, limpieza
 - otros: cualquier cosa que no encaje en las anteriores
 
-TIPOS DE TRANSACCIÓN:
-- gasto: cuando se gasta dinero (comprar, pagar, gastar)
-- ingreso: cuando se recibe dinero (vender, cobrar, recibir)
+TIPOS DE TRANSACCIÓN (REGLA CRÍTICA - LEE CON ATENCIÓN):
+REGLA PRINCIPAL: Por defecto, TODO es GASTO a menos que explícitamente mencione recibir dinero.
+
+- gasto (POR DEFECTO): Cualquier transacción que NO mencione recibir dinero
+  * Ejemplos de GASTO: "50 taxi", "30 comida", "20 gasolina", "10 de zanahoria", "30 de alverja", "50 de zapallo"
+  * Si NO tiene palabras como "me pagaron", "gané", "vendí", "cobré", "recibí" → ES GASTO
+  * Productos, comida, servicios sin verbo explícito → ES GASTO
+  * "Compré", "pagué", "gasté" → ES GASTO
+  
+- ingreso (SOLO si menciona recibir dinero explícitamente):
+  * Palabras clave que indican INGRESO: "me pagaron", "me pagaron", "gané", "vendí", "cobré", "recibí", "ingresé"
+  * Ejemplos de INGRESO: "me pagaron 350 de cardio plus", "Vendí 499 bs de FLEXS cap", "gané 100 bs"
+  * Si NO tiene estas palabras clave → NO es ingreso, es GASTO
 
 MÉTODOS DE PAGO DISPONIBLES:
 - efectivo: dinero en efectivo, billetes, monedas
@@ -611,7 +629,23 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON. No agregues texto antes, después,
 
 IMPORTANTE: Responde ÚNICAMENTE con el JSON. No agregues texto explicativo, análisis, o comentarios.
 
+REGLA CRÍTICA DE CLASIFICACIÓN:
+- Por defecto, TODO es "gasto" a menos que explícitamente mencione recibir dinero
+- Palabras que indican INGRESO: "me pagaron", "gané", "vendí", "cobré", "recibí"
+- Si NO tiene estas palabras → ES "gasto"
+
 Ejemplos de separación de transacciones:
+- "50 taxi\n30 comida\n20 gasolina\nVendí 499 bs de FLEXS cap" → 
+  {
+    "transacciones": [
+      {"monto": 50, "categoria": "transporte", "tipo": "gasto", "descripcion": "taxi", "metodoPago": "efectivo", "esPagoDeuda": false, "nombreDeuda": null},
+      {"monto": 30, "categoria": "comida", "tipo": "gasto", "descripcion": "comida", "metodoPago": "efectivo", "esPagoDeuda": false, "nombreDeuda": null},
+      {"monto": 20, "categoria": "transporte", "tipo": "gasto", "descripcion": "gasolina", "metodoPago": "efectivo", "esPagoDeuda": false, "nombreDeuda": null},
+      {"monto": 499, "categoria": "otros", "tipo": "ingreso", "descripcion": "FLEXS cap", "metodoPago": "efectivo", "esPagoDeuda": false, "nombreDeuda": null}
+    ],
+    "esMultiple": true
+  }
+
 - "Compré comida por 20 bolivianos y pagué 5 bolivianos de fotocopias" → 
   {
     "transacciones": [
@@ -655,20 +689,25 @@ Ejemplos SIN fechas (NO incluir fechaTexto):
 
 Devuelve solo JSON válido:`;
 
-    const response = await fetch(GROQ_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
+    // Usar fetchWithTimeout para evitar que el request cuelgue indefinidamente
+    const response = await fetchWithTimeout(
+      GROQ_ENDPOINT,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ]
+        })
       },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ]
-      })
-    });
+      8000 // 8 segundos timeout
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -676,64 +715,64 @@ Devuelve solo JSON válido:`;
     }
 
     const data = await response.json();
-    console.log('🤖 Groq API response recibida:', data);
+    logger.debug('🤖 Groq API response recibida:', data);
     const content = data?.choices?.[0]?.message?.content?.trim();
-    console.log('🤖 Groq content extraído:', content);
+    logger.debug('🤖 Groq content extraído:', content);
     if (!content) {
-      console.log('❌ No hay contenido en la respuesta de Groq');
+      logger.debug('❌ No hay contenido en la respuesta de Groq');
       return null;
     }
 
     // Intentar parsear JSON
     try {
-      console.log('🔄 Intentando parsear JSON de Groq...');
+      logger.debug('🔄 Intentando parsear JSON de Groq...');
       const parsed: GroqMultipleResponse = JSON.parse(content);
-      console.log('🤖 Groq multiple result:', parsed);
-      console.log('🤖 Groq raw response:', JSON.stringify(parsed, null, 2));
+      logger.debug('🤖 Groq multiple result:', parsed);
+      logger.debug('🤖 Groq raw response:', JSON.stringify(parsed, null, 2));
       
       // Procesar fechas relativas usando nuestra función local
-      console.log('🔄 Iniciando procesamiento de fechas...');
-      console.log('📊 Total transacciones a procesar:', parsed.transacciones.length);
+      logger.debug('🔄 Iniciando procesamiento de fechas...');
+      logger.debug('📊 Total transacciones a procesar:', parsed.transacciones.length);
       
       if (parsed.transacciones.length > 0) {
         parsed.transacciones.forEach((transaction, index) => {
-          console.log(`📅 Procesando transacción ${index + 1}:`, transaction);
-          console.log(`📅 ¿Tiene fechaTexto?`, !!transaction.fechaTexto);
-          console.log(`📅 fechaTexto valor:`, transaction.fechaTexto);
-          console.log(`📅 Tipo de fechaTexto:`, typeof transaction.fechaTexto);
+          logger.debug(`📅 Procesando transacción ${index + 1}:`, transaction);
+          logger.debug(`📅 ¿Tiene fechaTexto?`, !!transaction.fechaTexto);
+          logger.debug(`📅 fechaTexto valor:`, transaction.fechaTexto);
+          logger.debug(`📅 Tipo de fechaTexto:`, typeof transaction.fechaTexto);
           
           if (transaction.fechaTexto) {
-            console.log('📅 FechaTexto detectada:', transaction.fechaTexto);
-            console.log('🔄 Llamando a processRelativeDate...');
+            logger.debug('📅 FechaTexto detectada:', transaction.fechaTexto);
+            logger.debug('🔄 Llamando a processRelativeDate...');
             const fechaCalculada = processRelativeDate(transaction.fechaTexto, userCountryCode);
-            console.log('📅 Resultado de processRelativeDate:', fechaCalculada);
+            logger.debug('📅 Resultado de processRelativeDate:', fechaCalculada);
             
             if (typeof fechaCalculada === 'string') {
-              console.log('📅 Fecha calculada:', fechaCalculada);
+              logger.debug('📅 Fecha calculada:', fechaCalculada);
               // Agregar la fecha calculada como 'fecha' para compatibilidad
               (transaction as any).fecha = fechaCalculada;
-              console.log('📅 Transacción actualizada:', transaction);
-              console.log('📅 Verificando fecha en transacción:', (transaction as any).fecha);
+              logger.debug('📅 Transacción actualizada:', transaction);
+              logger.debug('📅 Verificando fecha en transacción:', (transaction as any).fecha);
             } else if (fechaCalculada && typeof fechaCalculada === 'object' && 'error' in fechaCalculada) {
-              console.log('❌ Error de fecha:', fechaCalculada.message);
-              console.log('❌ Días de diferencia:', fechaCalculada.daysDiff);
+              logger.debug('❌ Error de fecha:', fechaCalculada.message);
+              logger.debug('❌ Días de diferencia:', fechaCalculada.daysDiff);
               // Marcar la transacción con error de fecha
               (transaction as any).fechaError = fechaCalculada;
             } else {
-              console.log('❌ No se pudo calcular la fecha');
+              logger.debug('❌ No se pudo calcular la fecha');
             }
           } else {
-            console.log('📅 No hay fechaTexto en la transacción');
-            console.log('📅 Campos disponibles:', Object.keys(transaction));
-            console.log('📅 Contenido completo de la transacción:', JSON.stringify(transaction, null, 2));
+            logger.debug('📅 No hay fechaTexto en la transacción');
+            logger.debug('📅 Campos disponibles:', Object.keys(transaction));
+            logger.debug('📅 Contenido completo de la transacción:', JSON.stringify(transaction, null, 2));
           }
         });
       } else {
-        console.log('❌ No hay transacciones para procesar');
+        logger.debug('❌ No hay transacciones para procesar');
       }
       
-      console.log('✅ Procesamiento de fechas completado');
-      console.log('📊 Transacciones finales:', parsed.transacciones);
+      logger.debug('✅ Procesamiento de fechas completado');
+      logger.debug('📊 Transacciones finales:', parsed.transacciones);
       
       return parsed;
     } catch {
@@ -742,7 +781,7 @@ Devuelve solo JSON válido:`;
       if (match) {
         try {
           const parsed: GroqMultipleResponse = JSON.parse(match[0]);
-          console.log('🤖 Groq multiple result (extracted):', parsed);
+          logger.debug('🤖 Groq multiple result (extracted):', parsed);
           return parsed;
         } catch {
           return null;
@@ -751,7 +790,7 @@ Devuelve solo JSON válido:`;
       return null;
     }
   } catch (err) {
-    console.error('❌ Error procesando texto con Groq:', err);
+    logger.error('❌ Error procesando texto con Groq:', err);
     return null;
   }
 }
@@ -767,7 +806,7 @@ export async function extractExpenseWithCountryContext(
     
     // 1. Obtener reglas del país
     const rules = await getCountryRules(countryCode);
-    console.log(`🌍 Using rules for: ${rules.country_name}`);
+    logger.debug(`🌍 Using rules for: ${rules.country_name}`);
 
     // 2. Construir contexto local con slang y palabras clave
     let contextoLocal = '';
@@ -789,7 +828,7 @@ export async function extractExpenseWithCountryContext(
     // 3. Si hay contexto local, agregarlo al principio de la transcripción
     let transcripcionConContexto = transcripcion;
     if (contextoLocal) {
-      console.log('🌍 Aplicando contexto local:', contextoLocal);
+      logger.debug('🌍 Aplicando contexto local:', contextoLocal);
       transcripcionConContexto = `Contexto local: ${contextoLocal}\n\nTranscripción: ${transcripcion}`;
     }
 
@@ -800,7 +839,7 @@ export async function extractExpenseWithCountryContext(
     return resultado;
 
   } catch (error: any) {
-    console.error('Error in extractExpenseWithCountryContext:', error);
+    logger.error('Error in extractExpenseWithCountryContext:', error);
     
     // Fallback: usar función base sin contexto
     return processTextWithGroq(transcripcion, countryCode);

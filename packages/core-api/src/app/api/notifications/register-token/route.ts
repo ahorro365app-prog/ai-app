@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { handleError, handleValidationError, ErrorType } from '@/lib/errorHandler';
 
 interface RegisterTokenPayload {
   token?: string;
@@ -17,24 +18,15 @@ export async function POST(request: NextRequest) {
     const body: RegisterTokenPayload = await request.json();
 
     if (!body.token || typeof body.token !== 'string') {
-      return NextResponse.json(
-        { success: false, message: 'Token FCM requerido' },
-        { status: 400 }
-      );
+      return handleValidationError('Token FCM requerido');
     }
 
     if (!body.userId || typeof body.userId !== 'string') {
-      return NextResponse.json(
-        { success: false, message: 'userId requerido' },
-        { status: 400 }
-      );
+      return handleValidationError('userId requerido');
     }
 
     if (body.deviceType && !ALLOWED_DEVICE_TYPES.includes(body.deviceType)) {
-      return NextResponse.json(
-        { success: false, message: 'deviceType inválido' },
-        { status: 400 }
-      );
+      return handleValidationError('deviceType inválido');
     }
 
     const supabase = getSupabaseAdmin();
@@ -65,10 +57,10 @@ export async function POST(request: NextRequest) {
         .eq('id', existingToken.id);
 
       if (updateError) {
-        console.error('Error actualizando token FCM:', updateError);
-        return NextResponse.json(
-          { success: false, message: 'No se pudo actualizar el token' },
-          { status: 500 }
+        return handleError(
+          updateError,
+          'No se pudo actualizar el token',
+          ErrorType.DATABASE
         );
       }
 
@@ -87,39 +79,20 @@ export async function POST(request: NextRequest) {
     });
 
     if (insertError) {
-      console.error('Error insertando token FCM:', insertError);
-      const errorMessage = insertError.message || 'No se pudo registrar el token';
-
-      const responseBody: Record<string, any> = {
-        success: false,
-        message: errorMessage,
-      };
-
-      if (process.env.NODE_ENV !== 'production') {
-        responseBody.details = insertError;
-      }
-
-      return NextResponse.json(responseBody, { status: 500 });
+      return handleError(
+        insertError,
+        'No se pudo registrar el token',
+        ErrorType.DATABASE
+      );
     }
 
     return NextResponse.json({ success: true, message: 'Token registrado' });
   } catch (error: any) {
-    console.error('Error en register-token:', error);
-
-    const responseBody: Record<string, any> = {
-      success: false,
-      message: error?.message || 'Error interno del servidor',
-    };
-
-    if (process.env.NODE_ENV !== 'production') {
-      responseBody.details = {
-        name: error?.name,
-        code: error?.code,
-        stack: error?.stack,
-      };
-    }
-
-    return NextResponse.json(responseBody, { status: 500 });
+    return handleError(
+      error,
+      'Error interno del servidor',
+      ErrorType.INTERNAL
+    );
   }
 }
 

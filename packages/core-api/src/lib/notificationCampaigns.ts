@@ -6,6 +6,7 @@ import {
   isWithinQuietHours,
 } from '@/lib/notificationSegments';
 import { notificationService } from '@/lib/notificationService';
+import { logger } from '@/lib/logger';
 
 const ALLOWED_TYPES: NotificationCategory[] = [
   'transaction',
@@ -56,7 +57,7 @@ async function recordTriggerLogs(entries: Array<{ trigger_key: string; user_id: 
   }));
   const { error } = await supabase.from('notification_trigger_logs').insert(payload);
   if (error) {
-    console.error('Error registrando trigger logs:', error);
+    logger.error('Error registrando trigger logs:', error);
   }
 }
 
@@ -69,7 +70,7 @@ async function getNotificationPreferencesMap(userIds: string[]) {
     .in('user_id', userIds);
 
   if (error) {
-    console.error('Error obteniendo preferencias de notificaciones:', error);
+    logger.error('Error obteniendo preferencias de notificaciones:', error);
     return new Map();
   }
 
@@ -81,7 +82,7 @@ async function getActiveTokensForUser(userId: string) {
     const tokens = await notificationService.getTokensForUser(userId);
     return (tokens || []).map((token: any) => token.token);
   } catch (error) {
-    console.error('Error obteniendo tokens para usuario:', userId, error);
+    logger.error('Error obteniendo tokens para usuario:', userId, error);
     return [];
   }
 }
@@ -142,7 +143,7 @@ async function getTriggerConfig<TSettings extends Record<string, any>>(
       });
 
     if (insertResult.error) {
-      console.error('Error creando configuración por defecto de trigger:', insertResult.error);
+      logger.error('Error creando configuración por defecto de trigger:', insertResult.error);
     }
 
     return { isActive: true, settings: defaults };
@@ -201,7 +202,7 @@ async function getLastTriggerLog(triggerKey: string) {
     .maybeSingle();
 
   if (error) {
-    console.error('Error obteniendo último log de trigger:', triggerKey, error);
+    logger.error('Error obteniendo último log de trigger:', triggerKey, error);
     return null;
   }
 
@@ -740,7 +741,7 @@ async function runRenewalReminder(settings: { daysBefore: number; limit: number 
       summary,
     };
   } catch (error: any) {
-    console.error('Error ejecutando trigger de renovación:', error);
+    logger.error('Error ejecutando trigger de renovación:', error);
     return {
       triggerKey: TRIGGER_KEY_RENEWAL,
       success: false,
@@ -1033,7 +1034,7 @@ export async function executeReferralInvitedTrigger(
       },
     };
   } catch (error: any) {
-    console.error('Error ejecutando trigger de referidos (invitados):', error);
+    logger.error('Error ejecutando trigger de referidos (invitados):', error);
     return {
       triggerKey: TRIGGER_KEY_REFERRAL_INVITED,
       success: false,
@@ -1292,7 +1293,7 @@ export async function executeReferralVerifiedTrigger(
       },
     };
   } catch (error: any) {
-    console.error('Error ejecutando trigger de referidos (verificados):', error);
+    logger.error('Error ejecutando trigger de referidos (verificados):', error);
     return {
       triggerKey: TRIGGER_KEY_REFERRAL_VERIFIED,
       success: false,

@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { X, TrendingDown, TrendingUp, Wallet, CreditCard, Smartphone, Banknote, MoreHorizontal, Search, Calendar } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useModal } from "@/contexts/ModalContext";
+import { logger } from "@/lib/logger";
+import { buildISODateForCountry, getTodayForCountry, getTimezoneForCountry, validateTransactionDate } from "@/lib/dateUtils";
 
 type TransactionType = 'expense' | 'income';
 type PaymentMethod = 'cash' | 'card' | 'transfer' | 'qr' | 'other';
@@ -90,7 +92,7 @@ const ALL_EXPENSE_CATEGORIES = [
 // Función para migrar IDs de categorías de inglés a español
 const migrateOldCategories = () => {
   try {
-    console.log('🔧 Iniciando migración de categorías...');
+    logger.debug('🔧 Iniciando migración de categorías...');
     
     // Mapeo de IDs antiguos (inglés) a nuevos (español)
     const categoryIdMapping: Record<string, string> = {
@@ -163,7 +165,7 @@ const migrateOldCategories = () => {
       const migratedTransactions = transactions.map((tx: any) => {
         if (categoryIdMapping[tx.category]) {
           needsUpdate = true;
-          console.log(`🔄 Migrando categoría: ${tx.category} → ${categoryIdMapping[tx.category]}`);
+          logger.debug(`🔄 Migrando categoría: ${tx.category} → ${categoryIdMapping[tx.category]}`);
           return { ...tx, category: categoryIdMapping[tx.category] };
         }
         return tx;
@@ -171,7 +173,7 @@ const migrateOldCategories = () => {
       
       if (needsUpdate) {
         localStorage.setItem('transactions', JSON.stringify(migratedTransactions));
-        console.log('✅ Transacciones migradas en localStorage');
+        logger.debug('✅ Transacciones migradas en localStorage');
       }
     }
     
@@ -184,7 +186,7 @@ const migrateOldCategories = () => {
       const migratedCategories = customCategories.map((cat: any) => {
         if (categoryIdMapping[cat.id]) {
           needsUpdate = true;
-          console.log(`🔄 Migrando categoría personalizada: ${cat.id} → ${categoryIdMapping[cat.id]}`);
+          logger.debug(`🔄 Migrando categoría personalizada: ${cat.id} → ${categoryIdMapping[cat.id]}`);
           return { ...cat, id: categoryIdMapping[cat.id] };
         }
         return cat;
@@ -192,20 +194,20 @@ const migrateOldCategories = () => {
       
       if (needsUpdate) {
         localStorage.setItem('customCategories', JSON.stringify(migratedCategories));
-        console.log('✅ Categorías personalizadas migradas');
+        logger.debug('✅ Categorías personalizadas migradas');
       }
     }
     
-    console.log('✅ Migración de categorías completada');
+    logger.debug('✅ Migración de categorías completada');
   } catch (error) {
-    console.warn('Error al migrar categorías:', error);
+    logger.warn('Error al migrar categorías:', error);
   }
 };
 
 // Función para reconstruir categorías personalizadas desde transacciones
 const rebuildCustomCategories = (): void => {
   try {
-    console.log('🔧 Reconstruyendo categorías personalizadas...');
+    logger.debug('🔧 Reconstruyendo categorías personalizadas...');
     
     // Obtener todas las transacciones del localStorage
     const savedTransactions = localStorage.getItem('transactions');
@@ -237,24 +239,24 @@ const rebuildCustomCategories = (): void => {
     });
     
     if (customCategories.length > 0) {
-      console.log('📋 Categorías reconstruidas:', customCategories);
+      logger.debug('📋 Categorías reconstruidas:', customCategories);
       localStorage.setItem('customCategories', JSON.stringify(customCategories));
-      console.log('✅ Categorías personalizadas reconstruidas y guardadas');
+      logger.debug('✅ Categorías personalizadas reconstruidas y guardadas');
     } else {
-      console.log('ℹ️ No se encontraron categorías personalizadas para reconstruir');
+      logger.debug('ℹ️ No se encontraron categorías personalizadas para reconstruir');
     }
   } catch (error) {
-    console.warn('Error al reconstruir categorías personalizadas:', error);
+    logger.warn('Error al reconstruir categorías personalizadas:', error);
   }
 };
 
 // Función para obtener el label de una categoría por su ID
 export const getCategoryLabel = (categoryId: string): string => {
-  console.log('🔍 Buscando categoría para ID:', categoryId);
+  logger.debug('🔍 Buscando categoría para ID:', categoryId);
   
   // Si el categoryId no es un ID sino texto directo (como "Sale"), devolverlo tal como está
   if (!categoryId.startsWith('custom-') && !categoryId.includes('_') && !categoryId.includes('-')) {
-    console.log('✅ Categoría como texto directo:', categoryId);
+    logger.debug('✅ Categoría como texto directo:', categoryId);
     return categoryId;
   }
   
@@ -327,7 +329,7 @@ export const getCategoryLabel = (categoryId: string): string => {
   const allCategories = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES, ...ALL_EXPENSE_CATEGORIES];
   const predefinedCategory = allCategories.find(cat => cat.id === finalCategoryId);
   if (predefinedCategory) {
-    console.log('✅ Encontrada en categorías predefinidas:', predefinedCategory.label);
+    logger.debug('✅ Encontrada en categorías predefinidas:', predefinedCategory.label);
     return predefinedCategory.label;
   }
   
@@ -339,16 +341,16 @@ export const getCategoryLabel = (categoryId: string): string => {
       const customCategory = customCategories.find((cat: any) => cat.id === finalCategoryId);
       
       if (customCategory) {
-        console.log('✅ Encontrada en categorías personalizadas:', customCategory.label);
+        logger.debug('✅ Encontrada en categorías personalizadas:', customCategory.label);
         return customCategory.label;
       }
     }
   } catch (error) {
-    console.warn('Error al cargar categorías personalizadas:', error);
+    logger.warn('Error al cargar categorías personalizadas:', error);
   }
   
   // Si no se encuentra en ningún lado, devolver el categoryId tal como está
-  console.log('🔄 Devolviendo categoryId tal como está:', categoryId);
+  logger.debug('🔄 Devolviendo categoryId tal como está:', categoryId);
   return categoryId;
 };
 
@@ -472,7 +474,7 @@ const ALL_INCOME_CATEGORIES = [
 ];
 
 export default function TransactionModal({ isOpen, onClose, onSave }: TransactionModalProps) {
-  const { currency, formatAmount } = useCurrency();
+  const { currency, formatAmount, country } = useCurrency();
   const { setModalOpen } = useModal();
   
   const [type, setType] = useState<TransactionType>('expense');
@@ -483,13 +485,11 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   // Función para obtener la fecha de hoy en formato local YYYY-MM-DD
+  // IMPORTANTE: Usar getTodayForCountry para respetar la zona horaria del país del usuario
   const getTodayLocalDate = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const result = `${year}-${month}-${day}`;
-    console.log('📅 Fecha de hoy calculada:', result, '→', new Date(result + 'T00:00:00'));
+    const countryCode = country || 'BO'; // Default a Bolivia si no hay país
+    const result = getTodayForCountry(countryCode);
+    logger.debug('📅 Fecha de hoy calculada (zona horaria del país):', result, 'país:', countryCode);
     return result;
   };
 
@@ -609,10 +609,10 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
       const updatedStoredCategories = [newCategory, ...uniqueCategories];
       
       localStorage.setItem('customCategories', JSON.stringify(updatedStoredCategories));
-      console.log('💾 Categoría personalizada guardada:', newCategory);
-      console.log('📦 Todas las categorías personalizadas:', updatedStoredCategories);
+      logger.debug('💾 Categoría personalizada guardada:', newCategory);
+      logger.debug('📦 Todas las categorías personalizadas:', updatedStoredCategories);
     } catch (error) {
-      console.warn('Error al guardar categoría personalizada:', error);
+      logger.warn('Error al guardar categoría personalizada:', error);
     }
     
     // Seleccionar la nueva categoría
@@ -756,34 +756,29 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
                           allCategories.find(c => c.id === category);
                           
   const handleCategoryClick = (catId: string) => {
-    console.log('🔍 Categoría clickeada:', catId);
+    logger.debug('🔍 Categoría clickeada:', catId);
     if (catId === 'otro') {
-      console.log('📂 Abriendo menú de categorías personalizadas');
+      logger.debug('📂 Abriendo menú de categorías personalizadas');
       setShowAllCategories(true);
     } else {
-      console.log('✅ Seleccionando categoría:', catId);
+      logger.debug('✅ Seleccionando categoría:', catId);
       setCategory(catId);
       setShowAllCategories(false);
     }
   };
 
-  // Calcular fecha mínima (6 días atrás)
-  const getMinDate = () => {
-    const date = new Date();
-    date.setDate(date.getDate() - 6);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const result = `${year}-${month}-${day}`;
-    console.log('📅 Fecha mínima calculada:', result, '→', new Date(result + 'T00:00:00'));
-    return result;
-  };
-
-  // Calcular fecha máxima (hoy)
-  const getMaxDate = () => {
-    const result = getTodayLocalDate();
-    console.log('📅 Fecha máxima calculada:', result, '→', new Date(result + 'T23:59:59'));
-    return result;
+  // Calcular fecha de ayer
+  const getYesterdayDate = () => {
+    const countryCode = country || 'BO';
+    const today = getTodayForCountry(countryCode);
+    const todayDate = new Date(`${today}T12:00:00`);
+    const yesterdayDate = new Date(todayDate);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    
+    const year = yesterdayDate.getFullYear();
+    const month = String(yesterdayDate.getMonth() + 1).padStart(2, '0');
+    const day = String(yesterdayDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const handleSave = () => {
@@ -792,31 +787,47 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
       return;
     }
 
-    // Validar que la fecha esté dentro del rango permitido
-    const minDate = getMinDate();
-    const maxDate = getMaxDate();
+    // Validar que la fecha esté dentro del rango permitido (solo ayer o hoy)
+    const countryCode = country || 'BO';
+    const validation = validateTransactionDate(selectedDate, countryCode);
     
-    // Convertir fechas a objetos Date para comparación correcta (usando hora local)
-    const selectedDateObj = new Date(selectedDate + 'T00:00:00');
-    const minDateObj = new Date(minDate + 'T00:00:00');
-    const maxDateObj = new Date(maxDate + 'T23:59:59');
+    logger.debug('🔍 Validación de fechas:');
+    logger.debug('Fecha seleccionada:', selectedDate);
+    logger.debug('País:', countryCode);
+    logger.debug('Validación:', validation);
     
-    console.log('🔍 Validación de fechas:');
-    console.log('Fecha seleccionada:', selectedDate, '→', selectedDateObj);
-    console.log('Fecha mínima:', minDate, '→', minDateObj);
-    console.log('Fecha máxima:', maxDate, '→', maxDateObj);
-    console.log('Es menor que mínima:', selectedDateObj < minDateObj);
-    console.log('Es mayor que máxima:', selectedDateObj > maxDateObj);
-    
-    if (selectedDateObj < minDateObj || selectedDateObj > maxDateObj) {
-      alert('La fecha debe estar dentro de los últimos 6 días');
+    if (!validation.valid) {
+      alert(validation.message || 'La fecha debe ser ayer o hoy');
       return;
     }
 
-    // Usar la fecha seleccionada con la hora actual (en hora local, no UTC)
-    const now = new Date();
+    // SOLUCIÓN DEFINITIVA: Usar selectedDate (fecha seleccionada por usuario) con hora actual
+    // Esto respeta la fecha que el usuario seleccionó, no la fecha del sistema
+    const timeZone = getTimezoneForCountry(countryCode);
+    
+    // Usar la fecha seleccionada (no la fecha actual del sistema)
     const [year, month, day] = selectedDate.split('-').map(Number);
-    const transactionDate = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
+    
+    // Obtener SOLO la hora actual en la zona horaria del país
+    const now = new Date();
+    const timeFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timeZone,
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    
+    const timeParts = timeFormatter.formatToParts(now);
+    const hour = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0', 10);
+    const minute = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0', 10);
+    const second = parseInt(timeParts.find(p => p.type === 'second')?.value || '0', 10);
+    
+    // Construir fecha ISO con offset del país usando selectedDate + hora actual
+    const dateWithOffset = buildISODateForCountry(year, month, day, hour, minute, second, countryCode);
+    const dateObj = new Date(dateWithOffset);
+    const dateISO = dateObj.toISOString();
+    
 
     const transaction: Transaction = {
       type,
@@ -824,7 +835,7 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
       category,
       paymentMethod,
       description,
-      date: transactionDate.toISOString(),
+      date: dateISO,
     };
 
     onSave(transaction);
@@ -918,57 +929,73 @@ export default function TransactionModal({ isOpen, onClose, onSave }: Transactio
               </label>
               <div className="relative">
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory px-1">
-                {Array.from({ length: 7 }, (_, i) => {
-                  const date = new Date();
-                  date.setDate(date.getDate() - i);
-                  // Usar fecha local en lugar de UTC para evitar problemas de zona horaria
-                  const year = date.getFullYear();
-                  const month = String(date.getMonth() + 1).padStart(2, '0');
-                  const day = String(date.getDate()).padStart(2, '0');
-                  const dateString = `${year}-${month}-${day}`;
-                  const dayName = date.toLocaleDateString('es-ES', { weekday: 'short' });
-                  const dayNumber = date.getDate();
-                  const monthName = date.toLocaleDateString('es-ES', { month: 'short' });
-                  const isToday = i === 0;
-                  const isSelected = selectedDate === dateString;
+                {(() => {
+                  // Mostrar solo 2 botones: Ayer y Hoy
+                  const countryCode = country || 'BO';
+                  const todayStr = getTodayForCountry(countryCode);
+                  const yesterdayStr = getYesterdayDate();
+                  const timeZone = getTimezoneForCountry(countryCode);
                   
-                  console.log(`📅 Botón fecha ${i}: ${dateString} (${dayName} ${dayNumber} ${monthName}) - Seleccionado: ${isSelected}`);
+                  const dates = [
+                    { dateString: todayStr, label: 'Hoy', isToday: true },
+                    { dateString: yesterdayStr, label: 'Ayer', isToday: false }
+                  ];
                   
-                  return (
-                    <button
-                      key={dateString}
-                      type="button"
-                      onClick={() => setSelectedDate(dateString)}
-                      className={`
-                        flex-shrink-0 flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all min-w-[60px] snap-center
-                        ${isSelected 
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 border-blue-500 text-white shadow-lg' 
-                          : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50'
-                        }
-                        ${isToday ? 'ring-2 ring-blue-200' : ''}
-                      `}
-                    >
-                      <span className={`text-xs font-semibold ${isSelected ? 'text-white' : 'text-gray-500'}`}>
-                        {dayName}
-                      </span>
-                      <span className={`text-lg font-bold ${isSelected ? 'text-white' : 'text-gray-900'}`}>
-                        {dayNumber}
-                      </span>
-                      <span className={`text-[10px] ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>
-                        {monthName}
-                      </span>
-                      {isToday && (
-                        <span className="text-[8px] bg-blue-600 text-white px-1 rounded-full mt-1">
-                          HOY
+                  return dates.map(({ dateString, label, isToday }) => {
+                    const [year, month, day] = dateString.split('-').map(Number);
+                    const dateInCountry = new Date(`${dateString}T12:00:00`);
+                    const dayName = dateInCountry.toLocaleDateString('es-ES', { 
+                      weekday: 'short',
+                      timeZone 
+                    });
+                    const dayNumber = day;
+                    const monthName = dateInCountry.toLocaleDateString('es-ES', { 
+                      month: 'short',
+                      timeZone 
+                    });
+                    const isSelected = selectedDate === dateString;
+                  
+                    return (
+                      <button
+                        key={dateString}
+                        type="button"
+                        onClick={() => setSelectedDate(dateString)}
+                        className={`
+                          flex-shrink-0 flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all min-w-[60px] snap-center
+                          ${isSelected 
+                            ? 'bg-gradient-to-r from-blue-500 to-purple-600 border-blue-500 text-white shadow-lg' 
+                            : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50'
+                          }
+                          ${isToday ? 'ring-2 ring-blue-200' : ''}
+                        `}
+                      >
+                        <span className={`text-xs font-semibold ${isSelected ? 'text-white' : 'text-gray-500'}`}>
+                          {dayName}
                         </span>
-                      )}
-                    </button>
-                  );
-                })}
+                        <span className={`text-lg font-bold ${isSelected ? 'text-white' : 'text-gray-900'}`}>
+                          {dayNumber}
+                        </span>
+                        <span className={`text-[10px] ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>
+                          {monthName}
+                        </span>
+                        {isToday && (
+                          <span className="text-[8px] bg-blue-600 text-white px-1 rounded-full mt-1">
+                            HOY
+                          </span>
+                        )}
+                        {!isToday && (
+                          <span className="text-[8px] bg-gray-600 text-white px-1 rounded-full mt-1">
+                            AYER
+                          </span>
+                        )}
+                      </button>
+                    );
+                  });
+                })()}
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                Solo puedes registrar gastos de los últimos 6 días
+                Solo puedes registrar transacciones para ayer o hoy
               </p>
             </div>
 

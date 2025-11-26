@@ -132,6 +132,78 @@ export async function POST(request: NextRequest) {
       finalTranscription = await groqWhisperService.transcribe(audioFile, 'es');
       logger.debug('✅ Transcripción:', finalTranscription);
     }
+    
+    // 9.5. Validar que la transcripción tenga contexto de transacción (números o palabras clave)
+    if (finalTranscription) {
+      const trimmedTranscription = finalTranscription.trim();
+      
+      // Validar longitud mínima
+      if (trimmedTranscription.length < 3) {
+        return handleError(
+          new Error('Transcription too short'),
+          'La transcripción es muy corta. Por favor, intenta nuevamente hablando más claro.',
+          ErrorType.VALIDATION
+        );
+      }
+      
+      // Validar contenido real (no solo signos de puntuación)
+      const textWithoutPunctuation = trimmedTranscription.replace(/[.,;:!?¿¡\s\-_()\[\]{}'"]/g, '');
+      const hasLettersOrNumbers = /[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]/.test(textWithoutPunctuation);
+      
+      if (!hasLettersOrNumbers || textWithoutPunctuation.length < 2) {
+        return handleError(
+          new Error('Transcription no content'),
+          'No se pudo entender el audio. Por favor, intenta nuevamente hablando más claro.',
+          ErrorType.VALIDATION
+        );
+      }
+      
+      // Palabras clave relacionadas con transacciones (más específicas)
+      const transactionKeywords = [
+        'gast', 'compr', 'pagu', 'pague', 'recib', 'cobr', 'vend', 'gan', 'gane',
+        'debo', 'deuda', 'prest', 'ahorr', 'invers', 'transacc', 'monto', 'cantidad',
+        'dinero', 'peso', 'dolar', 'euro', 'boliviano', 'sol', 'bs', 's/', '$',
+        'taxi', 'comida', 'ropa', 'transporte', 'farmacia', 'supermercado', 'mercado',
+        'restaurante', 'café', 'gasolina', 'combustible', 'servicio', 'factura'
+      ];
+      
+      // Frases comunes que NO son transacciones (saludos, agradecimientos, etc.)
+      const nonTransactionPhrases = [
+        'gracias', 'hola', 'adiós', 'hasta luego', 'buenos días', 'buenas tardes', 'buenas noches',
+        'por ver', 'por escuchar', 'por leer', 'saludos', 'que tengas', 'que pases',
+        'video', 'audio', 'mensaje', 'llamada', 'texto'
+      ];
+      
+      // Verificar si tiene números (montos)
+      const hasNumbers = /\d/.test(trimmedTranscription);
+      
+      // Verificar si tiene palabras clave de transacciones
+      const lowerTranscription = trimmedTranscription.toLowerCase();
+      const hasKeywords = transactionKeywords.some(keyword => lowerTranscription.includes(keyword));
+      
+      // Verificar si es claramente una frase NO relacionada con transacciones
+      const isNonTransaction = nonTransactionPhrases.some(phrase => lowerTranscription.includes(phrase));
+      
+      // Si es claramente un saludo/agradecimiento sin números ni palabras clave de transacciones, rechazar
+      if (isNonTransaction && !hasNumbers && !hasKeywords) {
+        logger.warn('⚠️ Transcripción es saludo/agradecimiento sin contexto de transacción:', trimmedTranscription);
+        return handleError(
+          new Error('Transcription no transaction context'),
+          'No se pudo identificar una transacción en tu mensaje. Por favor, intenta nuevamente mencionando un monto o una acción (ej: "gasté 50 en taxi").',
+          ErrorType.VALIDATION
+        );
+      }
+      
+      // Si no tiene números NI palabras clave, probablemente no es una transacción
+      if (!hasNumbers && !hasKeywords) {
+        logger.warn('⚠️ Transcripción sin contexto de transacción (sin números ni palabras clave):', trimmedTranscription);
+        return handleError(
+          new Error('Transcription no transaction context'),
+          'No se pudo identificar una transacción en tu mensaje. Por favor, intenta nuevamente mencionando un monto o una acción (ej: "gasté 50 en taxi").',
+          ErrorType.VALIDATION
+        );
+      }
+    }
 
     // 10. Convertir country_code (BOL, ARG, etc) a código de 2 letras (BO, AR, etc)
     const countryCode2 = usuario.country_code || 'BOL';

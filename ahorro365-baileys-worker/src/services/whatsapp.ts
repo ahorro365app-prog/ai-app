@@ -194,7 +194,7 @@ export class WhatsAppService {
           messageId: msg.key.id || undefined
           };
 
-          // Si es audio, descargar el buffer
+          // Si es audio, descargar el buffer y extraer duración
           if (msg.message?.audioMessage && this.socket) {
             try {
               console.log('🎵 Descargando audio...');
@@ -207,7 +207,15 @@ export class WhatsAppService {
               
               // Agregar buffer a messageData
               (messageData as any).audioBuffer = buffer;
-              console.log('✅ Audio descargado:', buffer.length, 'bytes');
+              
+              // Extraer duración del audio si está disponible
+              const audioMessage = msg.message.audioMessage;
+              if (audioMessage.seconds) {
+                (messageData as any).audioDurationSeconds = audioMessage.seconds;
+                console.log('✅ Audio descargado:', buffer.length, 'bytes, duración:', audioMessage.seconds, 'segundos');
+              } else {
+                console.log('✅ Audio descargado:', buffer.length, 'bytes (duración no disponible)');
+              }
             } catch (error) {
               console.error('❌ Error descargando audio:', error);
             }
@@ -226,13 +234,22 @@ export class WhatsAppService {
     }
   }
 
-  // Enviar mensaje
+  // Enviar mensaje con delay para evitar problemas con WhatsApp Business
   public async sendMessage(to: string, text: string): Promise<boolean> {
     if (!this.socket) {
       throw new Error('No conectado a WhatsApp');
     }
 
     try {
+      // Delay configurable para evitar problemas con WhatsApp Business
+      // WhatsApp puede detectar respuestas muy rápidas como spam/bot
+      const delayMs = parseInt(process.env.MESSAGE_DELAY_MS || '2000', 10); // Default: 2 segundos
+      
+      if (delayMs > 0) {
+        console.log(`⏳ Esperando ${delayMs}ms antes de enviar mensaje (anti-spam)...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+
       await this.socket.sendMessage(to, { text });
       return true;
     } catch (error) {

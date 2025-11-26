@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { handleError, ErrorType } from '@/lib/errorHandler';
 
 export async function POST(request: NextRequest) {
   if (process.env.NODE_ENV === 'production') {
@@ -35,8 +36,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creando log de notificación (debug):', error);
-
       if (error.code === 'PGRST204' && /last_event_at/i.test(error.message || '')) {
         const fallbackPayload = {
           user_id: payload.user_id,
@@ -57,17 +56,10 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (fallbackError) {
-          console.error('Error fallback creando log (debug):', fallbackError);
-          return NextResponse.json(
-            {
-              success: false,
-              message: 'No se pudo crear el log de prueba',
-              details: {
-                message: fallbackError.message,
-                code: fallbackError.code,
-              },
-            },
-            { status: 500 }
+          return handleError(
+            fallbackError,
+            'No se pudo crear el log de prueba',
+            ErrorType.DATABASE
           );
         }
 
@@ -79,25 +71,19 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'No se pudo crear el log de prueba',
-          details: {
-            message: error.message,
-            code: error.code,
-          },
-        },
-        { status: 500 }
+      return handleError(
+        error,
+        'No se pudo crear el log de prueba',
+        ErrorType.DATABASE
       );
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error('Error en debug/create-log:', error);
-    return NextResponse.json(
-      { success: false, message: error?.message || 'Error interno' },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error interno',
+      ErrorType.INTERNAL
     );
   }
 }

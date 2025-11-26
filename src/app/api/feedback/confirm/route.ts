@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { registrarAprendizaje } from '../../../../lib/configMatriz';
-import { uuidSchema, validateWithZod } from '../../../../lib/validations';
+import { uuidSchema, confirmFeedbackSchema, validateWithZod } from '../../../../lib/validations';
+import { requireCSRF } from '../../../../lib/csrf';
 import { handleError, handleValidationError } from '../../../../lib/errorHandler';
 import { logger } from '../../../../lib/logger';
 
-export const dynamic = 'force-dynamic';
+// Esta ruta solo se usa en desarrollo local
+// En producción (APK), las APIs están en packages/core-api/
 
 // GET para obtener estadísticas de feedback
 export async function GET(request: NextRequest) {
+  // Llamar getSupabaseAdmin dentro de la función, no en el nivel superior
   const supabase = getSupabaseAdmin(); // Valida y crea cliente aquí
 
   try {

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { generateVerificationCode } from '@/lib/referralUtils';
+import { sendWhatsAppMessage } from '@/lib/whatsappCloudApi';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
+import { handleError, handleValidationError, handleNotFoundError, ErrorType } from '@/lib/errorHandler';
 
 const sendCodeSchema = z.object({
   phone: z.string().min(1, 'Teléfono requerido'),
@@ -23,14 +25,7 @@ export async function POST(request: NextRequest) {
     const validation = sendCodeSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Datos inválidos',
-          errors: validation.error.errors,
-        },
-        { status: 400 }
-      );
+      return handleValidationError('Datos inválidos', validation.error.errors);
     }
 
     const { phone, isPhoneChange, userId } = validation.data;
@@ -56,48 +51,172 @@ export async function POST(request: NextRequest) {
       userError = err;
 
       if (userError || !user) {
-        console.error('❌ Usuario no encontrado para cambio de teléfono:', userId);
-        return NextResponse.json(
-          {
-            success: false,
-            message: 'Usuario no encontrado',
-          },
-          { status: 404 }
-        );
+        return handleNotFoundError('Usuario');
       }
 
       // Verificar que el teléfono pendiente coincida
       if (user.telefono_pendiente !== phone) {
-        // No exponer números de teléfono en logs
-        logger.error('❌ El teléfono no coincide con el pendiente');
-        return NextResponse.json(
-          {
-            success: false,
-            message: 'El teléfono no coincide con el cambio pendiente',
-          },
-          { status: 400 }
-        );
+        return handleValidationError('El teléfono no coincide con el cambio pendiente');
       }
     } else {
       // Para verificación normal: verificar por teléfono
-      const { data: userData, error: err } = await supabase
+      // Usar la misma lógica que el webhook de transacciones (búsqueda con/sin + y flexible)
+      const phoneWithPlus = phone.startsWith('+') ? phone : `+${phone}`;
+      const phoneWithoutPlus = phone.startsWith('+') ? phone.substring(1) : phone;
+      
+      logger.debug('🔍 Buscando usuario con teléfono:', {
+        originalLength: phone?.length || 0,
+        withPlusLength: phoneWithPlus.length,
+        withoutPlusLength: phoneWithoutPlus.length,
+        withPlusPrefix: phoneWithPlus.substring(0, 6) + '...',
+        withoutPlusPrefix: phoneWithoutPlus.substring(0, 5) + '...'
+      });
+      
+      // Intentar buscar primero con el formato con +
+      let { data: userData, error: err } = await supabase
         .from('usuarios')
         .select('id, nombre')
-        .eq('telefono', phone)
+        .eq('telefono', phoneWithPlus)
         .single();
 
       user = userData;
       userError = err;
 
+      logger.debug('🔍 Resultado búsqueda con +:', {
+        found: !!user,
+        errorCode: userError?.code,
+        errorMessage: userError?.message?.substring(0, 50)
+      });
+
+      // Si no se encontró con +, intentar sin +
       if (userError || !user) {
-        console.error('❌ Usuario no encontrado:', phone);
-        return NextResponse.json(
-          {
-            success: false,
-            message: 'Usuario no encontrado con ese número de teléfono',
-          },
-          { status: 404 }
-        );
+        logger.debug('📱 Usuario no encontrado con formato +, intentando sin +');
+        const result = await supabase
+          .from('usuarios')
+          .select('id, nombre')
+          .eq('telefono', phoneWithoutPlus)
+          .single();
+        
+        user = result.data;
+        userError = result.error;
+        
+        logger.debug('🔍 Resultado búsqueda sin +:', {
+          found: !!user,
+          errorCode: userError?.code,
+          errorMessage: userError?.message?.substring(0, 50)
+        });
+      }
+      
+      // Si aún no se encontró, intentar búsqueda más flexible (por si hay espacios u otros caracteres)
+      if (userError || !user) {
+        logger.debug('📱 Intentando búsqueda flexible (LIKE)');
+        
+        try {
+          let query = supabase
+            .from('usuarios')
+            .select('id, nombre, telefono');
+          
+          if (phoneWithoutPlus.length < 10) {
+            // Número truncado: buscar que empiece con estos dígitos
+            logger.debug('⚠️ Número parece truncado, buscando usuarios que empiecen con estos dígitos');
+            
+            const { data: users1 } = await supabase
+              .from('usuarios')
+              .select('id, nombre, telefono')
+              .ilike('telefono', `${phoneWithoutPlus}%`)
+              .limit(5);
+            
+            const { data: users2 } = await supabase
+              .from('usuarios')
+              .select('id, nombre, telefono')
+              .ilike('telefono', `${phoneWithPlus}%`)
+              .limit(5);
+            
+            const allUsers = [...(users1 || []), ...(users2 || [])];
+            const uniqueUsers = Array.from(
+              new Map(allUsers.map(u => [u.id, u])).values()
+            );
+            
+            if (uniqueUsers.length === 1) {
+              // Solo un resultado: usarlo directamente
+              const { data: fullUser } = await supabase
+                .from('usuarios')
+                .select('id, nombre')
+                .eq('id', uniqueUsers[0].id)
+                .single();
+              
+              if (fullUser) {
+                user = fullUser;
+                userError = null;
+                logger.debug('✅ Usuario encontrado con búsqueda flexible (número truncado, único resultado)');
+              }
+            } else if (uniqueUsers.length > 1) {
+              // Múltiples resultados: buscar el que mejor coincida
+              const normalizedSearch = phoneWithoutPlus.replace(/\D/g, '');
+              const bestMatch = uniqueUsers.find(u => {
+                const telNormalized = (u.telefono || '').replace(/\D/g, '');
+                return telNormalized.startsWith(normalizedSearch);
+              }) || uniqueUsers[0];
+              
+              const { data: fullUser } = await supabase
+                .from('usuarios')
+                .select('id, nombre')
+                .eq('id', bestMatch.id)
+                .single();
+              
+              if (fullUser) {
+                user = fullUser;
+                userError = null;
+                logger.debug('✅ Usuario encontrado con búsqueda flexible (número truncado, múltiples resultados)');
+              }
+            }
+          } else {
+            // Número completo: buscar que contenga estos dígitos
+            query = query.or(`telefono.ilike.%${phoneWithoutPlus}%,telefono.ilike.%${phoneWithPlus}%`);
+            const { data: users } = await query.limit(5);
+            
+            if (users && users.length > 0) {
+              // Buscar coincidencia exacta
+              const exactMatch = users.find(u => {
+                const tel = (u.telefono || '').replace(/\s+/g, '').replace(/[^\d+]/g, '');
+                return tel === phoneWithPlus || tel === phoneWithoutPlus;
+              });
+              
+              if (exactMatch) {
+                const { data: fullUser } = await supabase
+                  .from('usuarios')
+                  .select('id, nombre')
+                  .eq('id', exactMatch.id)
+                  .single();
+                
+                if (fullUser) {
+                  user = fullUser;
+                  userError = null;
+                  logger.debug('✅ Usuario encontrado con búsqueda flexible (coincidencia exacta)');
+                }
+              } else if (users.length === 1) {
+                // Solo un resultado: usarlo
+                const { data: fullUser } = await supabase
+                  .from('usuarios')
+                  .select('id, nombre')
+                  .eq('id', users[0].id)
+                  .single();
+                
+                if (fullUser) {
+                  user = fullUser;
+                  userError = null;
+                  logger.debug('✅ Usuario encontrado con búsqueda flexible (único resultado)');
+                }
+              }
+            }
+          }
+        } catch (flexError: any) {
+          logger.error('❌ Excepción en búsqueda flexible:', flexError);
+        }
+      }
+
+      if (userError || !user) {
+        return handleNotFoundError('Usuario');
       }
     }
 
@@ -105,7 +224,7 @@ export async function POST(request: NextRequest) {
     const code = generateVerificationCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutos
 
-    console.log(`🔐 Código generado: ${code} (expira en 10 minutos)`);
+    logger.debug('🔐 Código generado (expira en 10 minutos)');
 
     // 3. Guardar código en base de datos
     const { data: savedCode, error: codeError } = await supabase
@@ -121,60 +240,103 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (codeError || !savedCode) {
-      console.error('❌ Error guardando código:', codeError);
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Error al generar código de verificación',
-          error: codeError?.message,
-        },
-        { status: 500 }
+      return handleError(
+        codeError || new Error('Error al guardar código'),
+        'Error al generar código de verificación',
+        ErrorType.DATABASE
       );
     }
 
-    // 4. Enviar código por WhatsApp
-    // TODO: Integrar con servicio de WhatsApp (Baileys Worker o Meta API)
-    // Por ahora, solo guardamos el código y retornamos éxito
-    // El envío real se hará cuando tengamos la integración con WhatsApp
-    
+    // 4. Enviar código por WhatsApp Cloud API
     const message = `🔐 Tu código de verificación de Ahorro365 es: *${code}*\n\nEste código expira en 10 minutos.`;
 
-    // Intentar enviar por Baileys Worker si está configurado
-    const BAILEYS_WORKER_URL = process.env.NEXT_PUBLIC_BAILEYS_WORKER_URL || process.env.BAILEYS_WORKER_URL;
-    if (BAILEYS_WORKER_URL) {
-      try {
-        // TODO: Agregar endpoint POST /send en el worker de Baileys
-        // Por ahora, solo logueamos que se debería enviar
-        // No exponer número de teléfono ni mensaje completo en logs
-        logger.debug('📤 Debería enviar mensaje de verificación');
-        logger.debug(`⚠️ Worker URL: ${BAILEYS_WORKER_URL ? 'configurado' : 'no configurado'}`);
-        logger.debug('⚠️ NOTA: El worker necesita un endpoint POST /send para enviar mensajes');
-      } catch (error) {
-        console.error('❌ Error intentando enviar por WhatsApp:', error);
-        // No fallar si el envío falla, el código ya está guardado
+    let whatsappSent = false;
+    let whatsappError: string | undefined = undefined;
+    
+    try {
+      // Normalizar número de teléfono (remover + si existe)
+      const phoneNumberNormalized = phone.startsWith('+') ? phone.substring(1) : phone;
+      
+      logger.debug('📤 Enviando código de verificación por WhatsApp:', {
+        phoneOriginal: phone.substring(0, 5) + '...',
+        phoneNormalized: phoneNumberNormalized.substring(0, 5) + '...',
+        phoneLength: phoneNumberNormalized.length,
+        hasToken: !!process.env.WHATSAPP_ACCESS_TOKEN,
+        hasPhoneId: !!process.env.WHATSAPP_PHONE_NUMBER_ID
+      });
+      
+      const sendResult = await sendWhatsAppMessage(phoneNumberNormalized, message);
+      
+      if (sendResult.success) {
+        whatsappSent = true;
+        logger.debug('✅ Código de verificación enviado por WhatsApp:', {
+          message_id: sendResult.message_id,
+          phoneLength: phoneNumberNormalized.length
+        });
+      } else {
+        whatsappSent = false;
+        // Asegurar que siempre haya un mensaje de error
+        if (sendResult.error) {
+          whatsappError = sendResult.errorCode 
+            ? `Error ${sendResult.errorCode}: ${sendResult.error}`
+            : sendResult.error;
+        } else if (sendResult.errorCode) {
+          whatsappError = `Error ${sendResult.errorCode}: No se pudo enviar el mensaje por WhatsApp`;
+        } else {
+          whatsappError = 'No se pudo enviar el mensaje por WhatsApp. Verifica la configuración del servidor (token y phone_id).';
+        }
+        
+        logger.error('❌ Error enviando código por WhatsApp:', {
+          error: sendResult.error,
+          errorCode: sendResult.errorCode,
+          errorType: sendResult.errorType,
+          whatsappError,
+          phoneNormalized: phoneNumberNormalized.substring(0, 5) + '...',
+          phoneLength: phoneNumberNormalized.length,
+          hasToken: !!process.env.WHATSAPP_ACCESS_TOKEN,
+          hasPhoneId: !!process.env.WHATSAPP_PHONE_NUMBER_ID,
+          sendResult: JSON.stringify(sendResult)
+        });
       }
-    } else {
-      console.warn('⚠️ BAILEYS_WORKER_URL no configurado, código generado pero no enviado');
+    } catch (error: any) {
+      whatsappSent = false;
+      whatsappError = error?.message || error?.toString() || 'Error desconocido al enviar mensaje por WhatsApp';
+      logger.error('❌ Excepción enviando código por WhatsApp:', {
+        errorMessage: error?.message || 'Unknown error',
+        errorStack: error?.stack || 'No stack trace',
+        errorName: error?.name || 'Unknown',
+        errorString: String(error),
+        whatsappError,
+        phoneOriginal: phone.substring(0, 5) + '...'
+      });
     }
 
+    // Asegurar que whatsappError nunca sea undefined
+    const finalWhatsappError = whatsappError || 'Error desconocido al enviar mensaje por WhatsApp';
+    
     // No exponer número de teléfono en logs
-    logger.debug('✅ Código de verificación generado y guardado');
+    logger.debug('✅ Código de verificación generado y guardado', {
+      whatsappSent,
+      whatsappError: finalWhatsappError.substring(0, 50),
+      willReturnError: finalWhatsappError
+    });
 
     return NextResponse.json({
       success: true,
-      message: 'Código de verificación generado',
+      message: whatsappSent 
+        ? 'Código de verificación generado y enviado' 
+        : 'Código de verificación generado (pero no se pudo enviar por WhatsApp)',
+      whatsappSent,
+      whatsappError: finalWhatsappError, // Asegurar que nunca sea undefined
+      codeSaved: true, // El código está guardado en la BD
       // No retornamos el código por seguridad
       expiresIn: 600, // 10 minutos en segundos
     });
   } catch (error: any) {
-    console.error('❌ Error en send-verification-code:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'Error interno del servidor',
-        error: error?.message || 'Error desconocido',
-      },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error interno del servidor',
+      ErrorType.INTERNAL
     );
   }
 }

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { activateSmartPlan } from '@/lib/smartPlanActivation';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { z } from 'zod';
+import { handleError, handleValidationError, handleNotFoundError, ErrorType } from '@/lib/errorHandler';
+import { logger } from '@/lib/logger';
 
 const activateSmartSchema = z.object({
   userId: z.string().uuid('userId debe ser un UUID válido'),
@@ -21,14 +23,7 @@ export async function POST(request: NextRequest) {
     const validation = activateSmartSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Datos inválidos',
-          errors: validation.error.errors,
-        },
-        { status: 400 }
-      );
+      return handleValidationError('Datos inválidos', validation.error.errors);
     }
 
     const { userId } = validation.data;
@@ -42,14 +37,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (userError || !usuario) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Usuario no encontrado',
-          error: 'El usuario especificado no existe',
-        },
-        { status: 404 }
-      );
+      return handleNotFoundError('Usuario');
     }
 
     // No exponer user ID en logs por seguridad
@@ -59,13 +47,10 @@ export async function POST(request: NextRequest) {
     const result = await activateSmartPlan(userId);
 
     if (!result.success || !result.activated) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: result.message,
-          error: result.error,
-        },
-        { status: 400 }
+      return handleError(
+        new Error(result.error || result.message),
+        result.message || 'No se pudo activar el plan Smart',
+        ErrorType.VALIDATION
       );
     }
 
@@ -75,14 +60,10 @@ export async function POST(request: NextRequest) {
       details: result.details,
     });
   } catch (error: any) {
-    console.error('❌ Error en activate-smart:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'Error interno del servidor',
-        error: error?.message || 'Error desconocido',
-      },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error interno del servidor',
+      ErrorType.INTERNAL
     );
   }
 }

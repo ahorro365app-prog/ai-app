@@ -5,6 +5,7 @@ import { Plus, CreditCard, Calendar, DollarSign, Trash2, Edit2, CheckCircle, His
 import { useCurrency } from '@/hooks/useCurrency';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useModal } from '@/contexts/ModalContext';
+import { logger } from '@/lib/logger';
 
 interface PaymentRecord {
   id: string;
@@ -206,7 +207,7 @@ export default function DeudasPage() {
         setShowAddDebtModal(false);
         setModalOpen(false);
       } catch (error) {
-        console.error('Error saving debt:', error);
+        logger.error('Error saving debt:', error);
         // Fallback a localStorage si hay error
         const newDebts = [...debts, newDebt];
         saveDebts(newDebts);
@@ -248,7 +249,7 @@ export default function DeudasPage() {
         // Mostrar mensaje de éxito
         showCelebrationToast('Deuda eliminada exitosamente');
       } catch (error) {
-        console.error('Error al eliminar deuda:', error);
+        logger.error('Error al eliminar deuda:', error);
         // Mostrar mensaje de error más específico
         const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
         alert(`Error al eliminar la deuda: ${errorMessage}`);
@@ -492,9 +493,9 @@ export default function DeudasPage() {
             monto_pagado: newTotalPaid,
             historial_pagos: updatedPaymentHistory
           });
-          console.log('✅ Pago editado en Supabase');
+          logger.debug('✅ Pago editado en Supabase');
         } catch (error) {
-          console.error('❌ Error al editar pago en Supabase:', error);
+          logger.error('❌ Error al editar pago en Supabase:', error);
         }
       }
       
@@ -534,19 +535,19 @@ export default function DeudasPage() {
     if (paymentToDelete && debtHistory) {
       const amountToSubtract = paymentToDelete.amount;
 
-      console.log('🗑️ Eliminando pago individual y su comprobante...');
+      logger.debug('🗑️ Eliminando pago individual y su comprobante...');
 
       // 1. Eliminar comprobante del Storage si existe
       if (paymentToDelete.receipt && user) {
         try {
           const fileName = extractReceiptFileName(paymentToDelete.receipt);
           if (fileName) {
-            console.log('📷 Eliminando comprobante:', fileName);
+            logger.debug('📷 Eliminando comprobante:', fileName);
             await deleteReceipt(fileName);
-            console.log('✅ Comprobante eliminado del storage');
+            logger.debug('✅ Comprobante eliminado del storage');
           }
         } catch (receiptError) {
-          console.warn('⚠️ Error al eliminar comprobante del storage:', receiptError);
+          logger.warn('⚠️ Error al eliminar comprobante del storage:', receiptError);
           // Continuar con la eliminación del pago aunque falle la eliminación del comprobante
         }
       }
@@ -579,9 +580,9 @@ export default function DeudasPage() {
             monto_pagado: newTotalPaid,
             historial_pagos: updatedPaymentHistory
           });
-          console.log('✅ Pago eliminado en Supabase');
+          logger.debug('✅ Pago eliminado en Supabase');
         } catch (error) {
-          console.error('❌ Error al eliminar pago en Supabase:', error);
+          logger.error('❌ Error al eliminar pago en Supabase:', error);
         }
       }
       
@@ -631,7 +632,7 @@ export default function DeudasPage() {
           } catch (uploadError) {
             setIsUploadingReceipt(false);
             setUploadProgress('');
-            console.error('Error al subir comprobante:', uploadError);
+            logger.error('Error al subir comprobante:', uploadError);
             // Continuar sin comprobante
           }
         }
@@ -672,9 +673,9 @@ export default function DeudasPage() {
               monto_pagado: Math.min(newPaidAmount, debtToPay.totalAmount),
               historial_pagos: [...(debtToPay.paymentHistory || []), paymentRecord]
             });
-            console.log('✅ Pago guardado en Supabase');
+            logger.debug('✅ Pago guardado en Supabase');
           } catch (error) {
-            console.error('❌ Error al guardar pago en Supabase:', error);
+            logger.error('❌ Error al guardar pago en Supabase:', error);
           }
         }
         
@@ -689,7 +690,7 @@ export default function DeudasPage() {
         setPaymentAmount('');
         setPaymentReceipt(null);
       } catch (error) {
-        console.error('Error al registrar pago:', error);
+        logger.error('Error al registrar pago:', error);
         // Aquí podrías mostrar un mensaje de error al usuario
       }
     }
@@ -1191,18 +1192,18 @@ export default function DeudasPage() {
 
       {/* Toast de celebración */}
       {showCelebration && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-fade-in">
-          <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-4 rounded-2xl shadow-2xl max-w-sm">
-            <p className="text-center font-semibold text-xs">{celebrationMessage}</p>
+        <div className="fixed top-[60px] left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+          <div className="bg-gray-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-sm">
+            <span>{celebrationMessage}</span>
           </div>
         </div>
       )}
 
       {/* Toast de recordatorio */}
       {showReminder && (
-        <div className="fixed top-4 right-4 z-50 animate-fade-in">
-          <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-4 rounded-2xl shadow-2xl max-w-sm">
-            <p className="font-semibold text-xs">{reminderMessage}</p>
+        <div className="fixed top-[60px] left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+          <div className="bg-gray-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-sm">
+            <span>{reminderMessage}</span>
           </div>
         </div>
       )}

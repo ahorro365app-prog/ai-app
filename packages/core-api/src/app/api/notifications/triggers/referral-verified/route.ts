@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { triggerReferralVerifiedForId } from '@/lib/notificationCampaigns';
 import { z } from 'zod';
+import { handleError, handleValidationError, ErrorType } from '@/lib/errorHandler';
+import { logger } from '@/lib/logger';
 
 const triggerSchema = z.object({
   referralId: z.string().uuid('referralId debe ser un UUID válido'),
@@ -20,36 +22,25 @@ export async function POST(request: NextRequest) {
     const validation = triggerSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Datos inválidos',
-          errors: validation.error.errors,
-        },
-        { status: 400 }
-      );
+      return handleValidationError('Datos inválidos', validation.error.errors);
     }
 
     const { referralId } = validation.data;
 
-    console.log(`🔔 Invocando trigger de referido verificado para: ${referralId}`);
+    logger.debug('🔔 Invocando trigger de referido verificado');
 
     // Ejecutar trigger de notificación
     const result = await triggerReferralVerifiedForId(referralId);
 
     if (!result.success) {
-      console.error('❌ Error ejecutando trigger:', result.error);
-      return NextResponse.json(
-        {
-          success: false,
-          message: result.message || 'Error ejecutando trigger',
-          error: result.error,
-        },
-        { status: 500 }
+      return handleError(
+        new Error(result.error || 'Error ejecutando trigger'),
+        result.message || 'Error ejecutando trigger',
+        ErrorType.INTERNAL
       );
     }
 
-    console.log(`✅ Trigger ejecutado exitosamente:`, result.summary);
+    logger.debug('✅ Trigger ejecutado exitosamente');
 
     return NextResponse.json({
       success: true,
@@ -57,14 +48,10 @@ export async function POST(request: NextRequest) {
       summary: result.summary,
     });
   } catch (error: any) {
-    console.error('❌ Error en endpoint de trigger:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'Error interno del servidor',
-        error: error?.message || 'Error desconocido',
-      },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error interno del servidor',
+      ErrorType.INTERNAL
     );
   }
 }

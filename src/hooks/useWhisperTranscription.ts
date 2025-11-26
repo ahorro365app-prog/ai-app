@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { getWhisperService, WhisperTranscriptionResponse } from '@/services/whisperService';
+import { logger } from '@/lib/logger';
 
 export interface TranscriptionState {
   isTranscribing: boolean;
@@ -33,7 +34,7 @@ export const useWhisperTranscription = () => {
         isComplete: false
       }));
 
-      console.log('🎤 Iniciando transcripción...', {
+      logger.debug('🎤 Iniciando transcripción...', {
         size: audioBlob.size,
         type: audioBlob.type
       });
@@ -54,7 +55,7 @@ export const useWhisperTranscription = () => {
         error: null
       }));
 
-      console.log('✅ Transcripción exitosa:', result.text);
+      logger.debug('✅ Transcripción exitosa:', result.text);
       return result.text;
 
     } catch (error) {
@@ -67,7 +68,7 @@ export const useWhisperTranscription = () => {
         isComplete: false
       }));
 
-      console.error('❌ Error en transcripción:', error);
+      logger.error('❌ Error en transcripción:', error);
       throw error;
     }
   }, [whisperService]);

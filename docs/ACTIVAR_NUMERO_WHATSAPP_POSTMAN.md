@@ -19,6 +19,49 @@ Object with ID '840593392476984' does not exist
 
 ## ✅ Solución: Usar Postman
 
+⚠️ **IMPORTANTE:** Antes de enviar mensajes, debes suscribir tu app a la cuenta de WhatsApp Business (WABA).
+
+### Paso 0: Suscribir App a WABA (OBLIGATORIO)
+
+1. En Postman, crea una nueva petición **POST**
+2. Configura así:
+
+#### 📍 URL
+```
+https://graph.facebook.com/v22.0/1554733609063961/subscribed_apps
+```
+
+⚠️ **IMPORTANTE:** Usa tu WABA ID: `1554733609063961` (actualizado 20 Nov 2025)
+
+#### 🔑 Headers
+| Key | Value |
+|-----|-------|
+| `Authorization` | `Bearer [TU_ACCESS_TOKEN]` |
+| `Content-Type` | `application/json` |
+
+#### 📦 Body (raw JSON)
+```json
+{
+  "data": [
+    {
+      "access_token": "TU_ACCESS_TOKEN_AQUI"
+    }
+  ]
+}
+```
+
+3. Haz clic en **"Send"**
+4. Deberías recibir una respuesta `200 OK` con:
+```json
+{
+  "success": true
+}
+```
+
+✅ **Una vez suscrito, continúa con el Paso 1 para enviar el mensaje de prueba.**
+
+---
+
 ### Paso 1: Instalar Postman (si no lo tienes)
 
 1. Descarga Postman desde: https://www.postman.com/downloads/
@@ -33,10 +76,10 @@ Object with ID '840593392476984' does not exist
 
 #### 📍 URL (Método: POST)
 ```
-https://graph.facebook.com/v22.0/796240860248587/messages
+https://graph.facebook.com/v22.0/840593392476984/messages
 ```
 
-⚠️ **IMPORTANTE:** Usa el Phone Number ID correcto: `796240860248587`
+⚠️ **IMPORTANTE:** Usa el Phone Number ID correcto: `840593392476984` (actualizado 20 Nov 2025)
 
 #### 🔑 Headers
 
@@ -144,4 +187,8 @@ Una vez activado:
 
 - [WhatsApp Cloud API Documentation](https://developers.facebook.com/docs/whatsapp/cloud-api)
 - [Graph API Reference](https://developers.facebook.com/docs/graph-api)
+
+
+
+
 

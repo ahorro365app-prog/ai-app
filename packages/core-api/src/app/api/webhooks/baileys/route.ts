@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { logger, webhookLogger } from '@/lib/logger';
 import { webhookRateLimit, getClientIdentifier, checkRateLimit } from '@/lib/rateLimit';
 import { handleError, ErrorType } from '@/lib/errorHandler';
+import { getTodayForCountry, validateTransactionDate, buildISODateForCountry, getTimezoneForCountry } from '@/lib/dateUtils';
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
@@ -86,6 +87,14 @@ export async function POST(req: NextRequest) {
       user.country_code || 'BOL'
     );
     logger.debug('Expense extracted:', expenseData);
+    
+    // Helper: Convertir código de país de 3 letras a 2 letras
+    const countryCode3To2: Record<string, string> = {
+      'BOL': 'BO', 'ARG': 'AR', 'BRA': 'BR', 'CHL': 'CL', 'COL': 'CO',
+      'ECU': 'EC', 'PER': 'PE', 'PRY': 'PY', 'URY': 'UY', 'VEN': 'VE',
+      'MEX': 'MX', 'USA': 'US', 'ESP': 'ES', 'GBR': 'UK'
+    };
+    const userCountryCode = countryCode3To2[user.country_code || 'BOL'] || 'BO';
 
     // 6. Guardar predicción en predicciones_groq
     const { data: prediction } = await supabase
@@ -108,14 +117,71 @@ export async function POST(req: NextRequest) {
     if (expenseData.esMultiple && expenseData.transacciones && expenseData.transacciones.length > 0) {
       logger.debug(`Guardando ${expenseData.transacciones.length} transacciones múltiples`);
       
-      const transactionsToInsert = expenseData.transacciones.map((t: any) => ({
-        usuario_id: user.id,
-        tipo: t.tipo || 'gasto',
-        monto: t.monto || 0,
-        categoria: t.categoria || 'otros',
-        descripcion: t.descripcion || transcription,
-        fecha: t.fecha || new Date(timestamp).toISOString(),
-      }));
+      const transactionsToInsert = expenseData.transacciones.map((t: any) => {
+        // Obtener fecha: usar la de Groq o fecha de hoy
+        const transactionDate = t.fecha || getTodayForCountry(userCountryCode);
+        
+        // Validar fecha (solo ayer o hoy)
+        const validation = validateTransactionDate(transactionDate, userCountryCode);
+        if (!validation.valid) {
+          logger.warn(`⚠️ Fecha no válida para transacción: ${transactionDate} - ${validation.message}`);
+          // Si la fecha no es válida, usar fecha de hoy
+          const todayDate = getTodayForCountry(userCountryCode);
+          logger.debug(`📅 Usando fecha de hoy como fallback: ${todayDate}`);
+          
+          // Construir fecha ISO con hora actual
+          const now = new Date();
+          const [year, month, day] = todayDate.split('-').map(Number);
+          const timeZone = getTimezoneForCountry(userCountryCode);
+          const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone,
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          });
+          const timeParts = formatter.formatToParts(now);
+          const hour = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0', 10);
+          const minute = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0', 10);
+          const second = parseInt(timeParts.find(p => p.type === 'second')?.value || '0', 10);
+          const dateISO = buildISODateForCountry(year, month, day, hour, minute, second, userCountryCode);
+          
+          return {
+            usuario_id: user.id,
+            tipo: t.tipo || 'gasto',
+            monto: t.monto || 0,
+            categoria: t.categoria || 'otros',
+            descripcion: t.descripcion || transcription,
+            fecha: dateISO,
+          };
+        }
+        
+        // Construir fecha ISO con hora actual
+        const now = new Date();
+        const [year, month, day] = transactionDate.split('-').map(Number);
+        const timeZone = getTimezoneForCountry(userCountryCode);
+        const formatter = new Intl.DateTimeFormat('en-US', {
+          timeZone,
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        });
+        const timeParts = formatter.formatToParts(now);
+        const hour = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0', 10);
+        const minute = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0', 10);
+        const second = parseInt(timeParts.find(p => p.type === 'second')?.value || '0', 10);
+        const dateISO = buildISODateForCountry(year, month, day, hour, minute, second, userCountryCode);
+        
+        return {
+          usuario_id: user.id,
+          tipo: t.tipo || 'gasto',
+          monto: t.monto || 0,
+          categoria: t.categoria || 'otros',
+          descripcion: t.descripcion || transcription,
+          fecha: dateISO,
+        };
+      });
 
       const { data: insertedTransactions, error: insertError } = await supabase
         .from('transacciones')
@@ -131,6 +197,36 @@ export async function POST(req: NextRequest) {
       logger.debug(`${transactions.length} transacciones creadas`);
     } else {
       // Comportamiento original: una sola transacción
+      // Obtener fecha: usar la de Groq o fecha de hoy
+      const transactionDate = expenseData.fecha || getTodayForCountry(userCountryCode);
+      
+      // Validar fecha (solo ayer o hoy)
+      const validation = validateTransactionDate(transactionDate, userCountryCode);
+      let finalDate = transactionDate;
+      if (!validation.valid) {
+        logger.warn(`⚠️ Fecha no válida: ${transactionDate} - ${validation.message}`);
+        // Si la fecha no es válida, usar fecha de hoy
+        finalDate = getTodayForCountry(userCountryCode);
+        logger.debug(`📅 Usando fecha de hoy como fallback: ${finalDate}`);
+      }
+      
+      // Construir fecha ISO con hora actual
+      const now = new Date();
+      const [year, month, day] = finalDate.split('-').map(Number);
+      const timeZone = getTimezoneForCountry(userCountryCode);
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      const timeParts = formatter.formatToParts(now);
+      const hour = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0', 10);
+      const minute = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0', 10);
+      const second = parseInt(timeParts.find(p => p.type === 'second')?.value || '0', 10);
+      const dateISO = buildISODateForCountry(year, month, day, hour, minute, second, userCountryCode);
+      
       const { data: transaction, error: transactionError } = await supabase
         .from('transacciones')
         .insert({
@@ -139,7 +235,7 @@ export async function POST(req: NextRequest) {
           monto: expenseData.monto || 0,
           categoria: expenseData.categoria || 'otros',
           descripcion: expenseData.descripcion || transcription,
-          fecha: new Date(timestamp).toISOString(),
+          fecha: dateISO,
         })
         .select()
         .single();

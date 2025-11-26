@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { SegmentFilters, NotificationCategory } from '@/lib/notificationSegments';
+import { handleError, handleNotFoundError, handleValidationError, ErrorType } from '@/lib/errorHandler';
 
 const ALLOWED_STATUSES = new Set(['draft', 'scheduled', 'sending', 'sent', 'cancelled', 'failed']);
 const ALLOWED_TYPES: NotificationCategory[] = [
@@ -29,18 +30,15 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
     }
 
     if (!data) {
-      return NextResponse.json(
-        { success: false, message: 'Campaña no encontrada' },
-        { status: 404 }
-      );
+      return handleNotFoundError('Campaña');
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error('Error obteniendo campaign:', error);
-    return NextResponse.json(
-      { success: false, message: error?.message || 'Error obteniendo campaña' },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error obteniendo campaña',
+      ErrorType.DATABASE
     );
   }
 }
@@ -98,19 +96,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     if (typeof body?.status === 'string') {
       if (!ALLOWED_STATUSES.has(body.status)) {
-        return NextResponse.json(
-          { success: false, message: 'Estado inválido para la campaña.' },
-          { status: 400 }
-        );
+        return handleValidationError('Estado inválido para la campaña.');
       }
       updates.status = body.status;
     }
 
     if (Object.keys(updates).length <= 1) {
-      return NextResponse.json(
-        { success: false, message: 'No se proporcionaron cambios válidos.' },
-        { status: 400 }
-      );
+      return handleValidationError('No se proporcionaron cambios válidos.');
     }
 
     const { data, error } = await supabase
@@ -125,18 +117,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     if (!data) {
-      return NextResponse.json(
-        { success: false, message: 'Campaña no encontrada' },
-        { status: 404 }
-      );
+      return handleNotFoundError('Campaña');
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error('Error actualizando campaign:', error);
-    return NextResponse.json(
-      { success: false, message: error?.message || 'Error actualizando campaña' },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error actualizando campaña',
+      ErrorType.DATABASE
     );
   }
 }
@@ -156,17 +145,11 @@ export async function DELETE(_: NextRequest, { params }: { params: { id: string 
     }
 
     if (!existing) {
-      return NextResponse.json(
-        { success: false, message: 'Campaña no encontrada' },
-        { status: 404 }
-      );
+      return handleNotFoundError('Campaña');
     }
 
     if (existing.status === 'sent' || existing.status === 'sending') {
-      return NextResponse.json(
-        { success: false, message: 'No se puede cancelar una campaña enviada o en curso.' },
-        { status: 409 }
-      );
+      return handleValidationError('No se puede cancelar una campaña enviada o en curso.');
     }
 
     const { data, error } = await supabase
@@ -189,10 +172,10 @@ export async function DELETE(_: NextRequest, { params }: { params: { id: string 
       data,
     });
   } catch (error: any) {
-    console.error('Error cancelando campaign:', error);
-    return NextResponse.json(
-      { success: false, message: error?.message || 'Error cancelando campaña' },
-      { status: 500 }
+    return handleError(
+      error,
+      'Error cancelando campaña',
+      ErrorType.DATABASE
     );
   }
 }

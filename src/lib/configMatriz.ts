@@ -1,9 +1,27 @@
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './logger';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization para evitar errores durante build time
+let supabase: ReturnType<typeof createClient> | null = null;
+
+function getSupabase() {
+  if (!supabase) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    // Durante build time, retornar objeto dummy
+    if (!url || !key || (process.env.VERCEL === '1' && !url)) {
+      return {
+        from: () => ({
+          select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+        }),
+      } as any;
+    }
+    
+    supabase = createClient(url, key);
+  }
+  return supabase;
+}
 
 export interface ConfigCompleta {
   country_code: string;
@@ -20,19 +38,19 @@ export interface ConfigCompleta {
  */
 export async function getConfigCompleta(countryCode: string): Promise<ConfigCompleta> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .rpc('obtener_config_completa', {
         p_country_code: countryCode
       });
 
     if (error) {
-      console.error('Error obteniendo config completa:', error);
+      logger.error('Error obteniendo config completa:', error);
       throw error;
     }
 
     return data as ConfigCompleta;
   } catch (error) {
-    console.error('Error en getConfigCompleta:', error);
+    logger.error('Error en getConfigCompleta:', error);
     // Fallback a Bolivia
     return getConfigCompleta('BOL');
   }
@@ -48,11 +66,11 @@ export async function registrarAprendizaje(
 ) {
   try {
     // Extraer aprendizaje del feedback
-    await supabase.rpc('extraer_aprendizaje_de_feedback');
+    await getSupabase().rpc('extraer_aprendizaje_de_feedback');
 
-    console.log('✅ Aprendizaje registrado');
+    logger.debug('✅ Aprendizaje registrado');
   } catch (error) {
-    console.error('❌ Error registrando aprendizaje:', error);
+    logger.error('❌ Error registrando aprendizaje:', error);
   }
 }
 
@@ -65,7 +83,7 @@ export async function aplicarMejora(
   palabraNueva: string
 ): Promise<boolean> {
   try {
-    const { data, error } = await supabase.rpc('aplicar_mejoras_feedback', {
+    const { data, error } = await getSupabase().rpc('aplicar_mejoras_feedback', {
       p_country_code: countryCode,
       p_categoria: categoria,
       p_palabra_nueva: palabraNueva
@@ -73,10 +91,10 @@ export async function aplicarMejora(
 
     if (error) throw error;
 
-    console.log('✅ Mejora aplicada:', palabraNueva);
+    logger.debug('✅ Mejora aplicada:', palabraNueva);
     return data as boolean;
   } catch (error) {
-    console.error('❌ Error aplicando mejora:', error);
+    logger.error('❌ Error aplicando mejora:', error);
     return false;
   }
 }
@@ -86,7 +104,7 @@ export async function aplicarMejora(
  */
 export async function getStatsAprendizaje() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('estadisticas_feedback')
       .select('*');
 
@@ -94,7 +112,7 @@ export async function getStatsAprendizaje() {
 
     return data;
   } catch (error) {
-    console.error('❌ Error obteniendo stats:', error);
+    logger.error('❌ Error obteniendo stats:', error);
     return [];
   }
 }
@@ -104,7 +122,7 @@ export async function getStatsAprendizaje() {
  */
 export async function getConfigMatriz(tipo?: 'categoria' | 'moneda' | 'metodo_pago') {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('configuracion_matriz')
       .select('*')
       .eq('activo', true)
@@ -118,7 +136,7 @@ export async function getConfigMatriz(tipo?: 'categoria' | 'moneda' | 'metodo_pa
 
     return data;
   } catch (error) {
-    console.error('❌ Error obteniendo config matriz:', error);
+    logger.error('❌ Error obteniendo config matriz:', error);
     return [];
   }
 }

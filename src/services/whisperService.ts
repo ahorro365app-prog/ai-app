@@ -1,4 +1,5 @@
 // Servicio para comunicación con Whisper API de OpenAI
+import { logger } from '@/lib/logger';
 
 export interface WhisperTranscriptionResponse {
   text: string;
@@ -32,7 +33,7 @@ class WhisperService {
    */
   async transcribeAudio(audioBlob: Blob): Promise<WhisperTranscriptionResponse> {
     try {
-      console.log('🎤 Enviando audio a Whisper API...', {
+      logger.debug('🎤 Enviando audio a Whisper API...', {
         size: audioBlob.size,
         type: audioBlob.type
       });
@@ -42,17 +43,88 @@ class WhisperService {
         throw new Error('Archivo de audio vacío');
       }
       
-      if (!audioBlob.type.includes('webm') && !audioBlob.type.includes('audio')) {
-        console.warn('⚠️ Tipo de archivo inesperado:', audioBlob.type);
+      // Determinar el nombre de archivo y tipo MIME correcto según el tipo del Blob
+      let fileName = 'recording.webm';
+      let mimeType = audioBlob.type;
+      
+      // Normalizar el tipo MIME (remover codecs y parámetros adicionales)
+      if (audioBlob.type.includes('webm')) {
+        fileName = 'recording.webm';
+        mimeType = 'audio/webm'; // Whisper requiere 'audio/webm' sin codecs
+      } else if (audioBlob.type.includes('ogg') || audioBlob.type.includes('oga')) {
+        fileName = 'recording.ogg';
+        mimeType = 'audio/ogg';
+      } else if (audioBlob.type.includes('wav')) {
+        fileName = 'recording.wav';
+        mimeType = 'audio/wav';
+      } else if (audioBlob.type.includes('mp4') || audioBlob.type.includes('m4a')) {
+        fileName = 'recording.m4a';
+        mimeType = 'audio/mp4';
+      } else if (audioBlob.type.includes('mp3') || audioBlob.type.includes('mpeg')) {
+        fileName = 'recording.mp3';
+        mimeType = 'audio/mpeg';
+      } else if (!audioBlob.type || audioBlob.type === 'application/octet-stream') {
+        // Si no hay tipo o es genérico, asumir webm (formato más común del navegador)
+        logger.warn('⚠️ Tipo de archivo no especificado o genérico, usando webm por defecto');
+        fileName = 'recording.webm';
+        mimeType = 'audio/webm';
+      } else {
+        // Intentar extraer el tipo base
+        const baseType = audioBlob.type.split(';')[0].trim();
+        if (baseType.startsWith('audio/')) {
+          mimeType = baseType;
+          // Determinar extensión basada en el tipo
+          if (baseType.includes('webm')) {
+            fileName = 'recording.webm';
+          } else if (baseType.includes('ogg')) {
+            fileName = 'recording.ogg';
+          } else if (baseType.includes('wav')) {
+            fileName = 'recording.wav';
+          } else if (baseType.includes('mp4') || baseType.includes('m4a')) {
+            fileName = 'recording.m4a';
+            mimeType = 'audio/mp4';
+          } else {
+            fileName = 'recording.webm';
+            mimeType = 'audio/webm';
+          }
+        } else {
+          logger.warn('⚠️ Tipo de archivo no reconocido, usando webm por defecto:', audioBlob.type);
+          fileName = 'recording.webm';
+          mimeType = 'audio/webm';
+        }
       }
 
+      logger.debug('📋 Formato final:', { fileName, mimeType, originalType: audioBlob.type });
+
+      // Crear un nuevo Blob con el tipo MIME correcto (siempre crear uno nuevo para asegurar consistencia)
+      const finalBlob = new Blob([audioBlob], { type: mimeType });
+      
+      logger.debug('📦 Blob final creado:', {
+        size: finalBlob.size,
+        type: finalBlob.type
+      });
+
       const formData = new FormData();
-      formData.append('file', audioBlob, 'recording.webm');
+      // Crear un File con el nombre y tipo correctos
+      const audioFile = new File([finalBlob], fileName, { 
+        type: mimeType,
+        lastModified: Date.now()
+      });
+      
+      logger.debug('📁 File creado:', {
+        name: audioFile.name,
+        type: audioFile.type,
+        size: audioFile.size
+      });
+      
+      formData.append('file', audioFile);
       formData.append('model', this.config.model!);
       formData.append('language', this.config.language!);
       formData.append('temperature', this.config.temperature!.toString());
       formData.append('response_format', this.config.responseFormat!);
 
+      logger.debug('📤 Enviando request a Whisper API...');
+      
       const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
         headers: {
@@ -62,13 +134,29 @@ class WhisperService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: { message: errorText || response.statusText } };
+        }
+        
+        logger.error('❌ Error de Whisper API:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData.error,
+          fileName,
+          mimeType,
+          fileSize: audioFile.size
+        });
+        
         throw new Error(`Whisper API error: ${response.status} - ${errorData.error?.message || response.statusText}`);
       }
 
       const result = await response.json();
       
-      console.log('✅ Transcripción completada:', result);
+      logger.debug('✅ Transcripción completada:', result);
 
       return {
         text: result.text || '',
@@ -77,7 +165,7 @@ class WhisperService {
       };
 
     } catch (error) {
-      console.error('❌ Error en transcripción Whisper:', error);
+      logger.error('❌ Error en transcripción Whisper:', error);
       throw error;
     }
   }
@@ -87,15 +175,15 @@ class WhisperService {
    */
   validateConfig(): boolean {
     if (!this.config.apiKey || this.config.apiKey === 'your_openai_api_key_here') {
-      console.error('❌ API Key de OpenAI no configurada');
-      console.error('📝 Instrucciones:');
-      console.error('   1. Ve a https://platform.openai.com/api-keys');
-      console.error('   2. Crea una nueva API key');
-      console.error('   3. Agrega NEXT_PUBLIC_OPENAI_API_KEY=tu_key_aqui a .env.local');
-      console.error('   4. Reinicia el servidor (npm run dev)');
+      logger.error('❌ API Key de OpenAI no configurada');
+      logger.error('📝 Instrucciones:');
+      logger.error('   1. Ve a https://platform.openai.com/api-keys');
+      logger.error('   2. Crea una nueva API key');
+      logger.error('   3. Agrega NEXT_PUBLIC_OPENAI_API_KEY=tu_key_aqui a .env.local');
+      logger.error('   4. Reinicia el servidor (npm run dev)');
       return false;
     }
-    console.log('✅ OpenAI API Key configurada correctamente');
+    logger.debug('✅ OpenAI API Key configurada correctamente');
     return true;
   }
 
@@ -115,7 +203,7 @@ export const getWhisperService = (): WhisperService => {
     const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
     
     if (!apiKey) {
-      console.warn('⚠️ OpenAI API Key no encontrada en variables de entorno');
+      logger.warn('⚠️ OpenAI API Key no encontrada en variables de entorno');
     }
 
     whisperServiceInstance = new WhisperService({

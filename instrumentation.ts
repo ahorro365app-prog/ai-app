@@ -8,6 +8,26 @@
  */
 
 export async function register() {
+	// Validar variables de entorno críticas al inicio (solo en producción o si se fuerza)
+	if (process.env.NEXT_RUNTIME === 'nodejs') {
+		// Solo validar en producción o si se fuerza la validación
+		const shouldValidate = process.env.NODE_ENV === 'production' || process.env.FORCE_ENV_VALIDATION === 'true';
+		
+		if (shouldValidate) {
+			try {
+				const { enforceEnvironmentValidation } = await import('./src/lib/envValidation');
+				// Validar variables críticas al inicio
+				enforceEnvironmentValidation();
+			} catch (error) {
+				// Si falla la validación, el error ya fue logueado en enforceEnvironmentValidation
+				// En producción, esto debería detener el servidor
+				if (process.env.NODE_ENV === 'production') {
+					throw error;
+				}
+			}
+		}
+	}
+
 	// Cargar Sentry en runtime Node.js solo si está disponible
 	if (process.env.NEXT_RUNTIME === 'nodejs') {
 		try {

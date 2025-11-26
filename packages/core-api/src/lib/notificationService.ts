@@ -1,5 +1,6 @@
 import { messaging, firebaseAdminInitialized } from '@/lib/firebaseAdminServer';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { logger } from '@/lib/logger';
 
 type NotificationType =
   | 'transaction'
@@ -35,7 +36,7 @@ export class NotificationService {
     const supabase = getSupabaseAdmin();
 
     if (!firebaseAdminInitialized || !messaging) {
-      console.warn('Firebase Admin no inicializado. Notificación no enviada.');
+      logger.warn('Firebase Admin no inicializado. Notificación no enviada.');
       return {
         success: false,
         error: 'Firebase Admin no está configurado en el entorno',
@@ -98,7 +99,7 @@ export class NotificationService {
 
       return { success: true };
     } catch (error: any) {
-      console.error('Error enviando notificación:', error);
+      logger.error('Error enviando notificación:', error);
 
       if (logId) {
         await supabase
@@ -112,7 +113,26 @@ export class NotificationService {
           .eq('id', logId);
       }
 
-      if (error?.code === 'messaging/registration-token-not-registered') {
+      // Desactivar token si es inválido o no existe
+      const invalidTokenErrors = [
+        'messaging/registration-token-not-registered',
+        'messaging/invalid-registration-token',
+        'messaging/invalid-argument',
+      ];
+      
+      const errorMessage = error?.message?.toLowerCase() || '';
+      const isInvalidToken = 
+        invalidTokenErrors.includes(error?.code) ||
+        errorMessage.includes('requested entity was not found') ||
+        errorMessage.includes('registration token') ||
+        errorMessage.includes('invalid registration');
+      
+      if (isInvalidToken) {
+        logger.warn('Token FCM inválido detectado, desactivando:', {
+          token: payload.token.substring(0, 20) + '...',
+          errorCode: error?.code,
+          errorMessage: error?.message,
+        });
         await this.deactivateToken(payload.token);
       }
 
@@ -132,7 +152,7 @@ export class NotificationService {
       .eq('is_active', true);
 
     if (error) {
-      console.error('Error obteniendo tokens de usuario:', error);
+      logger.error('Error obteniendo tokens de usuario:', error);
       throw error;
     }
 
@@ -150,7 +170,7 @@ export class NotificationService {
       .eq('token', token);
 
     if (error) {
-      console.error('Error actualizando token FCM:', error);
+      logger.error('Error actualizando token FCM:', error);
     }
   }
 
@@ -165,7 +185,7 @@ export class NotificationService {
       .eq('token', token);
 
     if (error) {
-      console.error('Error desactivando token FCM:', error);
+      logger.error('Error desactivando token FCM:', error);
     }
   }
 }

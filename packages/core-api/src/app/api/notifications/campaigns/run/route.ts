@@ -13,16 +13,15 @@ import {
   type CronHealthContext,
 } from '@/lib/notificationAlerts'
 import { activateScheduledSmart } from '@/lib/activateScheduledSmart'
+import { handleError, handleAuthError, ErrorType } from '@/lib/errorHandler'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   const secret = process.env.NOTIFICATIONS_CRON_SECRET
   if (secret) {
     const authHeader = request.headers.get('authorization')
     if (!authHeader || authHeader !== `Bearer ${secret}`) {
-      return NextResponse.json(
-        { success: false, message: 'No autorizado' },
-        { status: 401 }
-      )
+      return handleAuthError('No autorizado')
     }
   }
 
@@ -42,10 +41,10 @@ export async function POST(request: NextRequest) {
     .limit(limit)
 
   if (error) {
-    console.error('Error consultando campañas programadas:', error)
-    return NextResponse.json(
-      { success: false, message: 'No se pudieron obtener campañas programadas' },
-      { status: 500 }
+    return handleError(
+      error,
+      'No se pudieron obtener campañas programadas',
+      ErrorType.DATABASE
     )
   }
 
@@ -127,10 +126,10 @@ export async function POST(request: NextRequest) {
       success: smartResult.success,
     }
     if (smartResult.activated > 0) {
-      console.log(`✅ ${smartResult.activated} Smart(s) activado(s) programado(s)`)
+      logger.debug(`✅ ${smartResult.activated} Smart(s) activado(s) programado(s)`)
     }
   } catch (error: any) {
-    console.error('⚠️ Error activando Smart programado:', error)
+    logger.warn('⚠️ Error activando Smart programado (no crítico)')
     smartActivationResult.success = false
   }
 
@@ -164,7 +163,7 @@ export async function POST(request: NextRequest) {
   try {
     previousHealth = await getLastCronHealth(supabase)
   } catch (err: any) {
-    console.warn('⚠️ No se pudo obtener health check anterior:', err?.message)
+    logger.warn('⚠️ No se pudo obtener health check anterior (no crítico)')
   }
 
   // Guardar health check en notification_trigger_logs
@@ -178,13 +177,13 @@ export async function POST(request: NextRequest) {
       })
 
     if (healthError) {
-      console.error('⚠️ Error guardando health check del cron:', healthError)
+      logger.warn('⚠️ Error guardando health check del cron (no crítico)')
       // No fallar el endpoint si el health check falla
     } else {
-      console.log('✅ Health check del cron guardado exitosamente')
+      logger.debug('✅ Health check del cron guardado exitosamente')
     }
   } catch (healthErr: any) {
-    console.error('⚠️ Error guardando health check del cron:', healthErr)
+    logger.warn('⚠️ Error guardando health check del cron (no crítico)')
     // No fallar el endpoint si el health check falla
   }
 
@@ -193,13 +192,13 @@ export async function POST(request: NextRequest) {
   try {
     alertsResult = await checkCronHealthAndAlert(currentHealth, previousHealth)
     if (alertsResult.alertsSent > 0) {
-      console.log(`🔔 ${alertsResult.alertsSent} alerta(s) enviada(s)`)
+      logger.debug(`🔔 ${alertsResult.alertsSent} alerta(s) enviada(s)`)
     }
     if (alertsResult.errors.length > 0) {
-      console.warn('⚠️ Errores enviando alertas:', alertsResult.errors)
+      logger.warn('⚠️ Errores enviando alertas (no crítico)')
     }
   } catch (alertErr: any) {
-    console.error('⚠️ Error verificando/enviando alertas:', alertErr)
+    logger.warn('⚠️ Error verificando/enviando alertas (no crítico)')
     // No fallar el endpoint si las alertas fallan
   }
 

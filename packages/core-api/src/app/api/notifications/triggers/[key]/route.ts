@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTriggerStatus, updateTriggerConfig } from '@/lib/notificationCampaigns'
+import { handleError, handleNotFoundError, ErrorType } from '@/lib/errorHandler'
 
 export async function GET(
   _request: NextRequest,
@@ -9,13 +10,13 @@ export async function GET(
     const status = await getTriggerStatus(params.key)
     return NextResponse.json({ success: true, trigger: status })
   } catch (error: any) {
-    console.error('Error obteniendo trigger:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        message: error?.message || 'Trigger no encontrado',
-      },
-      { status: 404 }
+    if (error?.message?.includes('Trigger no encontrado')) {
+      return handleNotFoundError('Trigger')
+    }
+    return handleError(
+      error,
+      'Error obteniendo trigger',
+      ErrorType.INTERNAL
     )
   }
 }
@@ -40,15 +41,13 @@ export async function PATCH(
     const status = await getTriggerStatus(params.key)
     return NextResponse.json({ success: true, trigger: status })
   } catch (error: any) {
-    console.error('Error actualizando trigger:', error)
-    const message = error?.message || 'Error actualizando trigger'
-    const statusCode = message.includes('Trigger no encontrado') ? 404 : 500
-    return NextResponse.json(
-      {
-        success: false,
-        message,
-      },
-      { status: statusCode }
+    if (error?.message?.includes('Trigger no encontrado')) {
+      return handleNotFoundError('Trigger')
+    }
+    return handleError(
+      error,
+      'Error actualizando trigger',
+      ErrorType.INTERNAL
     )
   }
 }
