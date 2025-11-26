@@ -12,7 +12,7 @@
   "crons": [
     {
       "path": "/api/cron/confirm-expired",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 2 * * *"
     }
   ]
 }
