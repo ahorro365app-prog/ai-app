@@ -1,8 +1,8 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
+  "buildCommand": "cd packages/core-api && npm install && npm run build",
+  "devCommand": "cd packages/core-api && npm run dev",
+  "installCommand": "",
   "regions": ["iad1"],
   "functions": {
     "src/app/api/**/*.ts": {
