@@ -168,3 +168,129 @@ export const getTodayForCountry = (countryCode?: string): string => {
 
   return `${parts.year}-${parts.month}-${parts.day}`;
 };
+
+/**
+ * Extrae la fecha (YYYY-MM-DD) de un string ISO en la zona horaria del país del usuario.
+ * Normaliza el formato de Supabase (+00:00 -> Z) para asegurar interpretación UTC correcta.
+ * 
+ * @param isoString - String ISO de fecha (ej: '2025-11-26T00:38:22+00:00')
+ * @param userCountryCode - Código de país del usuario (ej: 'BO', 'AR', 'MX')
+ * @returns String de fecha en formato YYYY-MM-DD en la zona horaria del país
+ */
+export const extractDateInUserTimezone = (
+  isoString: string,
+  userCountryCode?: string
+): string => {
+  // 1. Normalizar formato: +00:00 -> Z (asegurar interpretación UTC explícita)
+  let normalized = isoString;
+  if (normalized.endsWith('+00:00')) {
+    normalized = normalized.replace('+00:00', 'Z');
+  }
+  
+  // 2. Crear Date desde string normalizado (ahora es UTC explícito)
+  const date = new Date(normalized);
+  
+  // 3. Verificar que Date es válido
+  if (isNaN(date.getTime())) {
+    try {
+      const fallbackDate = new Date(isoString.replace(/[+-]\d{2}:\d{2}$/, 'Z'));
+      if (!isNaN(fallbackDate.getTime())) {
+        return extractDateInUserTimezone(fallbackDate.toISOString(), userCountryCode);
+      }
+    } catch (e) {
+      // Error en fallback
+    }
+    return getTodayForCountry(userCountryCode);
+  }
+  
+  // 4. Obtener timezone del país
+  const timeZone = getTimezoneForCountry(userCountryCode);
+  
+  // 5. Usar toLocaleString para obtener fecha en zona horaria del país
+  const localDateStr = date.toLocaleString('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  
+  // Formato: "MM/DD/YYYY" -> convertir a "YYYY-MM-DD"
+  const [month, day, year] = localDateStr.split('/');
+  const result = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  
+  return result;
+};
+
+/**
+ * Valida que una fecha esté dentro del rango permitido para transacciones
+ * Reglas:
+ * - Fechas pasadas: Solo "ayer" (1 día atrás)
+ * - Fecha de hoy: Sí
+ * - Fechas futuras: No
+ * 
+ * @param dateString - Fecha en formato YYYY-MM-DD
+ * @param countryCode - Código del país del usuario (opcional, default: 'BO')
+ * @returns Objeto con valid: boolean y message opcional
+ */
+export const validateTransactionDate = (
+  dateString: string,
+  countryCode?: string
+): { valid: boolean; message?: string } => {
+  if (!dateString) {
+    return { valid: false, message: 'La fecha es requerida' };
+  }
+
+  const timeZone = getTimezoneForCountry(countryCode);
+  const today = getTodayForCountry(countryCode);
+  
+  // Calcular fecha de ayer
+  const todayDate = new Date(`${today}T12:00:00`);
+  const yesterdayDate = new Date(todayDate);
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  
+  const year = yesterdayDate.getFullYear();
+  const month = String(yesterdayDate.getMonth() + 1).padStart(2, '0');
+  const day = String(yesterdayDate.getDate()).padStart(2, '0');
+  const yesterday = `${year}-${month}-${day}`;
+  
+  // Convertir fecha seleccionada a objeto Date para comparación
+  const selectedDateObj = new Date(`${dateString}T12:00:00`);
+  const todayDateObj = new Date(`${today}T12:00:00`);
+  const yesterdayDateObj = new Date(`${yesterday}T12:00:00`);
+  
+  // Comparar solo las fechas (sin hora)
+  const selectedDateOnly = dateString;
+  const todayOnly = today;
+  const yesterdayOnly = yesterday;
+  
+  // Validar: solo permite ayer o hoy
+  if (selectedDateOnly === todayOnly) {
+    return { valid: true };
+  }
+  
+  if (selectedDateOnly === yesterdayOnly) {
+    return { valid: true };
+  }
+  
+  // Si es fecha futura
+  if (selectedDateObj > todayDateObj) {
+    return { 
+      valid: false, 
+      message: 'No se pueden crear transacciones para fechas futuras' 
+    };
+  }
+  
+  // Si es fecha más antigua que ayer
+  if (selectedDateObj < yesterdayDateObj) {
+    return { 
+      valid: false, 
+      message: 'Solo se pueden crear transacciones para ayer o hoy' 
+    };
+  }
+  
+  // Por defecto, no válida
+  return { 
+    valid: false, 
+    message: 'La fecha debe ser ayer o hoy' 
+  };
+};
