@@ -68,17 +68,28 @@ export async function sendWhatsAppMessage(
       const errorType = data.error?.type;
       const errorSubcode = data.error?.error_subcode;
       
+      // Log completo del error (incluyendo mensaje completo sin truncar)
       logger.error('❌ Error enviando mensaje WhatsApp:', {
         status: response.status,
         statusText: response.statusText,
         errorCode,
         errorType,
         errorSubcode,
-        errorMessage,
-        errorFull: data.error,
-        phoneNumber: phoneNumber.substring(0, 5) + '...',
-        phoneLength: phoneNumber.length
+        errorMessage: errorMessage, // Mensaje completo
+        errorFull: JSON.stringify(data.error, null, 2), // Error completo en JSON
+        phoneNumber: phoneNumber, // Número completo para debugging
+        phoneLength: phoneNumber.length,
+        url: url,
+        apiVersion: WHATSAPP_API_VERSION,
+        phoneNumberId: WHATSAPP_PHONE_NUMBER_ID,
+        hasToken: !!WHATSAPP_ACCESS_TOKEN,
+        tokenLength: WHATSAPP_ACCESS_TOKEN?.length || 0
       });
+      
+      // También loggear el mensaje completo en stdout para verlo en Vercel
+      console.error('❌ [WHATSAPP ERROR COMPLETO]:', JSON.stringify(data.error, null, 2));
+      console.error('📱 [NÚMERO ENVIADO]:', phoneNumber);
+      console.error('🔗 [URL]:', url);
       
       // Si es un error 401 (token expirado), dar instrucciones específicas
       if (response.status === 401) {
