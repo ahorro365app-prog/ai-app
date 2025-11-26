@@ -9,6 +9,7 @@
     "dev": "next dev",
     "dev:mobile": "next dev -H 0.0.0.0",
     "build": "next build",
+    "build:core-api": "cd packages/core-api && npm install && npm run build",
     "build:direct": "next build",
     "build:android": "npm run build && node scripts/copy-static-for-capacitor.js && npx cap sync android",
     "build:apk": "npm run build:android && node scripts/build-apk.js",
