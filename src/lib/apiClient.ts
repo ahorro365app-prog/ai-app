@@ -9,7 +9,7 @@ const getApiBaseUrl = (): string => {
   // Si estamos en Capacitor (app móvil)
   if (typeof window !== 'undefined' && (window as any).Capacitor) {
     // Usar la URL del servidor remoto para APIs
-    return process.env.NEXT_PUBLIC_API_URL || 'https://ahorro365-core-api.vercel.app';
+    return process.env.NEXT_PUBLIC_API_URL || 'https://ai-app-core-api.vercel.app';
   }
   
   // Si estamos en web, usar ruta relativa (mismo servidor)
