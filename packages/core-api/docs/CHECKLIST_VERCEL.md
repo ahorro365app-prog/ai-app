@@ -13,6 +13,7 @@
 - [ ] Click en "Add New Project"
 - [ ] Seleccionar el repositorio `ai-app`
 - [ ] Configurar:
+  - **Project Name**: `ahorro365-core-api` (IMPORTANTE: usar este nombre exacto)
   - **Framework Preset**: Next.js
   - **Root Directory**: `packages/core-api`
   - **Build Command**: `npm run build` (ya configurado en `vercel.json`)
@@ -53,12 +54,12 @@ Ir a `Settings > Environment Variables` y agregar:
 
 Una vez desplegado, obtener la URL del webhook desde Vercel:
 
-- [ ] URL del webhook: `https://tu-proyecto-core-api.vercel.app/api/webhooks/whatsapp`
+- [ ] URL del webhook: `https://ahorro365-core-api.vercel.app/api/webhooks/whatsapp`
 - [ ] Ir a [Meta Business Suite](https://business.facebook.com/)
 - [ ] Navegar a: **WhatsApp > Configuración > Configuración de API**
 - [ ] Click en "Editar" en la sección "Webhook"
 - [ ] Configurar:
-  - **URL de devolución de llamada**: `https://tu-proyecto-core-api.vercel.app/api/webhooks/whatsapp`
+  - **URL de devolución de llamada**: `https://ahorro365-core-api.vercel.app/api/webhooks/whatsapp`
   - **Token de verificación**: `7edf98ac6d544020a4c49b6ff9ed28893ad9464e401ba8658b5ddd860a4ab876`
 - [ ] Click en "Verificar y guardar"
 - [ ] Suscribirse a eventos:

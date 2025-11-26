@@ -78,6 +78,7 @@ NODE_ENV=production
 
 ### 1. **Framework Preset**
 
+- **Project Name**: `ahorro365-core-api` (IMPORTANTE: usar este nombre exacto)
 - **Framework**: Next.js
 - **Build Command**: `npm run build` (ya configurado en `vercel.json`)
 - **Output Directory**: `.next` (automático para Next.js)
@@ -138,7 +139,7 @@ Una vez desplegado, configura el webhook en Meta Business Suite:
 ### 1. **URL del Webhook**
 
 ```
-https://tu-proyecto-core-api.vercel.app/api/webhooks/whatsapp
+https://ahorro365-core-api.vercel.app/api/webhooks/whatsapp
 ```
 
 ### 2. **Verify Token**
