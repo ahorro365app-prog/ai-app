@@ -60,221 +60,76 @@ function getCountryDate(countryCode: string = 'BO'): Date {
 
 // Función para procesar fechas relativas (máximo 7 días atrás)
 function processRelativeDate(dateText: string, userCountryCode: string = 'BO'): string | null | { error: string; message: string; daysDiff: number } {
-  // Usar zona horaria específica del país del usuario para evitar problemas de UTC
-  const today = new Date();
+  // ⚠️ RESTRICCIÓN: SOLO se permite "ayer" o "el día de ayer"
+  // Todas las demás fechas serán rechazadas
+  
   const countryTime = getCountryDate(userCountryCode);
   const timezone = countryTimezones[userCountryCode] || countryTimezones['BO'];
   
   logger.debug('📅 processRelativeDate llamado con:', dateText);
   logger.debug('📅 País del usuario:', userCountryCode);
   logger.debug('📅 Zona horaria:', timezone);
-  logger.debug('📅 Fecha actual UTC:', today.toISOString());
   logger.debug('📅 Fecha actual país:', countryTime.toLocaleDateString('es-ES'));
-  logger.debug('📅 Día de la semana actual:', countryTime.toLocaleDateString('es-ES', { weekday: 'long' }));
   
   // Normalizar el texto
   const normalizedText = dateText.toLowerCase().trim();
   
-  // Crear fecha en zona horaria del país para evitar problemas de UTC
+  // Crear fecha en zona horaria del país
   const year = countryTime.getFullYear();
   const month = countryTime.getMonth();
   const day = countryTime.getDate();
   
   logger.debug('📅 Componentes de fecha actual:', { year, month, day });
   
-  let targetDate: Date;
+  let targetDate: Date | null = null;
   
-  // Mapeo de fechas relativas (máximo 7 días atrás)
+  // ⚠️ SOLO procesar "ayer" o "el día de ayer"
   if (normalizedText.includes('ayer') || normalizedText.includes('el día de ayer')) {
-    logger.debug('📅 Detectado: ayer');
+    logger.debug('📅 Detectado: ayer (PERMITIDO)');
     // Crear fecha de ayer en zona horaria del país
     targetDate = new Date(year, month, day - 1);
     logger.debug('📅 Fecha de ayer creada:', targetDate.toLocaleDateString('es-ES'));
-    logger.debug('📅 Día de la semana de ayer:', targetDate.toLocaleDateString('es-ES', { weekday: 'long' }));
-  } else if (normalizedText.includes('hace 1 día') || normalizedText.includes('hace un día')) {
-    targetDate = new Date(year, month, day - 1);
-  } else if (normalizedText.includes('hace 2 días') || normalizedText.includes('hace dos días')) {
-    targetDate = new Date(year, month, day - 2);
-  } else if (normalizedText.includes('hace 3 días') || normalizedText.includes('hace tres días')) {
-    targetDate = new Date(year, month, day - 3);
-  } else if (normalizedText.includes('hace 4 días') || normalizedText.includes('hace cuatro días')) {
-    targetDate = new Date(year, month, day - 4);
-  } else if (normalizedText.includes('hace 5 días') || normalizedText.includes('hace cinco días')) {
-    targetDate = new Date(year, month, day - 5);
-  } else if (normalizedText.includes('hace 6 días') || normalizedText.includes('hace seis días')) {
-    targetDate = new Date(year, month, day - 6);
-  } else if (normalizedText.includes('hace una semana') || normalizedText.includes('hace 1 semana') || normalizedText.includes('hace 7 días')) {
-    targetDate = new Date(year, month, day - 7);
-  } else if (normalizedText.includes('hace 8 días')) {
-    targetDate = new Date(year, month, day - 8);
-  } else if (normalizedText.includes('hace 9 días')) {
-    targetDate = new Date(year, month, day - 9);
-  } else if (normalizedText.includes('hace 10 días')) {
-    targetDate = new Date(year, month, day - 10);
-  } else if (normalizedText.includes('hace 15 días')) {
-    targetDate = new Date(year, month, day - 15);
-  } else if (normalizedText.includes('hace 20 días')) {
-    targetDate = new Date(year, month, day - 20);
-  } else if (normalizedText.includes('hace 30 días')) {
-    targetDate = new Date(year, month, day - 30);
-  } else if (normalizedText.includes('hace 50 días')) {
-    targetDate = new Date(year, month, day - 50);
-  } else if (normalizedText.includes('hace 60 días')) {
-    targetDate = new Date(year, month, day - 60);
-  } else if (normalizedText.includes('hace 90 días')) {
-    targetDate = new Date(year, month, day - 90);
-  } else if (normalizedText.includes('hace 100 días')) {
-    targetDate = new Date(year, month, day - 100);
-  } else if (normalizedText.includes('hace ocho días')) {
-    logger.debug('📅 Detectado: hace ocho días');
-    targetDate = new Date(year, month, day - 8);
-  } else if (normalizedText.includes('hace nueve días')) {
-    logger.debug('📅 Detectado: hace nueve días');
-    targetDate = new Date(year, month, day - 9);
-  } else if (normalizedText.includes('hace diez días')) {
-    logger.debug('📅 Detectado: hace diez días');
-    targetDate = new Date(year, month, day - 10);
-  } else if (normalizedText.includes('hace once días')) {
-    logger.debug('📅 Detectado: hace once días');
-    targetDate = new Date(year, month, day - 11);
-  } else if (normalizedText.includes('hace doce días')) {
-    logger.debug('📅 Detectado: hace doce días');
-    targetDate = new Date(year, month, day - 12);
-  } else if (normalizedText.includes('hace trece días')) {
-    logger.debug('📅 Detectado: hace trece días');
-    targetDate = new Date(year, month, day - 13);
-  } else if (normalizedText.includes('hace catorce días')) {
-    logger.debug('📅 Detectado: hace catorce días');
-    targetDate = new Date(year, month, day - 14);
-  } else if (normalizedText.includes('hace quince días')) {
-    logger.debug('📅 Detectado: hace quince días');
-    targetDate = new Date(year, month, day - 15);
-  } else if (normalizedText.includes('hace veinte días')) {
-    logger.debug('📅 Detectado: hace veinte días');
-    targetDate = new Date(year, month, day - 20);
-  } else if (normalizedText.includes('hace treinta días')) {
-    logger.debug('📅 Detectado: hace treinta días');
-    targetDate = new Date(year, month, day - 30);
-  } else if (normalizedText.includes('hace cuarenta días')) {
-    logger.debug('📅 Detectado: hace cuarenta días');
-    targetDate = new Date(year, month, day - 40);
-  } else if (normalizedText.includes('hace cincuenta días')) {
-    logger.debug('📅 Detectado: hace cincuenta días');
-    targetDate = new Date(year, month, day - 50);
-  } else if (normalizedText.includes('hace sesenta días')) {
-    logger.debug('📅 Detectado: hace sesenta días');
-    targetDate = new Date(year, month, day - 60);
-  } else if (normalizedText.includes('hace setenta días')) {
-    logger.debug('📅 Detectado: hace setenta días');
-    targetDate = new Date(year, month, day - 70);
-  } else if (normalizedText.includes('hace ochenta días')) {
-    logger.debug('📅 Detectado: hace ochenta días');
-    targetDate = new Date(year, month, day - 80);
-  } else if (normalizedText.includes('hace noventa días')) {
-    logger.debug('📅 Detectado: hace noventa días');
-    targetDate = new Date(year, month, day - 90);
-  } else if (normalizedText.includes('martes 14 de octubre')) {
-    logger.debug('📅 Detectado: martes 14 de octubre');
-    targetDate = new Date(2025, 9, 14); // Octubre es mes 9 (0-indexado)
-    logger.debug('📅 Fecha específica creada:', targetDate.toLocaleDateString('es-ES'));
-  } else if (normalizedText.includes('lunes 15 de octubre')) {
-    logger.debug('📅 Detectado: lunes 15 de octubre');
-    targetDate = new Date(2025, 9, 15);
-  } else if (normalizedText.includes('viernes 18 de octubre')) {
-    logger.debug('📅 Detectado: viernes 18 de octubre');
-    targetDate = new Date(2025, 9, 18);
-  } else if (normalizedText.includes('el día martes')) {
-    logger.debug('📅 Detectado: el día martes');
-    // Buscar el martes más reciente
-    const today = new Date(year, month, day);
-    const dayOfWeek = today.getDay(); // 0=domingo, 1=lunes, 2=martes, etc.
-    const daysToTuesday = dayOfWeek >= 2 ? dayOfWeek - 2 : dayOfWeek + 5; // Martes es día 2
-    targetDate = new Date(year, month, day - daysToTuesday);
-  } else if (normalizedText.includes('el lunes pasado')) {
-    logger.debug('📅 Detectado: el lunes pasado');
-    // Buscar el lunes más reciente
-    const today = new Date(year, month, day);
-    const dayOfWeek = today.getDay(); // 0=domingo, 1=lunes, 2=martes, etc.
-    const daysToMonday = dayOfWeek >= 1 ? dayOfWeek - 1 : dayOfWeek + 6; // Lunes es día 1
-    targetDate = new Date(year, month, day - daysToMonday);
-  } else if (normalizedText.includes('miércoles 15')) {
-    logger.debug('📅 Detectado: miércoles 15');
-    // Asumir octubre 2025 (mes actual)
-    targetDate = new Date(2025, 9, 15); // Octubre es mes 9 (0-indexado)
-    logger.debug('📅 Fecha específica creada:', targetDate.toLocaleDateString('es-ES'));
-  } else if (normalizedText.includes('martes 14')) {
-    logger.debug('📅 Detectado: martes 14');
-    targetDate = new Date(2025, 9, 14);
-  } else if (normalizedText.includes('lunes 15')) {
-    logger.debug('📅 Detectado: lunes 15');
-    targetDate = new Date(2025, 9, 15);
-  } else if (normalizedText.includes('viernes 18')) {
-    logger.debug('📅 Detectado: viernes 18');
-    targetDate = new Date(2025, 9, 18);
-  } else if (normalizedText.includes('jueves 16')) {
-    logger.debug('📅 Detectado: jueves 16');
-    targetDate = new Date(2025, 9, 16);
-  } else if (normalizedText.includes('sábado 19')) {
-    logger.debug('📅 Detectado: sábado 19');
-    targetDate = new Date(2025, 9, 19);
-  } else if (normalizedText.includes('domingo 20')) {
-    logger.debug('📅 Detectado: domingo 20');
-    targetDate = new Date(2025, 9, 20);
-  } else if (normalizedText.includes('sábado 11')) {
-    logger.debug('📅 Detectado: sábado 11');
-    targetDate = new Date(2025, 9, 11);
-  } else if (normalizedText.includes('viernes 10')) {
-    logger.debug('📅 Detectado: viernes 10');
-    targetDate = new Date(2025, 9, 10);
-  } else if (normalizedText.includes('jueves 9')) {
-    logger.debug('📅 Detectado: jueves 9');
-    targetDate = new Date(2025, 9, 9);
-  } else if (normalizedText.includes('miércoles 8')) {
-    logger.debug('📅 Detectado: miércoles 8');
-    targetDate = new Date(2025, 9, 8);
-  } else if (normalizedText.includes('martes 7')) {
-    logger.debug('📅 Detectado: martes 7');
-    targetDate = new Date(2025, 9, 7);
-  } else if (normalizedText.includes('lunes 6')) {
-    logger.debug('📅 Detectado: lunes 6');
-    targetDate = new Date(2025, 9, 6);
-  } else if (normalizedText.includes('domingo 5')) {
-    logger.debug('📅 Detectado: domingo 5');
-    targetDate = new Date(2025, 9, 5);
-  } else if (normalizedText.includes('12 de octubre')) {
-    logger.debug('📅 Detectado: 12 de octubre');
-    targetDate = new Date(2025, 9, 12);
-  } else if (normalizedText.includes('13 de octubre')) {
-    logger.debug('📅 Detectado: 13 de octubre');
-    targetDate = new Date(2025, 9, 13);
-  } else if (normalizedText.includes('11 de octubre')) {
-    logger.debug('📅 Detectado: 11 de octubre');
-    targetDate = new Date(2025, 9, 11);
   } else {
-    // Si no se puede procesar o es más de 7 días, retornar null
-    logger.debug('📅 No se pudo procesar la fecha:', dateText);
-    return null;
+    // Cualquier otra fecha es rechazada
+    logger.debug('❌ Fecha rechazada (solo se permite "ayer"):', dateText);
+    logger.debug('❌ Fechas como "hace 2 días", "hace una semana", "el lunes pasado", "mañana", etc. NO están permitidas');
+    return { 
+      error: 'DATE_NOT_ALLOWED', 
+      message: 'Solo se pueden crear transacciones para "ayer" o "hoy". Fechas pasadas (más de ayer) o futuras no están permitidas.', 
+      daysDiff: -1 
+    };
   }
   
-  // Verificar que la fecha calculada no sea más de 7 días atrás
+  if (!targetDate) {
+    logger.debug('❌ No se pudo procesar la fecha:', dateText);
+    return { 
+      error: 'DATE_NOT_ALLOWED', 
+      message: 'Solo se pueden crear transacciones para "ayer" o "hoy".', 
+      daysDiff: -1 
+    };
+  }
+  
+  // Verificar que la fecha calculada sea exactamente ayer (1 día de diferencia)
   const todayCountry = new Date(year, month, day);
   const daysDiff = Math.floor((todayCountry.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24));
   logger.debug('📅 Diferencia en días:', daysDiff);
   
-  if (daysDiff > 7) {
-    logger.debug('❌ Fecha más de 7 días atrás, no válida');
+  // Solo permitir exactamente 1 día de diferencia (ayer)
+  if (daysDiff !== 1) {
+    logger.debug('❌ Fecha no es ayer, diferencia:', daysDiff, 'días');
     logger.debug('❌ Fecha solicitada:', targetDate.toLocaleDateString('es-ES'));
     logger.debug('❌ Fecha actual:', todayCountry.toLocaleDateString('es-ES'));
-    logger.debug('❌ Días de diferencia:', daysDiff);
-    // Retornar un objeto especial para indicar error de fecha
-    return { error: 'DATE_TOO_OLD', message: 'No puedes agregar transacciones con más de 7 días de antigüedad', daysDiff };
+    return { 
+      error: 'DATE_NOT_YESTERDAY', 
+      message: 'Solo se pueden crear transacciones para "ayer" o "hoy".', 
+      daysDiff 
+    };
   }
   
   // Formatear como YYYY-MM-DD en zona horaria del país
   const result = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
-  logger.debug('✅ Fecha calculada:', result);
+  logger.debug('✅ Fecha calculada (ayer):', result);
   logger.debug('✅ Fecha calculada país:', targetDate.toLocaleDateString('es-ES'));
-  logger.debug('✅ Día de la semana calculado:', targetDate.toLocaleDateString('es-ES', { weekday: 'long' }));
   return result;
 }
 
@@ -508,36 +363,36 @@ async function processTranscriptionMultiple(text: string, userCountryCode: strin
   try {
     const systemPrompt = `🚨 INSTRUCCIÓN CRÍTICA DE FECHAS - LEE ESTO PRIMERO 🚨
 
-ANTES DE PROCESAR CUALQUIER TEXTO, DEBES BUSCAR PALABRAS DE FECHA.
+⚠️ RESTRICCIONES ESTRICTAS DE FECHAS - MUY IMPORTANTE ⚠️
 
-PALABRAS DE FECHA QUE DEBES BUSCAR:
+SOLO SE PERMITEN ESTAS FECHAS:
+✅ "ayer" o "el día de ayer" → fechaTexto: "ayer"
+✅ Sin fecha mencionada → NO incluir fechaTexto (será "hoy" por defecto)
 
-FECHAS RELATIVAS:
-- "ayer" → SIEMPRE incluir fechaTexto: "ayer"
-- "el día de ayer" → SIEMPRE incluir fechaTexto: "ayer"
-- "hace 1 día" → SIEMPRE incluir fechaTexto: "hace 1 día"
-- "hace 2 días" → SIEMPRE incluir fechaTexto: "hace 2 días"
-- "hace 3 días" → SIEMPRE incluir fechaTexto: "hace 3 días"
-- "hace una semana" → SIEMPRE incluir fechaTexto: "hace una semana"
-
-FECHAS ESPECÍFICAS:
-- "martes 14 de octubre" → SIEMPRE incluir fechaTexto: "martes 14 de octubre"
-- "lunes 15 de octubre" → SIEMPRE incluir fechaTexto: "lunes 15 de octubre"
-- "viernes 18 de octubre" → SIEMPRE incluir fechaTexto: "viernes 18 de octubre"
-- "el día martes" → SIEMPRE incluir fechaTexto: "el día martes"
-- "el lunes pasado" → SIEMPRE incluir fechaTexto: "el lunes pasado"
-
-EJEMPLOS OBLIGATORIOS:
-- "Ayer pagué 140 bolivianos" → DEBE incluir fechaTexto: "ayer"
-- "El día martes 14 de octubre pagué internet" → DEBE incluir fechaTexto: "martes 14 de octubre"
-- "El lunes pasado compré comida" → DEBE incluir fechaTexto: "el lunes pasado"
-- "Hace 2 días compré comida" → DEBE incluir fechaTexto: "hace 2 días"
+❌ FECHAS PROHIBIDAS (NO PERMITIDAS):
+❌ "hace 2 días", "hace 3 días", "hace una semana" → NO PERMITIDO (más de ayer)
+❌ "mañana", "pasado mañana", "el próximo lunes" → NO PERMITIDO (fechas futuras)
+❌ "martes 14 de octubre", "el lunes pasado" → NO PERMITIDO (fechas específicas pasadas que no sean ayer)
+❌ Cualquier fecha futura → NO PERMITIDO
 
 REGLAS ESTRICTAS PARA FECHAS:
-1. SIEMPRE busca las palabras: "ayer", "hace", "días", "semana", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo", "octubre", "noviembre", "diciembre"
-2. Si encuentras CUALQUIERA de estas palabras, incluye fechaTexto
-3. NO calcules fechas exactas, solo extrae el texto completo de la fecha
-4. Si NO hay palabras de fecha, NO incluyas fechaTexto
+1. SOLO busca la palabra "ayer" o "el día de ayer"
+2. Si encuentras "ayer" o "el día de ayer" → incluye fechaTexto: "ayer"
+3. Si encuentras "hace 2 días", "hace 3 días", "hace una semana", "el lunes pasado", "martes 14", etc. → NO incluyas fechaTexto (la transacción será rechazada después)
+4. Si encuentras "mañana", "pasado mañana", "el próximo lunes", etc. → NO incluyas fechaTexto (la transacción será rechazada después)
+5. Si NO hay palabras de fecha → NO incluyas fechaTexto (será "hoy" por defecto)
+6. NO calcules fechas exactas, solo extrae el texto "ayer" si está presente
+
+EJEMPLOS CORRECTOS:
+- "Ayer pagué 140 bolivianos" → fechaTexto: "ayer" ✅
+- "El día de ayer compré comida" → fechaTexto: "ayer" ✅
+- "Gasté 50 bolivianos en comida" → NO incluir fechaTexto (será "hoy") ✅
+
+EJEMPLOS INCORRECTOS (NO incluir fechaTexto, la transacción será rechazada):
+- "Hace 2 días compré comida" → NO incluir fechaTexto ❌
+- "Hace una semana pagué internet" → NO incluir fechaTexto ❌
+- "El lunes pasado compré ropa" → NO incluir fechaTexto ❌
+- "Mañana pagaré 100 bs" → NO incluir fechaTexto ❌
 
 ---
 
@@ -634,6 +489,12 @@ REGLA CRÍTICA DE CLASIFICACIÓN:
 - Palabras que indican INGRESO: "me pagaron", "gané", "vendí", "cobré", "recibí"
 - Si NO tiene estas palabras → ES "gasto"
 
+⚠️ REGLA CRÍTICA DE FECHAS:
+- SOLO se permite "ayer" o "el día de ayer" → incluir fechaTexto: "ayer"
+- Si NO hay mención de fecha → NO incluir fechaTexto (será "hoy" por defecto)
+- Si menciona "hace 2 días", "hace 3 días", "hace una semana", "el lunes pasado", "martes 14", etc. → NO incluir fechaTexto (la transacción será rechazada)
+- Si menciona "mañana", "pasado mañana", "el próximo lunes", etc. → NO incluir fechaTexto (la transacción será rechazada)
+
 Ejemplos de separación de transacciones:
 - "50 taxi\n30 comida\n20 gasolina\nVendí 499 bs de FLEXS cap" → 
   {
@@ -677,13 +538,15 @@ Ejemplos con diferentes monedas:
 - "Compré ropa por 100 pesos mexicanos" → {"monto": 100, "categoria": "ropa", "tipo": "gasto", "descripcion": "ropa", "metodoPago": "efectivo", "esPagoDeuda": false, "nombreDeuda": null}
 - "Ahorré 200 soles para mi meta" → {"monto": 200, "categoria": "otros", "tipo": "ingreso", "descripcion": "ahorro para meta", "metodoPago": "efectivo", "esPagoDeuda": false, "nombreDeuda": null}
 
-Ejemplos con fechas (OBLIGATORIO incluir fechaTexto):
+Ejemplos con fechas (SOLO "ayer" está permitido):
 - "El día de ayer me compré zapatillas por 24 bolivianos" → {"monto": 24, "categoria": "ropa", "tipo": "gasto", "descripcion": "zapatillas", "metodoPago": "efectivo", "esPagoDeuda": false, "nombreDeuda": null, "fechaTexto": "ayer"}
 - "Ayer gasté 50 bolivianos en comida" → {"monto": 50, "categoria": "comida", "tipo": "gasto", "descripcion": "comida", "metodoPago": "efectivo", "esPagoDeuda": false, "nombreDeuda": null, "fechaTexto": "ayer"}
-- "Hace 3 días compré ropa por 100 bs" → {"monto": 100, "categoria": "ropa", "tipo": "gasto", "descripcion": "ropa", "metodoPago": "efectivo", "esPagoDeuda": false, "nombreDeuda": null, "fechaTexto": "hace 3 días"}
-- "El lunes pasado pagué 200 bolivianos de fotocopias" → {"monto": 200, "categoria": "educacion", "tipo": "gasto", "descripcion": "fotocopias", "metodoPago": "efectivo", "esPagoDeuda": false, "nombreDeuda": null, "fechaTexto": "hace una semana"}
 
-Ejemplos SIN fechas (NO incluir fechaTexto):
+⚠️ IMPORTANTE - FECHAS PROHIBIDAS (NO incluir fechaTexto):
+Si el texto menciona "hace 2 días", "hace 3 días", "hace una semana", "el lunes pasado", "martes 14 de octubre", etc. → NO incluyas fechaTexto. La transacción será rechazada por el sistema.
+Si el texto menciona "mañana", "pasado mañana", "el próximo lunes", etc. → NO incluyas fechaTexto. La transacción será rechazada por el sistema.
+
+Ejemplos SIN fechas (será "hoy" por defecto):
 - "Gasté 50 bolivianos en comida" → {"monto": 50, "categoria": "comida", "tipo": "gasto", "descripcion": "comida", "metodoPago": "efectivo", "esPagoDeuda": false, "nombreDeuda": null}
 - "Compré ropa por 100 bs" → {"monto": 100, "categoria": "ropa", "tipo": "gasto", "descripcion": "ropa", "metodoPago": "efectivo", "esPagoDeuda": false, "nombreDeuda": null}
 
